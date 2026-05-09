@@ -1,0 +1,16 @@
+{
+  "name": "elbe-radar",
+  "version": "1.0.0",
+  "description": "AIS Schiffsradar Wedel/Elbe mit Telegram-Alerts",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.16.0",
+    "node-fetch": "^3.3.2",
+    "dotenv": "^16.4.5"
+  }
+}

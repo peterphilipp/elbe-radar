@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  elbe-radar:
+    build: .
+    container_name: elbe-radar
+    restart: unless-stopped
+    env_file: .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.elbe-radar.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.elbe-radar.entrypoints=websecure"
+      - "traefik.http.routers.elbe-radar.tls.certresolver=letsencrypt"
+      - "traefik.http.services.elbe-radar.loadbalancer.server.port=3000"
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    external: true
