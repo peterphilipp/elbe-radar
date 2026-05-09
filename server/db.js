@@ -11,6 +11,7 @@ const db = new Database(path.join(DATA_DIR, 'elbe-radar.db'));
 db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');
 
+// ── Schema – NUR CREATE IF NOT EXISTS, kein ALTER hier ───────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS ships (
     mmsi       TEXT PRIMARY KEY,
@@ -38,14 +39,17 @@ db.exec(`
     active           INTEGER DEFAULT 1,
     created          INTEGER DEFAULT (strftime('%s','now'))
   );
-  -- Migration: min_length_alert ergänzen falls Spalte fehlt
-  ALTER TABLE alerts ADD COLUMN min_length_alert INTEGER DEFAULT 150;
 `);
 
-// Migration-Fehler ignorieren (Spalte existiert bereits)
-// db.exec wirft bei doppelter Spalte → separater Try
-try { db.exec(`ALTER TABLE alerts ADD COLUMN min_length_alert INTEGER DEFAULT 150`); } catch(e) {}
+// ── Migrations: ALTER TABLE sicher mit try/catch pro Statement ───────────────
+const migrations = [
+  `ALTER TABLE alerts ADD COLUMN min_length_alert INTEGER DEFAULT 150`,
+];
+for (const sql of migrations) {
+  try { db.exec(sql); } catch(e) { /* Spalte existiert bereits – ok */ }
+}
 
+// ── Prepared Statements ───────────────────────────────────────────────────────
 const upsertShip = db.prepare(`
   INSERT INTO ships (mmsi,name,type,len,wid,drg,cs,dest,lat,lon,sog,cog,heading,seen,eta_ts,eta_dir,eta_dist)
   VALUES (@mmsi,@name,@type,@len,@wid,@drg,@cs,@dest,@lat,@lon,@sog,@cog,@heading,@seen,@eta_ts,@eta_dir,@eta_dist)
@@ -64,7 +68,6 @@ const insertHistory = db.prepare(`
   INSERT INTO history (mmsi,name,type,len,lat,lon,sog,cog,ts)
   VALUES (@mmsi,@name,@type,@len,@lat,@lon,@sog,@cog,@ts)
 `);
-
 const lastHistoryTs = db.prepare(`SELECT MAX(ts) as ts FROM history WHERE mmsi=?`);
 const HISTORY_INTERVAL = 30 * 60 * 1000;
 
@@ -108,7 +111,10 @@ module.exports = {
     db.prepare(`SELECT lat,lon,sog,cog,ts FROM history WHERE mmsi=? AND ts > ? ORDER BY ts ASC`)
       .all(mmsi, Date.now()-hours*3600*1000),
   getAlerts: () => db.prepare(`SELECT * FROM alerts WHERE active=1`).all(),
-  insertAlert: a => db.prepare(`INSERT INTO alerts (name,ship_type,name_filter,min_len,max_eta_min,min_length_alert,active) VALUES (@name,@ship_type,@name_filter,@min_len,@max_eta_min,@min_length_alert,@active)`).run(a),
+  insertAlert: a => db.prepare(`
+    INSERT INTO alerts (name,ship_type,name_filter,min_len,max_eta_min,min_length_alert,active)
+    VALUES (@name,@ship_type,@name_filter,@min_len,@max_eta_min,@min_length_alert,@active)
+  `).run(a),
   deleteAlert: id => db.prepare(`DELETE FROM alerts WHERE id=?`).run(id),
   toggleAlert: (id,v) => db.prepare(`UPDATE alerts SET active=? WHERE id=?`).run(v,id),
   db,
