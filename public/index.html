@@ -14,7 +14,6 @@
   --bg:#f0f4f9;--surf:#fff;--surf2:#f5f8fc;--off:#e8eef6;--brd:#cdd7e5;--div:#dde5f0;
   --txt:#18253a;--mut:#607a96;--fnt:#9aafc6;
   --blue:#1568c8;--bhi:#dbeafe;--tel:#0a7a6a;--red:#b92c38;
-  --C:#ff8c00;--K:#ff1493;--T:#e6c200;--F:#00cc66;
 }
 [data-theme="dark"]{
   --bg:#080f1a;--surf:#0c1828;--surf2:#101e30;--off:#152437;--brd:#1e3350;--div:#192c45;
@@ -38,8 +37,8 @@ a{color:var(--blue);}
 /* LAYOUT */
 #content{position:fixed;top:50px;left:0;right:0;bottom:0;display:flex;overflow:hidden;}
 .panel{width:270px;min-width:270px;background:var(--surf);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden;}
-.panel.right{border-right:none;border-left:1px solid var(--brd);width:260px;min-width:260px;}
-.ph{padding:10px 13px 8px;border-bottom:1px solid var(--div);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.panel.right{border-right:none;border-left:1px solid var(--brd);width:265px;min-width:265px;}
+.ph{padding:10px 13px 8px;border-bottom:1px solid var(--div);flex-shrink:0;}
 .ph h2{font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;}
 .ph p{font-size:11px;color:var(--mut);margin-top:1px;}
 .cnt{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;background:var(--bhi);color:var(--blue);}
@@ -48,8 +47,8 @@ a{color:var(--blue);}
 .pscroll::-webkit-scrollbar-thumb{background:var(--brd);border-radius:99px;}
 .pfoot{padding:6px 13px;font-size:11px;color:var(--mut);border-top:1px solid var(--div);background:var(--surf2);flex-shrink:0;}
 /* FILTER */
-.filters{padding:10px 13px;border-bottom:1px solid var(--div);display:grid;gap:10px;flex-shrink:0;}
-.flbl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);font-weight:700;margin-bottom:4px;}
+.filters{padding:10px 13px;border-bottom:1px solid var(--div);display:grid;gap:9px;flex-shrink:0;}
+.flbl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);font-weight:700;margin-bottom:3px;}
 .chips{display:flex;flex-wrap:wrap;gap:5px;}
 .chip{padding:3px 9px;border:1px solid var(--brd);border-radius:999px;font-size:11px;font-weight:600;color:var(--mut);background:var(--surf2);}
 .chip:hover{border-color:var(--blue);color:var(--blue);}
@@ -66,13 +65,13 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0;}
 .bc{background:#ff8c0022;color:#ff8c00;border:1px solid #ff8c0066;}
 .bk{background:#ff149322;color:#ff1493;border:1px solid #ff149366;}
-.bt{background:#e6c20022;color:#c9aa00;border:1px solid #c9aa0066;}
+.bt{background:#c9aa0022;color:#c9aa00;border:1px solid #c9aa0066;}
 .bf{background:#00cc6622;color:#00cc66;border:1px solid #00cc6666;}
 .si-meta{font-size:11px;color:var(--mut);display:flex;flex-wrap:wrap;gap:3px 9px;}
 .si-dir{font-weight:700;font-family:var(--mono);}
 .si-time{margin-left:auto;color:var(--fnt);}
 .empty{padding:36px 18px;text-align:center;color:var(--mut);font-size:12px;line-height:1.8;}
-/* ETA PANEL */
+/* ETA */
 .fi{padding:9px 13px;border-bottom:1px solid var(--div);cursor:pointer;}
 .fi:hover{background:var(--off);}
 .fi-top{display:flex;align-items:center;gap:6px;margin-bottom:2px;}
@@ -83,63 +82,75 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 /* TABS */
 .tabs{display:flex;border-bottom:1px solid var(--div);flex-shrink:0;}
 .tab{flex:1;padding:8px 4px;font-size:11px;font-weight:700;color:var(--mut);border-bottom:2px solid transparent;text-align:center;}
-.tab:hover{color:var(--txt);}
-.tab.on{color:var(--blue);border-color:var(--blue);}
+.tab:hover{color:var(--txt);}.tab.on{color:var(--blue);border-color:var(--blue);}
 .tabcontent{display:none;flex:1;overflow-y:auto;flex-direction:column;}
 .tabcontent.on{display:flex;}
 /* MAP */
 #mapwrap{flex:1;position:relative;overflow:hidden;display:flex;flex-direction:column;}
-#mapbar{padding:5px 13px;background:var(--surf2);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:7px;flex-shrink:0;flex-wrap:wrap;}
+#mapbar{padding:5px 12px;background:var(--surf2);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;}
 .mbt{font-size:13px;font-weight:700;flex:1;}
 .stat{font-size:11px;color:var(--mut);padding:2px 7px;background:var(--off);border:1px solid var(--div);border-radius:5px;white-space:nowrap;}
 .stat b{font-family:var(--mono);font-weight:700;color:var(--txt);}
 #map{flex:1;min-height:0;width:100%;}
 /* DEBUG */
-#dbgwrap{flex-shrink:0;overflow:hidden;max-height:22px;transition:max-height .2s;}
+#dbgwrap{overflow:hidden;max-height:22px;transition:max-height .2s;flex-shrink:0;}
 #dbgwrap.hidden{max-height:0;}
-#dbgbar{padding:2px 13px;background:#120800;font-size:10px;font-family:var(--mono);color:#f0bc55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-top:1px solid #4a2a00;}
-#dbgtoggle{position:absolute;bottom:32px;right:10px;z-index:600;background:var(--surf);border:1px solid var(--brd);border-radius:999px;font-size:10px;font-weight:700;padding:2px 11px;color:var(--mut);}
-#dbgtoggle:hover{background:var(--off);}
+#dbgbar{padding:2px 13px;background:#120800;font-size:10px;font-family:var(--mono);color:#f0bc55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-top:1px solid #3a1f00;}
+#dbgtoggle{position:absolute;bottom:36px;right:10px;z-index:600;background:var(--surf);border:1px solid var(--brd);border-radius:999px;font-size:10px;font-weight:700;padding:2px 11px;color:var(--mut);}
 /* LEGENDE */
-#legend{position:absolute;bottom:38px;left:10px;z-index:500;background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:9px 13px;font-size:11px;color:var(--mut);pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.25);}
-#legend h4{font-size:10px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;}
-.lr{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
+#legend{position:absolute;bottom:44px;left:10px;z-index:500;background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:8px 12px;font-size:11px;color:var(--mut);pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.25);}
+#legend h4{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--txt);margin-bottom:4px;}
+.lr{display:flex;align-items:center;gap:6px;margin-bottom:2px;}
 .ld{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 /* DETAIL */
-#detail{position:absolute;bottom:50px;right:10px;z-index:500;width:min(300px,calc(100vw - 20px));background:var(--surf);border:1px solid var(--brd);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.3);display:none;overflow:hidden;}
+#detail{position:absolute;bottom:50px;right:10px;z-index:500;width:min(310px,calc(100vw - 20px));background:var(--surf);border:1px solid var(--brd);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.3);display:none;overflow:hidden;max-height:calc(100vh - 120px);overflow-y:auto;}
 #detail.open{display:block;animation:slideup .18s ease both;}
 @keyframes slideup{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
-.dimg{width:100%;height:130px;object-fit:cover;background:var(--off);display:block;}
-.dimg-ph{width:100%;height:100px;background:linear-gradient(135deg,var(--off) 0%,var(--surf2) 100%);display:flex;align-items:center;justify-content:center;font-size:36px;color:var(--brd);}
-.dbody{padding:12px 14px;display:grid;gap:9px;}
+.dimg{width:100%;height:120px;object-fit:cover;background:var(--off);display:block;}
+.dimg-ph{width:100%;height:80px;background:linear-gradient(135deg,var(--off),var(--surf2));display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--brd);}
+.dbody{padding:11px 13px;display:grid;gap:8px;}
 .dh{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
 .dname{font-size:15px;font-weight:800;letter-spacing:-.02em;line-height:1.2;}
 .dx{width:24px;height:24px;border-radius:5px;border:1px solid var(--brd);display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12px;flex-shrink:0;}
-.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
 .kv .k{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);font-weight:700;}
 .kv .v{font-size:12px;font-family:var(--mono);margin-top:1px;}
+.dsec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-top:3px;}
+.dtrack{font-size:11px;color:var(--mut);line-height:1.6;}
 .dfoot{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);}
 /* ALERT BUILDER */
-.abwrap{padding:12px 13px;border-bottom:1px solid var(--div);background:var(--surf2);}
-.abwrap h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:8px;}
-.abform{display:grid;gap:7px;}
-.abrow{display:grid;grid-template-columns:auto 1fr;gap:5px 9px;align-items:center;font-size:11px;color:var(--mut);}
+.abwrap{padding:11px 13px;border-bottom:1px solid var(--div);background:var(--surf2);flex-shrink:0;}
+.abwrap h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:7px;}
+.abform{display:grid;gap:6px;}
+.abrow{display:grid;grid-template-columns:auto 1fr;gap:4px 9px;align-items:center;font-size:11px;color:var(--mut);}
 .abrow input,.abrow select{background:var(--off);border:1px solid var(--brd);border-radius:5px;color:var(--txt);font:inherit;font-size:11px;padding:4px 7px;width:100%;}
 .abrow input:focus,.abrow select:focus{outline:none;border-color:var(--blue);}
-.abbtn{padding:5px 12px;border-radius:6px;background:var(--blue);color:#fff;font-size:11px;font-weight:700;border:none;margin-top:3px;}
+.abbtn{padding:5px 12px;border-radius:6px;background:var(--blue);color:#fff;font-size:11px;font-weight:700;margin-top:2px;}
 .abbtn:hover{opacity:.88;}
 .alert-item{padding:9px 13px;border-bottom:1px solid var(--div);display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:start;}
 .ai-name{font-size:12px;font-weight:700;}
 .ai-desc{font-size:11px;color:var(--mut);margin-top:1px;}
 .ai-del{color:var(--red);font-size:13px;padding:2px 5px;}
 .ai-tog{font-size:12px;padding:2px 7px;border:1px solid var(--brd);border-radius:5px;background:var(--surf2);font-family:var(--mono);}
+/* BUILD INFO */
+#buildinfo{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:500;font-size:10px;font-family:var(--mono);color:var(--fnt);pointer-events:none;white-space:nowrap;background:var(--surf);border:1px solid var(--div);padding:1px 8px;border-radius:999px;opacity:.7;}
+/* MOBILE */
+@media(max-width:1100px){.panel.right{display:none;}}
+@media(max-width:700px){
+  .panel{display:none;}
+  /* Mobile: Detail + Alerts am unteren Rand */
+  #mobile-bottom{display:flex!important;}
+}
+#mobile-bottom{display:none;position:fixed;bottom:0;left:0;right:0;z-index:70;background:var(--surf);border-top:1px solid var(--brd);max-height:45vh;overflow-y:auto;}
+.mob-tabs{display:flex;border-bottom:1px solid var(--div);flex-shrink:0;}
+.mob-tab{flex:1;padding:7px 4px;font-size:11px;font-weight:700;color:var(--mut);border-bottom:2px solid transparent;text-align:center;}
+.mob-tab.on{color:var(--blue);border-color:var(--blue);}
+.mob-content{display:none;}.mob-content.on{display:block;}
 /* Leaflet */
 .leaflet-container{background:#0a1520 !important;}
 .ship-label{background:transparent!important;border:none!important;box-shadow:none!important;font-size:11px!important;font-weight:700!important;color:#fff!important;text-shadow:0 1px 4px rgba(0,0,0,1),0 0 8px rgba(0,0,0,.8)!important;white-space:nowrap!important;pointer-events:none!important;}
 .leaflet-tooltip{background:var(--surf)!important;color:var(--txt)!important;border:1px solid var(--brd)!important;border-radius:7px!important;font-family:var(--font)!important;font-size:12px!important;padding:4px 9px!important;}
 .leaflet-control-zoom a{background:var(--surf)!important;color:var(--txt)!important;border-color:var(--brd)!important;}
-@media(max-width:1100px){.panel.right{display:none;}}
-@media(max-width:700px){.panel{display:none;}}
 </style>
 </head>
 <body>
@@ -148,16 +159,15 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span> Schiffe</div>
-    <div class="pill">📍 Wedel km 665</div>
+    <div class="pill" id="buildPill" title="Build-Info" style="cursor:pointer">v2.2</div>
     <button class="ibtn" id="themeBtn" title="Theme">🌙</button>
   </div>
 </header>
+
 <div id="content">
-  <!-- LEFT PANEL -->
+  <!-- LEFT -->
   <aside class="panel">
-    <div class="ph">
-      <div><h2>Passagen <span class="cnt" id="liveCnt">0</span></h2><p>Im Kartenausschnitt · ≥ <span id="lenHdr">50</span> m</p></div>
-    </div>
+    <div class="ph"><h2>Passagen <span class="cnt" id="liveCnt">0</span></h2><p>Kartenausschnitt · ≥ <span id="lenHdr">50</span> m</p></div>
     <div class="filters">
       <div>
         <div class="flbl">Typ</div>
@@ -192,8 +202,8 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <div class="stat">Zoom <b id="zoomLbl">12</b></div>
     </div>
     <div id="map"></div>
-    <div id="dbgwrap"><div id="dbgbar">–</div></div>
-    <button id="dbgtoggle">▲ Log</button>
+    <div id="dbgwrap" class="hidden"><div id="dbgbar">–</div></div>
+    <button id="dbgtoggle">▼ Log</button>
     <div id="legend">
       <h4>Legende</h4>
       <div class="lr"><div class="ld" style="background:#ff8c00"></div>Container</div>
@@ -202,6 +212,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <div class="lr"><div class="ld" style="background:#00cc66"></div>Frachter</div>
       <div class="lr" style="margin-top:4px"><div style="width:18px;border-top:2px dashed #f0bc55;flex-shrink:0"></div>Willkomm-Höft</div>
     </div>
+    <div id="buildinfo">–</div>
     <!-- DETAIL -->
     <div id="detail">
       <div id="dimgwrap"></div>
@@ -209,40 +220,70 @@ input[type=range]{flex:1;accent-color:var(--blue);}
         <div class="dh"><div class="dname" id="dname">–</div><button class="dx" id="dclose">✕</button></div>
         <div id="dbadge"></div>
         <div class="dgrid" id="dgrid"></div>
+        <div class="dsec">🛤 Track (letzte 24 h)</div>
+        <div class="dtrack" id="dtrack">–</div>
+        <div class="dsec">📍 Extrapolation +2 h</div>
+        <div class="dtrack" id="dextrap">–</div>
         <div class="dfoot"><span id="dtime"></span><a id="dlink" href="#" target="_blank">MarineTraffic ↗</a></div>
       </div>
     </div>
   </div>
 
-  <!-- RIGHT PANEL: Tabs ETA + Alerts -->
+  <!-- RIGHT -->
   <aside class="panel right">
     <div class="tabs">
       <button class="tab on" data-tab="eta">ETA <span class="cnt" id="futureCnt">0</span></button>
       <button class="tab" data-tab="alerts">🔔 Alerts</button>
     </div>
-    <!-- ETA TAB -->
     <div class="tabcontent on" id="tab-eta">
       <div class="pscroll"><ul class="slist" id="futureList"></ul><div class="empty" id="futureEmpty">Noch keine Prognosen.</div></div>
     </div>
-    <!-- ALERTS TAB -->
     <div class="tabcontent" id="tab-alerts">
       <div class="abwrap">
         <h3>Neuer Alert</h3>
         <div class="abform">
           <div class="abrow"><label>Name</label><input id="aName" placeholder="z.B. Große Container"/></div>
           <div class="abrow"><label>Typ</label>
-            <select id="aType"><option value="">Alle</option><option>Container</option><option>Cruise</option><option>Tanker</option><option>Cargo</option></select>
-          </div>
+            <select id="aType"><option value="">Alle</option><option>Container</option><option>Cruise</option><option>Tanker</option><option>Cargo</option></select></div>
           <div class="abrow"><label>Namensteil</label><input id="aNameF" placeholder="z.B. MSC"/></div>
-          <div class="abrow"><label>Min. Länge m</label><input id="aLen" type="number" min="0" max="500" value="0" placeholder="0 = alle"/></div>
-          <div class="abrow"><label>ETA ≤ Min.</label><input id="aEta" type="number" min="5" max="720" value="360" placeholder="360"/></div>
+          <div class="abrow"><label>Filter Länge m</label><input id="aLen" type="number" min="0" value="0"/></div>
+          <div class="abrow"><label>Alert ab Länge m</label><input id="aLenAlert" type="number" min="0" value="150" placeholder="150"/></div>
+          <div class="abrow"><label>ETA ≤ Min.</label><input id="aEta" type="number" min="5" max="720" value="360"/></div>
           <button class="abbtn" id="aSave">✚ Alert anlegen</button>
         </div>
       </div>
       <div class="pscroll"><ul class="slist" id="alertList"></ul><div class="empty" id="alertEmpty">Noch keine Alerts.</div></div>
     </div>
-    <div class="pfoot">History: <span id="histInfo">–</span></div>
+    <div class="pfoot">History: <span id="histInfo">–</span> · <a href="#" id="showBuild">Build-Info</a></div>
   </aside>
+</div>
+
+<!-- MOBILE BOTTOM BAR -->
+<div id="mobile-bottom">
+  <div class="mob-tabs">
+    <button class="mob-tab on" data-mob="mob-eta">ETA <span class="cnt" id="mobFutureCnt">0</span></button>
+    <button class="mob-tab" data-mob="mob-alerts">🔔 Alerts</button>
+  </div>
+  <div class="mob-content on" id="mob-eta">
+    <ul class="slist" id="mobFutureList"></ul>
+    <div class="empty" id="mobFutureEmpty">Noch keine Prognosen.</div>
+  </div>
+  <div class="mob-content" id="mob-alerts">
+    <div class="abwrap" style="background:var(--surf)">
+      <h3>Neuer Alert</h3>
+      <div class="abform">
+        <div class="abrow"><label>Name</label><input id="mAName" placeholder="Alert-Name"/></div>
+        <div class="abrow"><label>Typ</label>
+          <select id="mAType"><option value="">Alle</option><option>Container</option><option>Cruise</option><option>Tanker</option><option>Cargo</option></select></div>
+        <div class="abrow"><label>Namensteil</label><input id="mANameF" placeholder="z.B. MSC"/></div>
+        <div class="abrow"><label>Alert ab Länge m</label><input id="mALenAlert" type="number" value="150"/></div>
+        <div class="abrow"><label>ETA ≤ Min.</label><input id="mAEta" type="number" value="360"/></div>
+        <button class="abbtn" id="mASave">✚ Anlegen</button>
+      </div>
+    </div>
+    <ul class="slist" id="mobAlertList"></ul>
+    <div class="empty" id="mobAlertEmpty">Keine Alerts.</div>
+  </div>
 </div>
 
 <script>
@@ -255,49 +296,38 @@ const bcls = t => ({Cruise:'bk',Container:'bc',Tanker:'bt',Cargo:'bf'})[t]||'bf'
 const $ = id => document.getElementById(id);
 const dbg = m => { $('dbgbar').textContent = m; };
 const dirLbl = c => c==null?'–':(+c>=30&&+c<=200)?'▶ HH':'◀ NS';
-const kn  = v => v==null?'–':(+v/10).toFixed(1)+' kn';
-const mt  = v => v?v+' m':'–';
-const drf = v => v?(+v/10).toFixed(1)+' m':'–';
-const hm  = ts => new Date(ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-const etaSt = ts => new Date(ts).toLocaleString('de-DE',{weekday:'short',hour:'2-digit',minute:'2-digit'});
-const cdown = ts => {
-  const d=Math.round((ts-Date.now())/60000);
-  return d<1?'jetzt':d<60?`in ${d} Min`:`in ${Math.floor(d/60)}h ${d%60?d%60+'m':''}`;
-};
+const kn = v => v==null?'–':(+v/10).toFixed(1)+' kn';
+const mt = v => v?v+' m':'–';
+const drf= v => v?(+v/10).toFixed(1)+' m':'–';
+const hm = ts => new Date(ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+const etaSt=ts => new Date(ts).toLocaleString('de-DE',{weekday:'short',hour:'2-digit',minute:'2-digit'});
+const cdown=ts=>{const d=Math.round((ts-Date.now())/60000);return d<1?'jetzt':d<60?`in ${d} Min`:`in ${Math.floor(d/60)}h ${d%60?d%60+'m':''}`;};
+const latFmt=v=>v.toFixed(4)+(v>=0?'°N':'°S');
+const lonFmt=v=>v.toFixed(4)+(v>=0?'°E':'°W');
 
-/* ─── Schiffsumriss-Icon ─────────────────────────────────────────────────── */
+/* ─── Ship icon ──────────────────────────────────────────────────────────── */
 const ZOOM_LABEL=13;
-
 function shipIconSize(len,wid,zoom){
-  const scale = Math.pow(2, zoom-12) * 0.07;
-  const h = Math.max(Math.round((len||80)*scale), 8);
-  const bw= Math.max(Math.round((wid||Math.max(len||80,40)*0.14)*scale*3), 4);
-  return {h, bw};
+  const scale=Math.pow(2,zoom-12)*0.07;
+  return{h:Math.max(Math.round((len||80)*scale),8),bw:Math.max(Math.round((wid||Math.max(len||80,40)*0.14)*scale*3),4)};
 }
-
-function makeIcon(s, sel=false, zoom=12){
-  const c=col(s.type), rot=+(s.heading??s.cog??0);
-  const {h,bw}=shipIconSize(s.len,s.wid,zoom);
-  const w=bw, mid=w*0.5, heck=w*0.42, bugY=1, midY=h*0.3, heckY=h-1;
-  const path=[`M${w/2} ${bugY}`,`L${w/2+mid} ${midY}`,`L${w/2+heck} ${heckY}`,
-               `L${w/2-heck} ${heckY}`,`L${w/2-mid} ${midY}`,'Z'].join(' ');
+function makeIcon(s,sel=false,zoom=12){
+  const c=col(s.type),rot=+(s.heading??s.cog??0);
+  const{h,bw}=shipIconSize(s.len,s.wid,zoom);
+  const w=bw,mid=w*0.5,heck=w*0.42,bugY=1,midY=h*0.3,heckY=h-1;
+  const path=[`M${w/2} ${bugY}`,`L${w/2+mid} ${midY}`,`L${w/2+heck} ${heckY}`,`L${w/2-heck} ${heckY}`,`L${w/2-mid} ${midY}`,'Z'].join(' ');
   const glow=sel?`drop-shadow(0 0 6px ${c}) drop-shadow(0 0 2px #fff)`:`drop-shadow(0 1px 3px rgba(0,0,0,.8))`;
-  const html=`<div style="transform:rotate(${rot}deg);filter:${glow}">
-    <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none">
-      <path d="${path}" fill="${c}" stroke="rgba(0,0,0,.55)" stroke-width="0.8" stroke-linejoin="round"/>
-    </svg></div>`;
-  return L.divIcon({className:'',html,iconSize:[w,h],iconAnchor:[w/2,h*0.3]});
+  return L.divIcon({className:'',iconSize:[w,h],iconAnchor:[w/2,h*0.3],
+    html:`<div style="transform:rotate(${rot}deg);filter:${glow}"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none"><path d="${path}" fill="${c}" stroke="rgba(0,0,0,.55)" stroke-width="0.8" stroke-linejoin="round"/></svg></div>`});
 }
 
 /* ─── State ──────────────────────────────────────────────────────────────── */
-let ships=new Map(), markers=new Map(), labelShown=new Set(), map, ws;
-let selMmsi=null, typeF='all', lenF=50, theme='dark', currentZoom=12, dbgVisible=false;
-const passes = s => (typeF==='all'||s.type===typeF) && (s.len||0)>=lenF;
+let ships=new Map(),markers=new Map(),labelShown=new Set(),trackLayer=null,extrapLayer=null;
+let map,ws,selMmsi=null,typeF='all',lenF=50,theme='dark',currentZoom=12,dbgVisible=false;
+const passes=s=>(typeF==='all'||s.type===typeF)&&(s.len||0)>=lenF;
 
-/* ─── Debug toggle (default: versteckt) ─────────────────────────────────── */
-$('dbgwrap').classList.add('hidden');
-$('dbgtoggle').textContent='▼ Log';
-$('dbgtoggle').onclick = () => {
+/* ─── Debug ──────────────────────────────────────────────────────────────── */
+$('dbgtoggle').onclick=()=>{
   dbgVisible=!dbgVisible;
   $('dbgwrap').classList.toggle('hidden',!dbgVisible);
   $('dbgtoggle').textContent=dbgVisible?'▲ Log':'▼ Log';
@@ -305,40 +335,71 @@ $('dbgtoggle').onclick = () => {
 
 /* ─── Karte ──────────────────────────────────────────────────────────────── */
 function initMap(){
-  map=L.map('map',{zoomControl:true,attributionControl:true}).setView([53.570,9.730],12);
-  // Gedämpfte Karte: CartoDB Positron (hell) / DarkMatter (dunkel)
-  const tiles = theme==='dark'
-    ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
-  L.tileLayer(tiles,{maxZoom:19,attribution:'© <a href="https://openstreetmap.org">OSM</a> · CartoDB'}).addTo(map);
-  // Willkomm-Höft
+  map=L.map('map',{zoomControl:true}).setView([53.570,9.730],12);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
+    {maxZoom:19,attribution:'© OSM · CartoDB'}).addTo(map);
   L.polyline([[53.490,9.6981],[53.620,9.6981]],{color:'#f0bc55',weight:1.5,dashArray:'5 7',opacity:.7}).addTo(map)
    .bindTooltip('Willkomm-Höft',{sticky:true});
   L.marker([53.5688,9.6981],{icon:L.divIcon({className:'',
     html:'<div style="width:11px;height:11px;border-radius:50%;background:#f0bc55;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)"></div>',
     iconSize:[11,11],iconAnchor:[5,5]})}).addTo(map).bindTooltip('Willkomm-Höft',{direction:'top'});
-
-  map.on('click',()=>{selMmsi=null;$('detail').classList.remove('open');redraw();});
-  map.on('zoomend moveend',()=>{
-    currentZoom=map.getZoom(); $('zoomLbl').textContent=currentZoom;
-    sendBoxUpdate(); updateAllLabels();
-  });
+  map.on('click',()=>{selMmsi=null;$('detail').classList.remove('open');clearTrackLayers();redraw();});
+  map.on('zoomend moveend',()=>{currentZoom=map.getZoom();$('zoomLbl').textContent=currentZoom;sendBoxUpdate();updateAllLabels();});
 }
-
 function sendBoxUpdate(){
   if(!ws||ws.readyState!==WebSocket.OPEN) return;
   const b=map.getBounds();
-  ws.send(JSON.stringify({type:'setBox',box:{
-    n:+b.getNorth().toFixed(4),s:+b.getSouth().toFixed(4),
-    w:+b.getWest().toFixed(4), e:+b.getEast().toFixed(4),
-  }}));
+  ws.send(JSON.stringify({type:'setBox',box:{n:+b.getNorth().toFixed(4),s:+b.getSouth().toFixed(4),w:+b.getWest().toFixed(4),e:+b.getEast().toFixed(4)}}));
+}
+
+/* ─── Track + Extrapolation ──────────────────────────────────────────────── */
+function clearTrackLayers(){
+  if(trackLayer){map.removeLayer(trackLayer);trackLayer=null;}
+  if(extrapLayer){map.removeLayer(extrapLayer);extrapLayer=null;}
+}
+
+// Haversine: Distanz in nm
+function movePoint(lat,lon,cogDeg,distNm){
+  const R=3440.065,d=distNm/R,cog=cogDeg*Math.PI/180;
+  const lat1=lat*Math.PI/180,lon1=lon*Math.PI/180;
+  const lat2=Math.asin(Math.sin(lat1)*Math.cos(d)+Math.cos(lat1)*Math.sin(d)*Math.cos(cog));
+  const lon2=lon1+Math.atan2(Math.sin(cog)*Math.sin(d)*Math.cos(lat1),Math.cos(d)-Math.sin(lat1)*Math.sin(lat2));
+  return[lat2*180/Math.PI, lon2*180/Math.PI];
+}
+
+function drawTrack(mmsi){
+  clearTrackLayers();
+  fetch(`/api/ship/${mmsi}/track?hours=24`).then(r=>r.json()).then(pts=>{
+    if(!pts.length) return;
+    const latlngs=pts.map(p=>[p.lat,p.lon]);
+    const c=col((ships.get(mmsi)||{}).type);
+    trackLayer=L.polyline(latlngs,{color:c,weight:2,opacity:.7,dashArray:'4 4'}).addTo(map);
+    // Extrapolation: letzte Position + Kurs + Geschwindigkeit × 2 h
+    const last=pts[pts.length-1];
+    const sog=(last.sog||0)/10; // Knoten
+    const distNm=sog*2;
+    if(sog>0.5&&last.cog!=null){
+      const future=movePoint(last.lat,last.lon,last.cog,distNm);
+      extrapLayer=L.polyline([[last.lat,last.lon],future],{color:'#f0bc55',weight:1.5,opacity:.6,dashArray:'2 6'}).addTo(map);
+      L.circleMarker(future,{radius:5,color:'#f0bc55',fillColor:'#f0bc55',fillOpacity:.5,weight:1}).addTo(extrapLayer);
+    }
+    // Track-Info ins Detail schreiben
+    const first=pts[0],lastPt=pts[pts.length-1];
+    $('dtrack').textContent=`${pts.length} Punkte · von ${latFmt(first.lat)} ${lonFmt(first.lon)} · ${new Date(first.ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}`;
+    if(sog>0.5&&last.cog!=null){
+      const future=movePoint(last.lat,last.lon,last.cog,distNm);
+      $('dextrap').textContent=`+2 h bei ${sog.toFixed(1)} kn · ${latFmt(future[0])} ${lonFmt(future[1])}`;
+    } else {
+      $('dextrap').textContent='Schiff liegt (Geschw. < 0.5 kn)';
+    }
+  }).catch(()=>{$('dtrack').textContent='Keine History verfügbar';$('dextrap').textContent='–';});
 }
 
 /* ─── Marker ─────────────────────────────────────────────────────────────── */
 function syncMarkers(){
-  for(const [mmsi,s] of ships){
+  for(const[mmsi,s]of ships){
     if(!s.lat||!s.lon) continue;
-    const show=passes(s), mk=markers.get(mmsi);
+    const show=passes(s),mk=markers.get(mmsi);
     if(!show){if(mk){mk.unbindTooltip();map.removeLayer(mk);markers.delete(mmsi);labelShown.delete(mmsi);}continue;}
     const ic=makeIcon(s,selMmsi===mmsi,currentZoom);
     if(mk){mk.setLatLng([s.lat,s.lon]);mk.setIcon(ic);}
@@ -349,21 +410,20 @@ function syncMarkers(){
       markers.set(mmsi,m2);
     }
   }
-  for(const [mmsi,mk] of markers){
+  for(const[mmsi,mk]of markers){
     if(!ships.has(mmsi)||!passes(ships.get(mmsi))){mk.unbindTooltip();map.removeLayer(mk);markers.delete(mmsi);labelShown.delete(mmsi);}
   }
   updateAllLabels();
 }
-
 function updateAllLabels(){
   const show=currentZoom>=ZOOM_LABEL;
-  for(const [mmsi,mk] of markers){
-    const s=ships.get(mmsi);if(!s) continue;
+  for(const[mmsi,mk]of markers){
+    const s=ships.get(mmsi);if(!s)continue;
     if(show&&!labelShown.has(mmsi)){
       mk.unbindTooltip();
       mk.bindTooltip(s.name||'?',{permanent:true,direction:'right',offset:[shipIconSize(s.len,s.wid,currentZoom).bw/2+4,0],className:'ship-label'});
       labelShown.add(mmsi);
-    } else if(!show&&labelShown.has(mmsi)){
+    }else if(!show&&labelShown.has(mmsi)){
       mk.unbindTooltip();
       mk.bindTooltip(`<b>${s.name||'?'}</b> · ${kn(s.sog)} · ${dirLbl(s.cog)}`,{direction:'top',offset:[0,-8]});
       labelShown.delete(mmsi);
@@ -373,140 +433,137 @@ function updateAllLabels(){
 
 /* ─── Schiffsbild ────────────────────────────────────────────────────────── */
 function loadShipImage(mmsi){
-  const wrap=$('dimgwrap'); wrap.innerHTML='';
-  // VesselFinder Foto-URL (öffentlich, kein API-Key)
-  const img=document.createElement('img');
-  img.className='dimg';
-  img.alt='Schiff';
-  img.onerror=()=>{ wrap.innerHTML=`<div class="dimg-ph">🚢</div>`; };
+  const wrap=$('dimgwrap');wrap.innerHTML='';
+  const img=document.createElement('img');img.className='dimg';img.alt='Schiff';
+  img.onerror=()=>{wrap.innerHTML='<div class="dimg-ph">🚢</div>';};
   img.src=`https://photos.marinetraffic.com/ais/showphoto.aspx?mmsi=${mmsi}&size=thumb800`;
   wrap.appendChild(img);
 }
 
 /* ─── Select ─────────────────────────────────────────────────────────────── */
 function selectShip(mmsi){
-  selMmsi=mmsi; const s=ships.get(mmsi); if(!s) return;
+  selMmsi=mmsi;const s=ships.get(mmsi);if(!s)return;
   loadShipImage(mmsi);
   $('dname').textContent=s.name||'Unbekannt';
   $('dbadge').innerHTML=`<span class="badge ${bcls(s.type)}">${s.type}</span> <span style="font-size:11px;color:var(--mut)">${dirLbl(s.cog)}</span>`;
-  const etaTs=s.eta_ts||null;
   $('dgrid').innerHTML=[
     ['Geschw.',kn(s.sog)],['Kurs',s.cog!=null?s.cog+'°':'–'],
     ['Länge',mt(s.len)],['Breite',mt(s.wid)],
     ['Tiefgang',drf(s.drg)],['Rufzeichen',s.cs||'–'],
-    ['Ziel',s.dest||'–'],['ETA Willkomm',etaTs?etaSt(etaTs):'–'],
+    ['Ziel',s.dest||'–'],['ETA Willkomm',s.eta_ts?etaSt(s.eta_ts):'–'],
   ].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
   $('dtime').textContent='Zuletzt '+hm(s.seen);
   $('dlink').href=`https://www.marinetraffic.com/en/ais/details/ships/mmsi:${mmsi}`;
   $('detail').classList.add('open');
   if(s.lat&&s.lon) map.panTo([s.lat,s.lon],{animate:true,duration:.6});
+  drawTrack(mmsi);
   redraw();
 }
 
 /* ─── Render ─────────────────────────────────────────────────────────────── */
 function renderLive(){
   const list=[...ships.values()].filter(passes).sort((a,b)=>(b.seen||0)-(a.seen||0));
-  $('liveCnt').textContent=list.length;
-  $('shipNum').textContent=ships.size;
-  const ul=$('liveList'); ul.innerHTML='';
-  $('liveEmpty').style.display=list.length?'none':'block';
+  $('liveCnt').textContent=list.length;$('shipNum').textContent=ships.size;
+  const ul=$('liveList');ul.innerHTML='';$('liveEmpty').style.display=list.length?'none':'block';
   list.forEach(s=>{
-    const li=document.createElement('li'); li.className='si'+(selMmsi===s.mmsi?' sel':'');
+    const li=document.createElement('li');li.className='si'+(selMmsi===s.mmsi?' sel':'');
     li.innerHTML=`<div class="si-top"><div class="si-name">${s.name||'?'}</div><span class="badge ${bcls(s.type)}">${s.type}</span></div>
       <div class="si-meta"><span class="si-dir">${dirLbl(s.cog)}</span><span>${kn(s.sog)}</span><span>${mt(s.len)}</span>${s.dest?`<span>→ ${s.dest}</span>`:''}<span class="si-time">${hm(s.seen)}</span></div>`;
-    li.onclick=()=>selectShip(s.mmsi); ul.appendChild(li);
+    li.onclick=()=>selectShip(s.mmsi);ul.appendChild(li);
   });
 }
-
 function renderFuture(){
-  const preds=[...ships.values()].filter(s=>s.eta_ts&&passes(s))
-    .sort((a,b)=>a.eta_ts-b.eta_ts);
-  $('futureCnt').textContent=preds.length; $('sP').textContent=preds.length;
-  const ul=$('futureList'); ul.innerHTML='';
-  $('futureEmpty').style.display=preds.length?'none':'block';
-  preds.forEach(s=>{
-    const li=document.createElement('li'); li.className='fi';
-    li.innerHTML=`<div class="fi-top"><div class="fi-name">${s.name}</div><span class="badge ${bcls(s.type)}">${s.type}</span></div>
-      <div class="fi-eta">${etaSt(s.eta_ts)}</div><div class="fi-cd">${cdown(s.eta_ts)}</div>
-      <div class="fi-meta"><span>${mt(s.len)}</span><span>${kn(s.sog)}</span>${s.eta_dir?`<span>${s.eta_dir}</span>`:''}</div>`;
-    li.onclick=()=>selectShip(s.mmsi); ul.appendChild(li);
+  const preds=[...ships.values()].filter(s=>s.eta_ts&&passes(s)).sort((a,b)=>a.eta_ts-b.eta_ts);
+  $('futureCnt').textContent=preds.length;$('sP').textContent=preds.length;
+  ['futureList','mobFutureList'].forEach(id=>{
+    const ul=$(id);if(!ul)return;ul.innerHTML='';
+    $('futureEmpty')?.style&&($('futureEmpty').style.display=preds.length?'none':'block');
+    $('mobFutureEmpty')?.style&&($('mobFutureEmpty').style.display=preds.length?'none':'block');
+    $('mobFutureCnt')&&($('mobFutureCnt').textContent=preds.length);
+    preds.forEach(s=>{
+      const li=document.createElement('li');li.className='fi';
+      li.innerHTML=`<div class="fi-top"><div class="fi-name">${s.name}</div><span class="badge ${bcls(s.type)}">${s.type}</span></div>
+        <div class="fi-eta">${etaSt(s.eta_ts)}</div><div class="fi-cd">${cdown(s.eta_ts)}</div>
+        <div class="fi-meta"><span>${mt(s.len)}</span><span>${kn(s.sog)}</span>${s.eta_dir?`<span>${s.eta_dir}</span>`:''}</div>`;
+      li.onclick=()=>selectShip(s.mmsi);ul.appendChild(li);
+    });
   });
 }
-
 function updateStats(){
   const a=[...ships.values()].filter(passes);
   $('sC').textContent=a.filter(s=>s.type==='Container').length;
   $('sK').textContent=a.filter(s=>s.type==='Cruise').length;
   $('sT').textContent=a.filter(s=>s.type==='Tanker').length;
 }
+function redraw(){syncMarkers();renderLive();renderFuture();updateStats();}
 
-function redraw(){ syncMarkers(); renderLive(); renderFuture(); updateStats(); }
+/* ─── Build-Info ─────────────────────────────────────────────────────────── */
+function loadBuildInfo(){
+  fetch('/api/version').then(r=>r.json()).then(v=>{
+    const sha=v.sha==='dev'?'dev':v.sha.substring(0,7);
+    const dt=v.time==='unknown'?'–':new Date(v.time).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const txt=`v${v.version} · ${sha} · ${dt}`;
+    $('buildinfo').textContent=txt;
+    $('buildPill').textContent=`v${v.version}`;
+    $('buildPill').title=txt;
+  }).catch(()=>{});
+}
 
 /* ─── Alerts ─────────────────────────────────────────────────────────────── */
 function loadAlerts(){
   fetch('/api/alerts').then(r=>r.json()).then(rows=>{
-    const ul=$('alertList'); ul.innerHTML='';
-    $('alertEmpty').style.display=rows.length?'none':'block';
-    rows.forEach(a=>{
-      const li=document.createElement('li'); li.className='alert-item';
-      const parts=[];
-      if(a.ship_type) parts.push(a.ship_type);
-      if(a.name_filter) parts.push(`"${a.name_filter}"`);
-      if(a.min_len>0) parts.push(`≥${a.min_len} m`);
-      parts.push(`ETA ≤ ${a.max_eta_min} Min`);
-      li.innerHTML=`<div><div class="ai-name">${a.name}</div><div class="ai-desc">${parts.join(' · ')}</div></div>
-        <button class="ai-tog" title="Ein/Aus">${a.active?'✅':'⏸'}</button>
-        <button class="ai-del" title="Löschen">🗑</button>`;
-      li.querySelector('.ai-tog').onclick=()=>{
-        fetch(`/api/alerts/${a.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({active:!a.active})}).then(loadAlerts);
-      };
-      li.querySelector('.ai-del').onclick=()=>{
-        if(confirm(`Alert "${a.name}" löschen?`))
-          fetch(`/api/alerts/${a.id}`,{method:'DELETE'}).then(loadAlerts);
-      };
-      ul.appendChild(li);
+    ['alertList','mobAlertList'].forEach(id=>{
+      const ul=$(id);if(!ul)return;ul.innerHTML='';
+      $('alertEmpty')&&($('alertEmpty').style.display=rows.length?'none':'block');
+      $('mobAlertEmpty')&&($('mobAlertEmpty').style.display=rows.length?'none':'block');
+      rows.forEach(a=>{
+        const li=document.createElement('li');li.className='alert-item';
+        const parts=[];
+        if(a.ship_type)parts.push(a.ship_type);
+        if(a.name_filter)parts.push(`"${a.name_filter}"`);
+        if(a.min_len>0)parts.push(`Filter ≥${a.min_len} m`);
+        if(a.min_length_alert>0)parts.push(`Alert ≥${a.min_length_alert} m`);
+        parts.push(`ETA ≤${a.max_eta_min} Min`);
+        li.innerHTML=`<div><div class="ai-name">${a.name}</div><div class="ai-desc">${parts.join(' · ')}</div></div>
+          <button class="ai-tog">${a.active?'✅':'⏸'}</button><button class="ai-del">🗑</button>`;
+        li.querySelector('.ai-tog').onclick=()=>fetch(`/api/alerts/${a.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({active:!a.active})}).then(loadAlerts);
+        li.querySelector('.ai-del').onclick=()=>{if(confirm(`"${a.name}" löschen?`))fetch(`/api/alerts/${a.id}`,{method:'DELETE'}).then(loadAlerts);};
+        ul.appendChild(li);
+      });
     });
   });
 }
-
-$('aSave').onclick=()=>{
-  const name=$('aName').value.trim();
-  if(!name){$('aName').focus();return;}
+function saveAlert(name,type,nameF,len,lenAlert,eta){
+  if(!name)return;
   fetch('/api/alerts',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({name,ship_type:$('aType').value||null,
-      name_filter:$('aNameF').value.trim()||null,
-      min_len:+$('aLen').value||0, max_eta_min:+$('aEta').value||360, active:1})
-  }).then(()=>{$('aName').value='';$('aNameF').value='';$('aLen').value='0';loadAlerts();});
-};
+    body:JSON.stringify({name,ship_type:type||null,name_filter:nameF||null,
+      min_len:+len||0,max_eta_min:+eta||360,min_length_alert:+lenAlert||150,active:1})
+  }).then(loadAlerts);
+}
+$('aSave').onclick=()=>{saveAlert($('aName').value.trim(),$('aType').value,$('aNameF').value.trim(),$('aLen').value,$('aLenAlert').value,$('aEta').value);$('aName').value='';$('aNameF').value='';};
+$('mASave').onclick=()=>{saveAlert($('mAName').value.trim(),$('mAType').value,$('mANameF').value.trim(),'0',$('mALenAlert').value,$('mAEta').value);$('mAName').value='';};
 
-/* ─── Tabs ───────────────────────────────────────────────────────────────── */
+/* ─── Tabs Desktop ───────────────────────────────────────────────────────── */
 document.querySelectorAll('.tab').forEach(btn=>btn.onclick=()=>{
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   document.querySelectorAll('.tabcontent').forEach(t=>t.classList.remove('on'));
-  btn.classList.add('on');
-  $('tab-'+btn.dataset.tab).classList.add('on');
-  if(btn.dataset.tab==='alerts') loadAlerts();
+  btn.classList.add('on');$('tab-'+btn.dataset.tab).classList.add('on');
+  if(btn.dataset.tab==='alerts')loadAlerts();
+});
+/* Tabs Mobile */
+document.querySelectorAll('.mob-tab').forEach(btn=>btn.onclick=()=>{
+  document.querySelectorAll('.mob-tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.mob-content').forEach(t=>t.classList.remove('on'));
+  btn.classList.add('on');$(btn.dataset.mob).classList.add('on');
+  if(btn.dataset.mob==='mob-alerts')loadAlerts();
 });
 
 /* ─── Filter ─────────────────────────────────────────────────────────────── */
-$('typeChips').onclick=e=>{
-  const c=e.target.closest('.chip');if(!c)return;
-  document.querySelectorAll('#typeChips .chip').forEach(x=>x.classList.remove('on'));
-  c.classList.add('on'); typeF=c.dataset.t; redraw();
-};
-$('lenSlider').oninput=e=>{
-  lenF=+e.target.value;
-  const lbl=lenF===0?'Alle':'≥ '+lenF+' m';
-  $('lenVal').textContent=lbl; $('lenHdr').textContent=lenF||0;
-  redraw();
-};
-$('dclose').onclick=()=>{$('detail').classList.remove('open');selMmsi=null;redraw();};
-$('themeBtn').onclick=()=>{
-  theme=theme==='dark'?'light':'dark';
-  document.documentElement.setAttribute('data-theme',theme);
-  $('themeBtn').textContent=theme==='dark'?'🌙':'☀️';
-};
+$('typeChips').onclick=e=>{const c=e.target.closest('.chip');if(!c)return;document.querySelectorAll('#typeChips .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');typeF=c.dataset.t;redraw();};
+$('lenSlider').oninput=e=>{lenF=+e.target.value;const l=lenF===0?'Alle':'≥ '+lenF+' m';$('lenVal').textContent=l;$('lenHdr').textContent=lenF||0;redraw();};
+$('dclose').onclick=()=>{$('detail').classList.remove('open');selMmsi=null;clearTrackLayers();redraw();};
+$('themeBtn').onclick=()=>{theme=theme==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',theme);$('themeBtn').textContent=theme==='dark'?'🌙':'☀️';};
+$('showBuild').onclick=e=>{e.preventDefault();alert($('buildinfo').textContent);};
 
 /* ─── WebSocket ──────────────────────────────────────────────────────────── */
 function connectBackend(){
@@ -514,11 +571,8 @@ function connectBackend(){
   ws=new WebSocket(`${proto}://${location.host}`);
   ws.onopen=()=>{setConn('on','Live');dbg('Verbunden');sendBoxUpdate();};
   ws.onmessage=ev=>{
-    try{
-      const d=JSON.parse(ev.data);
-      if(d.type==='ships'){
-        ships.clear(); d.data.forEach(s=>ships.set(s.mmsi,s));
-        redraw();
+    try{const d=JSON.parse(ev.data);
+      if(d.type==='ships'){ships.clear();d.data.forEach(s=>ships.set(s.mmsi,s));redraw();
         dbg(`${ships.size} Schiffe · ${new Date(d.ts).toLocaleTimeString('de-DE')}`);
       }
     }catch(e){dbg('Fehler: '+e.message);}
@@ -530,14 +584,10 @@ function setConn(cls,lbl){$('dot').className='dot'+(cls?' '+cls:'');$('connLbl')
 
 fetch('/api/status').then(r=>r.json()).then(s=>{
   $('backendStatus').textContent=s.demo?'Demo-Modus':'Live · aisstream.io';
-  $('histInfo').textContent=`${s.retainDays} Tage`;
+  $('histInfo').textContent=s.retainDays+' Tage';
 }).catch(()=>{});
 
-window.addEventListener('DOMContentLoaded',()=>{
-  initMap();
-  requestAnimationFrame(()=>map.invalidateSize());
-  connectBackend();
-});
+window.addEventListener('DOMContentLoaded',()=>{initMap();requestAnimationFrame(()=>map.invalidateSize());connectBackend();loadBuildInfo();});
 window.addEventListener('resize',()=>{if(map)map.invalidateSize();});
 </script>
 </body>

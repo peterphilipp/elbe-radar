@@ -13,6 +13,9 @@ const server = http.createServer(app);
 const wss    = new WebSocket.Server({ server });
 app.use(express.json());
 
+const BUILD_SHA  = process.env.BUILD_SHA  || 'dev';
+const BUILD_TIME = process.env.BUILD_TIME || new Date().toISOString();
+
 // ── AIS ──────────────────────────────────────────────────────────────────────
 const ais = new AISConnector(ships => broadcast(ships));
 ais.start();
@@ -24,9 +27,7 @@ function broadcast(ships) {
 }
 
 wss.on('connection', ws => {
-  // Initial-Push aus DB
-  const active = db.getActiveShips(15 * 60 * 1000);
-  ws.send(JSON.stringify({ type:'ships', data: active, ts: Date.now() }));
+  ws.send(JSON.stringify({ type:'ships', data: db.getActiveShips(15*60*1000), ts: Date.now() }));
   ws.on('message', raw => {
     try {
       const msg = JSON.parse(raw);
@@ -36,27 +37,31 @@ wss.on('connection', ws => {
 });
 
 // ── REST API ─────────────────────────────────────────────────────────────────
-app.get('/api/ships',   (req,res) => res.json(db.getActiveShips()));
-app.get('/api/history', (req,res) => res.json(db.getHistory(+(req.query.days||1))));
-app.get('/api/status',  (req,res) => res.json({
+app.get('/api/ships',         (req,res) => res.json(db.getActiveShips()));
+app.get('/api/history',       (req,res) => res.json(db.getHistory(+(req.query.days||1))));
+app.get('/api/ship/:mmsi/track', (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
+app.get('/api/status',        (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'2.1.0',
-  retainDays: process.env.RETAIN_DAYS||7,
+  uptime: Math.floor(process.uptime()), version:'2.2.0',
+  retainDays: +(process.env.RETAIN_DAYS||7),
+  buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
+app.get('/api/version',       (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'2.2.0' }));
 
 // ── Alert CRUD ────────────────────────────────────────────────────────────────
-app.get   ('/api/alerts',      (req,res) => res.json(db.getAlerts()));
-app.post  ('/api/alerts',      (req,res) => {
-  const { name, ship_type, name_filter, min_len, max_eta_min } = req.body;
+app.get   ('/api/alerts',     (req,res) => res.json(db.getAlerts()));
+app.post  ('/api/alerts',     (req,res) => {
+  const { name, ship_type, name_filter, min_len, max_eta_min, min_length_alert } = req.body;
   if (!name) return res.status(400).json({ error:'name required' });
   const info = db.insertAlert({
     name, ship_type:ship_type||null, name_filter:name_filter||null,
-    min_len:+min_len||0, max_eta_min:+max_eta_min||360, active:1,
+    min_len:+min_len||0, max_eta_min:+max_eta_min||360,
+    min_length_alert:+min_length_alert||150, active:1,
   });
   res.json({ id: info.lastInsertRowid });
 });
-app.delete('/api/alerts/:id',  (req,res) => { db.deleteAlert(+req.params.id); res.json({ok:true}); });
-app.patch ('/api/alerts/:id',  (req,res) => {
+app.delete('/api/alerts/:id', (req,res) => { db.deleteAlert(+req.params.id); res.json({ok:true}); });
+app.patch ('/api/alerts/:id', (req,res) => {
   db.toggleAlert(+req.params.id, req.body.active ? 1 : 0);
   res.json({ok:true});
 });
@@ -65,8 +70,9 @@ app.use(express.static(path.join(__dirname,'..','public')));
 app.get('*',(req,res) => res.sendFile(path.join(__dirname,'..','public','index.html')));
 
 server.listen(PORT, () => {
-  console.log(`[Server] Elbe Radar v2.1 läuft auf Port ${PORT}`);
-  console.log(`[Server] AIS-Key:  ${process.env.AIS_API_KEY  ? 'gesetzt' : 'NICHT gesetzt (Demo)'}`);
-  console.log(`[Server] Telegram: ${process.env.TELEGRAM_BOT_TOKEN ? 'aktiv' : 'nicht konfiguriert'}`);
-  console.log(`[Server] History:  ${process.env.RETAIN_DAYS||7} Tage`);
+  console.log(`[Server] Elbe Radar v2.2 · Port ${PORT}`);
+  console.log(`[Server] AIS-Key:    ${process.env.AIS_API_KEY  ? 'gesetzt' : 'NICHT gesetzt (Demo)'}`);
+  console.log(`[Server] Telegram:   ${process.env.TELEGRAM_BOT_TOKEN ? 'aktiv' : 'nicht konfiguriert'}`);
+  console.log(`[Server] History:    ${process.env.RETAIN_DAYS||7} Tage`);
+  console.log(`[Server] Build:      ${BUILD_SHA} @ ${BUILD_TIME}`);
 });
