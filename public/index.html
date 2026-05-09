@@ -9,12 +9,21 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-:root{--font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;--bg:#f2f5f9;--surf:#fff;--surf2:#f8fafc;--off:#edf1f7;--brd:#d6dde8;--div:#e4e9f1;--txt:#18253a;--mut:#5e7290;--fnt:#9aafc6;--blue:#1568c8;--bhi:#dbeafe;--bhov:#0f4ea0;--pur:#7c3aed;--phi:#ede9fe;--amb:#c27c14;--ahi:#fef3c7;--tel:#0d7e6e;--red:#c0303c;}
-[data-theme="dark"]{--bg:#08111e;--surf:#0d1b2d;--surf2:#112237;--off:#152a40;--brd:#243d5a;--div:#1e3350;--txt:#c8daf0;--mut:#7a9ec0;--fnt:#3d5a7a;--blue:#4da6f5;--bhi:#132840;--bhov:#72b8f8;--pur:#b07ef8;--phi:#1e1240;--amb:#f0bc55;--ahi:#2e2005;--tel:#34d399;--red:#f87171;}
+:root{--font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;
+  --bg:#f2f5f9;--surf:#fff;--surf2:#f8fafc;--off:#edf1f7;--brd:#d6dde8;--div:#e4e9f1;
+  --txt:#18253a;--mut:#5e7290;--fnt:#9aafc6;
+  --blue:#1568c8;--bhi:#dbeafe;--bhov:#0f4ea0;
+  --pur:#7c3aed;--phi:#ede9fe;--amb:#c27c14;--ahi:#fef3c7;--tel:#0d7e6e;--red:#c0303c;}
+[data-theme="dark"]{
+  --bg:#08111e;--surf:#0d1b2d;--surf2:#112237;--off:#152a40;--brd:#243d5a;--div:#1e3350;
+  --txt:#c8daf0;--mut:#7a9ec0;--fnt:#3d5a7a;
+  --blue:#4da6f5;--bhi:#132840;--bhov:#72b8f8;
+  --pur:#b07ef8;--phi:#1e1240;--amb:#f0bc55;--ahi:#2e2005;--tel:#34d399;--red:#f87171;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;font-family:var(--font);font-size:14px;color:var(--txt);background:var(--bg);}
 button{cursor:pointer;border:none;background:none;font:inherit;color:inherit;}
 a{color:var(--blue);}
+/* TOPBAR */
 #topbar{position:fixed;top:0;left:0;right:0;height:50px;background:var(--surf);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:10px;padding:0 14px;z-index:50;}
 .brand{font-weight:800;font-size:15px;letter-spacing:-.02em;display:flex;align-items:center;gap:7px;white-space:nowrap;}
 .topbar-r{display:flex;align-items:center;gap:7px;margin-left:auto;}
@@ -24,6 +33,7 @@ a{color:var(--blue);}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
 .ibtn{width:32px;height:32px;border-radius:6px;border:1px solid var(--brd);background:var(--surf2);display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--mut);}
 .ibtn:hover{background:var(--off);}
+/* LAYOUT */
 #content{position:fixed;top:50px;left:0;right:0;bottom:0;display:flex;overflow:hidden;}
 .panel{width:270px;min-width:270px;background:var(--surf);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden;height:100%;}
 .panel.right{border-right:none;border-left:1px solid var(--brd);width:260px;min-width:260px;}
@@ -35,6 +45,7 @@ a{color:var(--blue);}
 .pscroll::-webkit-scrollbar{width:3px;}
 .pscroll::-webkit-scrollbar-thumb{background:var(--brd);border-radius:99px;}
 .pfoot{padding:7px 13px;font-size:11px;color:var(--mut);border-top:1px solid var(--div);background:var(--surf2);flex-shrink:0;}
+/* FILTER */
 .filters{padding:11px 13px;border-bottom:1px solid var(--div);display:grid;gap:11px;flex-shrink:0;}
 .flbl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);font-weight:700;margin-bottom:5px;}
 .chips{display:flex;flex-wrap:wrap;gap:6px;}
@@ -43,18 +54,24 @@ a{color:var(--blue);}
 .chip.on{background:var(--bhi);color:var(--blue);border-color:var(--blue);}
 .slider-row{display:flex;align-items:center;gap:8px;}
 input[type=range]{flex:1;accent-color:var(--blue);cursor:pointer;}
-.slider-val{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--blue);min-width:48px;text-align:right;}
+.slider-val{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--blue);min-width:52px;text-align:right;}
+/* SHIP LIST */
 .slist{list-style:none;}
 .si{padding:9px 13px;border-bottom:1px solid var(--div);cursor:pointer;}
 .si:hover{background:var(--off);}.si.sel{background:var(--bhi);}
 .si-top{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
 .si-name{font-size:12px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0;}
-.bc{background:var(--bhi);color:var(--blue);}.bk{background:var(--phi);color:var(--pur);}.bt{background:var(--ahi);color:var(--amb);}.bf{background:var(--off);color:var(--mut);}
+/* Neue kontrastreiche Farben */
+.bc{background:#ff6b0022;color:#ff8c00;border:1px solid #ff8c0055;}   /* Container: Orange */
+.bk{background:#ff006622;color:#ff1493;border:1px solid #ff149355;}   /* Cruise: Pink */
+.bt{background:#ffd70022;color:#ffd700;border:1px solid #ffd70055;}   /* Tanker: Gelb */
+.bf{background:#00ff7f22;color:#00cc66;border:1px solid #00cc6655;}   /* Cargo: Grün */
 .si-meta{font-size:11px;color:var(--mut);display:flex;flex-wrap:wrap;gap:3px 9px;}
 .si-dir{color:var(--blue);font-weight:700;font-family:var(--mono);}
 .si-time{margin-left:auto;color:var(--fnt);}
 .empty{padding:36px 18px;text-align:center;color:var(--mut);font-size:12px;line-height:1.8;}
+/* ETA PANEL */
 .fi{padding:9px 13px;border-bottom:1px solid var(--div);cursor:pointer;}
 .fi:hover{background:var(--off);}
 .fi-top{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
@@ -62,18 +79,28 @@ input[type=range]{flex:1;accent-color:var(--blue);cursor:pointer;}
 .fi-eta{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--blue);}
 .fi-cd{font-family:var(--mono);font-size:11px;color:var(--tel);font-weight:600;margin-bottom:2px;}
 .fi-meta{font-size:11px;color:var(--mut);display:flex;flex-wrap:wrap;gap:3px 8px;}
+/* MAP */
 #mapwrap{flex:1;position:relative;overflow:hidden;display:flex;flex-direction:column;}
 #mapbar{padding:5px 13px;background:var(--surf2);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:7px;flex-shrink:0;flex-wrap:wrap;}
 .mbt{font-size:13px;font-weight:700;flex:1;}
 .stat{font-size:11px;color:var(--mut);padding:2px 7px;background:var(--off);border:1px solid var(--div);border-radius:6px;white-space:nowrap;}
 .stat b{font-family:var(--mono);font-weight:700;color:var(--txt);}
 #map{flex:1;min-height:0;width:100%;}
-#dbgbar{padding:2px 13px;background:#140800;border-bottom:1px solid #5a3000;font-size:10px;font-family:var(--mono);color:#f0bc55;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* DEBUG BAR – ausblendbar */
+#dbgwrap{flex-shrink:0;overflow:hidden;transition:height .2s;}
+#dbgwrap.collapsed{height:0;}
+#dbgbar{padding:2px 13px;background:#140800;font-size:10px;font-family:var(--mono);color:#f0bc55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid #5a3000;}
+#dbgtoggle{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);z-index:600;
+  background:var(--surf);border:1px solid var(--brd);border-radius:999px;
+  font-size:10px;font-weight:700;padding:2px 10px;color:var(--mut);cursor:pointer;white-space:nowrap;}
+#dbgtoggle:hover{background:var(--off);}
+/* LEGENDE */
 #legend{position:absolute;bottom:28px;left:10px;z-index:500;background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:9px 13px;font-size:11px;color:var(--mut);pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2);}
 #legend h4{font-size:10px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;}
 .lr{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
 .ld{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
-#detail{position:absolute;bottom:28px;right:10px;z-index:500;width:min(280px,calc(100% - 20px));background:var(--surf);border:1px solid var(--brd);border-radius:12px;padding:13px 15px;box-shadow:0 8px 32px rgba(0,0,0,.3);display:none;}
+/* DETAIL */
+#detail{position:absolute;bottom:50px;right:10px;z-index:500;width:min(280px,calc(100% - 20px));background:var(--surf);border:1px solid var(--brd);border-radius:12px;padding:13px 15px;box-shadow:0 8px 32px rgba(0,0,0,.3);display:none;}
 #detail.open{display:grid;gap:9px;animation:slideup .18s ease both;}
 @keyframes slideup{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 .dh{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
@@ -83,9 +110,10 @@ input[type=range]{flex:1;accent-color:var(--blue);cursor:pointer;}
 .kv .k{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);font-weight:700;}
 .kv .v{font-size:12px;font-family:var(--mono);margin-top:1px;}
 .dfoot{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);}
+/* Leaflet */
 .leaflet-container{background:#0b1826 !important;}
 .leaflet-tooltip{background:var(--surf)!important;color:var(--txt)!important;border:1px solid var(--brd)!important;border-radius:7px!important;font-family:var(--font)!important;font-size:12px!important;padding:4px 9px!important;}
-.ship-label{background:transparent!important;border:none!important;box-shadow:none!important;font-size:11px!important;font-weight:700!important;color:#fff!important;text-shadow:0 1px 3px rgba(0,0,0,.9)!important;white-space:nowrap!important;pointer-events:none!important;}
+.ship-label{background:transparent!important;border:none!important;box-shadow:none!important;font-size:11px!important;font-weight:700!important;color:#fff!important;text-shadow:0 1px 4px rgba(0,0,0,1),0 0 8px rgba(0,0,0,.8)!important;white-space:nowrap!important;pointer-events:none!important;}
 .leaflet-control-zoom a{background:var(--surf)!important;color:var(--txt)!important;border-color:var(--brd)!important;}
 @media(max-width:1050px){.panel.right{display:none;}}
 @media(max-width:650px){.panel{display:none;}}
@@ -98,12 +126,12 @@ input[type=range]{flex:1;accent-color:var(--blue);cursor:pointer;}
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span> Schiffe</div>
     <div class="pill">📍 Wedel km 665</div>
-    <button class="ibtn" id="themeBtn">🌙</button>
+    <button class="ibtn" id="themeBtn" title="Theme wechseln">🌙</button>
   </div>
 </header>
 <div id="content">
   <aside class="panel">
-    <div class="ph"><h2>Passagen <span class="cnt" id="liveCnt">0</span></h2><p>Schiffe in der Wedel-Zone</p></div>
+    <div class="ph"><h2>Passagen <span class="cnt" id="liveCnt">0</span></h2><p>Schiffe im aktuellen Kartenausschnitt</p></div>
     <div class="filters">
       <div>
         <div class="flbl">Schiffstyp</div>
@@ -126,23 +154,27 @@ input[type=range]{flex:1;accent-color:var(--blue);cursor:pointer;}
     <div class="pscroll"><ul class="slist" id="liveList"></ul><div class="empty" id="liveEmpty">Noch keine Schiffe.</div></div>
     <div class="pfoot">Backend: <span id="backendStatus">–</span></div>
   </aside>
+
   <div id="mapwrap">
     <div id="mapbar">
       <span class="mbt">Elbe vor Wedel</span>
-      <div class="stat"><b id="sC">0</b> Container</div>
-      <div class="stat"><b id="sK">0</b> Kreuzfahrt</div>
-      <div class="stat"><b id="sT">0</b> Tanker</div>
+      <div class="stat" style="color:#ff8c00"><b id="sC">0</b> Container</div>
+      <div class="stat" style="color:#ff1493"><b id="sK">0</b> Kreuzfahrt</div>
+      <div class="stat" style="color:#ffd700"><b id="sT">0</b> Tanker</div>
       <div class="stat"><b id="sP">0</b> ETA</div>
       <div class="stat">Zoom <b id="zoomLbl">12</b></div>
     </div>
-    <div id="dbgbar">Verbinde mit Backend…</div>
+    <div id="dbgwrap">
+      <div id="dbgbar">Verbinde mit Backend…</div>
+    </div>
     <div id="map"></div>
+    <button id="dbgtoggle">▲ Log ausblenden</button>
     <div id="legend">
       <h4>Legende</h4>
-      <div class="lr"><div class="ld" style="background:#4da6f5"></div>Container</div>
-      <div class="lr"><div class="ld" style="background:#b07ef8"></div>Kreuzfahrt</div>
-      <div class="lr"><div class="ld" style="background:#f0bc55"></div>Tanker</div>
-      <div class="lr"><div class="ld" style="background:#6bbacc"></div>Frachter</div>
+      <div class="lr"><div class="ld" style="background:#ff8c00"></div>Container</div>
+      <div class="lr"><div class="ld" style="background:#ff1493"></div>Kreuzfahrt</div>
+      <div class="lr"><div class="ld" style="background:#ffd700"></div>Tanker</div>
+      <div class="lr"><div class="ld" style="background:#00cc66"></div>Frachter</div>
       <div class="lr" style="margin-top:4px"><div style="width:18px;border-top:2px dashed #f0bc55;flex-shrink:0"></div>Willkomm-Höft</div>
     </div>
     <div id="detail">
@@ -152,80 +184,160 @@ input[type=range]{flex:1;accent-color:var(--blue);cursor:pointer;}
       <div class="dfoot"><span id="dtime"></span><a id="dlink" href="#" target="_blank">MarineTraffic ↗</a></div>
     </div>
   </div>
+
   <aside class="panel right">
-    <div class="ph"><h2>ETA Willkomm-Höft <span class="cnt" id="futureCnt">0</span></h2><p>Prognose nächste 6 h</p></div>
+    <div class="ph"><h2>ETA Willkomm-Höft <span class="cnt" id="futureCnt">0</span></h2><p>Prognose nächste 6 h · Telegram-Alerts ab 200 m</p></div>
     <div class="pscroll"><ul class="slist" id="futureList"></ul><div class="empty" id="futureEmpty">Noch keine Prognosen.</div></div>
     <div class="pfoot"><a href="https://www.marinetraffic.com" target="_blank">MarineTraffic ↗</a></div>
   </aside>
 </div>
+
 <script>
-const MERIDIAN=9.700,CENTER=[53.570,9.730],ZOOM_LABEL=13;
-const col=t=>({Cruise:'#b07ef8',Container:'#4da6f5',Tanker:'#f0bc55',Cargo:'#6bbacc'})[t]||'#8aabb8';
-const bcls=t=>({Cruise:'bk',Container:'bc',Tanker:'bt',Cargo:'bf'})[t]||'bf';
-const dirLbl=c=>c==null?'–':(+c>=30&&+c<=200)?'▶ HH':'◀ NS';
-const kn=v=>v==null?'–':(+v/10).toFixed(1)+' kn';
-const mt=v=>v?v+' m':'–';
-const drf=v=>v?(+v/10).toFixed(1)+' m':'–';
-const hm=ts=>new Date(ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-const etaSt=ts=>new Date(ts).toLocaleString('de-DE',{weekday:'short',hour:'2-digit',minute:'2-digit'});
-const cdown=ts=>{const d=Math.round((ts-Date.now())/60000);return d<1?'jetzt':d<60?`in ${d} Min`:`in ${Math.floor(d/60)}h ${d%60?d%60+'m':''}`;};
-const $=id=>document.getElementById(id);
-const dbg=m=>{$('dbgbar').textContent=m;};
+/* ═══ FARBEN ═══ */
+const COLORS = { Container:'#ff8c00', Cruise:'#ff1493', Tanker:'#ffd700', Cargo:'#00cc66' };
+const col  = t => COLORS[t] || '#8aabb8';
+const bcls = t => ({Cruise:'bk',Container:'bc',Tanker:'bt',Cargo:'bf'})[t] || 'bf';
 
-let ships=new Map(),markers=new Map(),labelShown=new Set(),map;
-let selMmsi=null,typeF='all',lenF=0,theme='dark',currentZoom=12;
-const passes=s=>(typeF==='all'||s.type===typeF)&&(s.len||0)>=lenF;
+/* ═══ HELPERS ═══ */
+const $   = id => document.getElementById(id);
+const dbg = m  => { $('dbgbar').textContent = m; };
+const dirLbl = c => c==null ? '–' : (+c>=30&&+c<=200) ? '▶ HH' : '◀ NS';
+const kn   = v => v==null ? '–' : (+v/10).toFixed(1)+' kn';
+const mt   = v => v ? v+' m' : '–';
+const drf  = v => v ? (+v/10).toFixed(1)+' m' : '–';
+const hm   = ts => new Date(ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+const etaSt= ts => new Date(ts).toLocaleString('de-DE',{weekday:'short',hour:'2-digit',minute:'2-digit'});
+const cdown= ts => { const d=Math.round((ts-Date.now())/60000); return d<1?'jetzt':d<60?`in ${d} Min`:`in ${Math.floor(d/60)}h ${d%60?d%60+'m':''}`; };
 
-function iconSize(len){
-  const l=len||80;
-  if(l>=380)return{h:32,w:9};if(l>=300)return{h:26,w:8};
-  if(l>=200)return{h:19,w:6};if(l>=130)return{h:14,w:5};return{h:10,w:4};
-}
-function makeIcon(s,sel=false){
-  const c=col(s.type),{h,w}=iconSize(s.len),rot=+(s.heading??s.cog??0);
-  const glow=sel?`drop-shadow(0 0 5px ${c}) drop-shadow(0 0 2px #fff)`:'none';
-  return L.divIcon({className:'',
-    html:`<div style="transform:rotate(${rot}deg);filter:${glow}"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none"><path d="M${w/2} 1 L${w-.5} ${h-1} L${w/2} ${h-3} L.5 ${h-1} Z" fill="${c}" stroke="rgba(0,0,0,.5)" stroke-width=".8" stroke-linejoin="round"/></svg></div>`,
-    iconSize:[w,h],iconAnchor:[w/2,h*.6]});
+/* ═══ SCHIFFSUMRISS-ICON (proportionales SVG aus len×wid) ═══ */
+const ZOOM_LABEL = 13;
+const MAP_SCALE  = 0.06; // px pro Meter bei Zoom 12
+
+function shipIconSize(len, wid) {
+  const l = Math.max(len || 80, 40);
+  const w = Math.max(wid || Math.round(l * 0.14), 8);
+  const h = Math.max(Math.round(l * MAP_SCALE), 10);
+  const bw = Math.max(Math.round(w * MAP_SCALE * 3.5), 4);
+  return { h, bw };
 }
 
-function initMap(){
-  map=L.map('map',{zoomControl:true,attributionControl:true}).setView(CENTER,12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://openstreetmap.org">OpenStreetMap</a>'}).addTo(map);
-  L.polyline([[53.490,MERIDIAN],[53.620,MERIDIAN]],{color:'#f0bc55',weight:1.5,dashArray:'5 7',opacity:.5}).addTo(map).bindTooltip('Willkomm-Höft / ETA-Meridian',{sticky:true});
-  L.marker([53.5688,9.6981],{icon:L.divIcon({className:'',html:'<div style="width:11px;height:11px;border-radius:50%;background:#f0bc55;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)"></div>',iconSize:[11,11],iconAnchor:[5,5]})}).addTo(map).bindTooltip('Willkomm-Höft',{direction:'top',offset:[0,-8]});
+function makeIcon(s, sel = false) {
+  const c = col(s.type);
+  const rot = +(s.heading ?? s.cog ?? 0);
+  const { h, bw } = shipIconSize(s.len, s.wid);
+  const w = bw;
+  // Schiffsumriss: Spitzer Bug oben, breiteres Heck unten, leicht trapezförmig
+  const bugW  = Math.max(1, w * 0.15);   // Bugspitze schmal
+  const midW  = w * 0.5;                 // Mitte
+  const heckW = w * 0.45;               // Heck etwas schmaler als Mitte
+  const bugY  = 1;
+  const midY  = h * 0.35;
+  const heckY = h - 1;
+  // SVG Pfad: Bug (Spitze oben) → rechte Seite → Heck → linke Seite
+  const path = [
+    `M${w/2} ${bugY}`,
+    `L${w/2 + midW} ${midY}`,
+    `L${w/2 + heckW} ${heckY}`,
+    `L${w/2 - heckW} ${heckY}`,
+    `L${w/2 - midW} ${midY}`,
+    `Z`
+  ].join(' ');
+  const glow = sel ? `drop-shadow(0 0 6px ${c}) drop-shadow(0 0 2px #fff)` : `drop-shadow(0 1px 2px rgba(0,0,0,.7))`;
+  const html = `<div style="transform:rotate(${rot}deg);filter:${glow}">
+    <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="${path}" fill="${c}" stroke="rgba(0,0,0,0.6)" stroke-width="0.8" stroke-linejoin="round"/>
+      <line x1="${w/2}" y1="${midY}" x2="${w/2}" y2="${heckY}" stroke="rgba(0,0,0,0.25)" stroke-width="0.5"/>
+    </svg></div>`;
+  return L.divIcon({ className:'', html, iconSize:[w,h], iconAnchor:[w/2, h*0.35] });
+}
+
+/* ═══ STATE ═══ */
+let ships=new Map(), markers=new Map(), labelShown=new Set(), map, ws;
+let selMmsi=null, typeF='all', lenF=0, theme='dark', currentZoom=12;
+let dbgVisible = true;
+const passes = s => (typeF==='all'||s.type===typeF) && (s.len||0) >= lenF;
+
+/* ═══ DEBUG TOGGLE ═══ */
+$('dbgtoggle').onclick = () => {
+  dbgVisible = !dbgVisible;
+  $('dbgwrap').classList.toggle('collapsed', !dbgVisible);
+  $('dbgtoggle').textContent = dbgVisible ? '▲ Log ausblenden' : '▼ Log anzeigen';
+};
+
+/* ═══ KARTE ═══ */
+function initMap() {
+  map = L.map('map',{zoomControl:true,attributionControl:true}).setView([53.570,9.730],12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:19, attribution:'© <a href="https://openstreetmap.org">OpenStreetMap</a>'
+  }).addTo(map);
+  // Willkomm-Höft Meridian
+  L.polyline([[53.490,9.6981],[53.620,9.6981]],{color:'#f0bc55',weight:1.5,dashArray:'5 7',opacity:.6})
+   .addTo(map).bindTooltip('Willkomm-Höft / ETA-Meridian',{sticky:true});
+  L.marker([53.5688,9.6981],{icon:L.divIcon({className:'',
+    html:'<div style="width:11px;height:11px;border-radius:50%;background:#f0bc55;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)"></div>',
+    iconSize:[11,11],iconAnchor:[5,5]})}).addTo(map).bindTooltip('Willkomm-Höft',{direction:'top',offset:[0,-8]});
+
   map.on('click',()=>{selMmsi=null;$('detail').classList.remove('open');redraw();});
-  map.on('zoomend',()=>{currentZoom=map.getZoom();$('zoomLbl').textContent=currentZoom;updateAllLabels();});
+  map.on('zoomend moveend', () => {
+    currentZoom = map.getZoom();
+    $('zoomLbl').textContent = currentZoom;
+    sendBoxUpdate();
+    updateAllLabels();
+  });
+  currentZoom = map.getZoom();
 }
 
-function syncMarkers(){
-  for(const[mmsi,s]of ships){
-    if(!s.lat||!s.lon)continue;
-    const show=passes(s),mk=markers.get(mmsi);
-    if(!show){if(mk){mk.unbindTooltip();map.removeLayer(mk);markers.delete(mmsi);labelShown.delete(mmsi);}continue;}
-    const ic=makeIcon(s,selMmsi===mmsi);
-    if(mk){
-      mk.setLatLng([s.lat,s.lon]);mk.setIcon(ic);
-      if(!labelShown.has(mmsi))mk.setTooltipContent?.(`<b>${s.name||'?'}</b> · ${kn(s.sog)} · ${dirLbl(s.cog)}`);
-    }else{
-      const m2=L.marker([s.lat,s.lon],{icon:ic}).addTo(map);
+/* Neue BoundingBox ans Backend senden */
+function sendBoxUpdate() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  const b = map.getBounds();
+  ws.send(JSON.stringify({ type:'setBox', box:{
+    n: +b.getNorth().toFixed(4), s: +b.getSouth().toFixed(4),
+    w: +b.getWest().toFixed(4),  e: +b.getEast().toFixed(4),
+  }}));
+}
+
+/* ═══ MARKER ═══ */
+function syncMarkers() {
+  for (const [mmsi, s] of ships) {
+    if (!s.lat || !s.lon) continue;
+    const show = passes(s), mk = markers.get(mmsi);
+    if (!show) {
+      if (mk) { mk.unbindTooltip(); map.removeLayer(mk); markers.delete(mmsi); labelShown.delete(mmsi); }
+      continue;
+    }
+    const ic = makeIcon(s, selMmsi === mmsi);
+    if (mk) {
+      mk.setLatLng([s.lat, s.lon]);
+      mk.setIcon(ic);
+      if (!labelShown.has(mmsi)) {
+        mk.setTooltipContent?.(`<b>${s.name||'?'}</b> · ${kn(s.sog)} · ${dirLbl(s.cog)}`);
+      }
+    } else {
+      const m2 = L.marker([s.lat, s.lon], {icon:ic}).addTo(map);
       m2.bindTooltip(`<b>${s.name||'?'}</b> · ${kn(s.sog)} · ${dirLbl(s.cog)}`,{direction:'top',offset:[0,-8]});
-      m2.on('click',e=>{L.DomEvent.stopPropagation(e);selectShip(mmsi);});
-      markers.set(mmsi,m2);
+      m2.on('click', e => { L.DomEvent.stopPropagation(e); selectShip(mmsi); });
+      markers.set(mmsi, m2);
+    }
+  }
+  // Entfernte Schiffe aufräumen
+  for (const [mmsi, mk] of markers) {
+    if (!ships.has(mmsi) || !passes(ships.get(mmsi))) {
+      mk.unbindTooltip(); map.removeLayer(mk); markers.delete(mmsi); labelShown.delete(mmsi);
     }
   }
   updateAllLabels();
 }
 
-function updateAllLabels(){
-  const show=currentZoom>=ZOOM_LABEL;
-  for(const[mmsi,mk]of markers){
-    const s=ships.get(mmsi);if(!s)continue;
-    if(show&&passes(s)&&!labelShown.has(mmsi)){
+function updateAllLabels() {
+  const show = currentZoom >= ZOOM_LABEL;
+  for (const [mmsi, mk] of markers) {
+    const s = ships.get(mmsi); if (!s) continue;
+    if (show && !labelShown.has(mmsi)) {
       mk.unbindTooltip();
-      mk.bindTooltip(s.name||'?',{permanent:true,direction:'right',offset:[iconSize(s.len).w+3,0],className:'ship-label'});
+      mk.bindTooltip(s.name||'?',{permanent:true,direction:'right',offset:[shipIconSize(s.len,s.wid).bw+3,0],className:'ship-label'});
       labelShown.add(mmsi);
-    }else if((!show||!passes(s))&&labelShown.has(mmsi)){
+    } else if (!show && labelShown.has(mmsi)) {
       mk.unbindTooltip();
       mk.bindTooltip(`<b>${s.name||'?'}</b> · ${kn(s.sog)} · ${dirLbl(s.cog)}`,{direction:'top',offset:[0,-8]});
       labelShown.delete(mmsi);
@@ -233,97 +345,108 @@ function updateAllLabels(){
   }
 }
 
-function selectShip(mmsi){
-  selMmsi=mmsi;const s=ships.get(mmsi);if(!s)return;
-  $('dname').textContent=s.name||'Unbekannt';
-  $('dbadge').innerHTML=`<span class="badge ${bcls(s.type)}">${s.type}</span> <span style="font-size:11px;color:var(--mut)">${dirLbl(s.cog)}</span>`;
-  $('dgrid').innerHTML=[['Geschw.',kn(s.sog)],['Kurs',s.cog!=null?s.cog+'°':'–'],['Länge',mt(s.len)],['Breite',mt(s.wid)],['Tiefgang',drf(s.drg)],['Rufzeichen',s.cs||'–'],['Ziel',s.dest||'–'],['ETA',s.eta?etaSt(s.eta.eta):'–']]
-    .map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
-  $('dtime').textContent='Zuletzt '+hm(s.seen);
-  $('dlink').href=`https://www.marinetraffic.com/en/ais/details/ships/mmsi:${mmsi}`;
+/* ═══ SELECT ═══ */
+function selectShip(mmsi) {
+  selMmsi = mmsi; const s = ships.get(mmsi); if (!s) return;
+  $('dname').textContent = s.name || 'Unbekannt';
+  $('dbadge').innerHTML = `<span class="badge ${bcls(s.type)}">${s.type}</span> <span style="font-size:11px;color:var(--mut)">${dirLbl(s.cog)}</span>`;
+  const etaTs = s.eta ? new Date(s.eta.eta).getTime() : null;
+  $('dgrid').innerHTML = [
+    ['Geschw.', kn(s.sog)], ['Kurs', s.cog!=null?s.cog+'°':'–'],
+    ['Länge', mt(s.len)],    ['Breite', mt(s.wid)],
+    ['Tiefgang', drf(s.drg)],['Rufzeichen', s.cs||'–'],
+    ['Ziel', s.dest||'–'],   ['ETA Willkomm', etaTs ? etaSt(etaTs) : '–'],
+  ].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  $('dtime').textContent = 'Zuletzt '+hm(s.seen);
+  $('dlink').href = `https://www.marinetraffic.com/en/ais/details/ships/mmsi:${mmsi}`;
   $('detail').classList.add('open');
-  if(s.lat&&s.lon)map.panTo([s.lat,s.lon],{animate:true,duration:.6});
+  if (s.lat && s.lon) map.panTo([s.lat, s.lon],{animate:true,duration:.6});
   redraw();
 }
 
-function renderLive(){
-  const list=[...ships.values()].filter(passes).sort((a,b)=>(b.seen||0)-(a.seen||0));
-  $('liveCnt').textContent=list.length;$('shipNum').textContent=ships.size;
-  const ul=$('liveList');ul.innerHTML='';
-  $('liveEmpty').style.display=list.length?'none':'block';
-  list.forEach(s=>{
-    const li=document.createElement('li');li.className='si'+(selMmsi===s.mmsi?' sel':'');
-    li.innerHTML=`<div class="si-top"><div class="si-name">${s.name||'?'}</div><span class="badge ${bcls(s.type)}">${s.type}</span></div><div class="si-meta"><span class="si-dir">${dirLbl(s.cog)}</span><span>${kn(s.sog)}</span><span>${mt(s.len)}</span>${s.dest?`<span>→ ${s.dest}</span>`:''}<span class="si-time">${hm(s.seen)}</span></div>`;
-    li.onclick=()=>selectShip(s.mmsi);ul.appendChild(li);
+/* ═══ RENDER ═══ */
+function renderLive() {
+  const list = [...ships.values()].filter(passes).sort((a,b)=>(b.seen||0)-(a.seen||0));
+  $('liveCnt').textContent = list.length;
+  $('shipNum').textContent = ships.size;
+  const ul = $('liveList'); ul.innerHTML = '';
+  $('liveEmpty').style.display = list.length ? 'none' : 'block';
+  list.forEach(s => {
+    const li = document.createElement('li'); li.className = 'si'+(selMmsi===s.mmsi?' sel':'');
+    li.innerHTML = `<div class="si-top"><div class="si-name">${s.name||'?'}</div><span class="badge ${bcls(s.type)}">${s.type}</span></div>
+      <div class="si-meta"><span class="si-dir">${dirLbl(s.cog)}</span><span>${kn(s.sog)}</span><span>${mt(s.len)}</span>${s.dest?`<span>→ ${s.dest}</span>`:''}<span class="si-time">${hm(s.seen)}</span></div>`;
+    li.onclick = () => selectShip(s.mmsi); ul.appendChild(li);
   });
 }
 
-function renderFuture(){
-  const preds=[...ships.values()].filter(s=>s.eta&&passes(s)).sort((a,b)=>a.eta.eta-b.eta.eta);
-  $('futureCnt').textContent=preds.length;$('sP').textContent=preds.length;
-  const ul=$('futureList');ul.innerHTML='';
-  $('futureEmpty').style.display=preds.length?'none':'block';
-  preds.forEach(s=>{
-    const li=document.createElement('li');li.className='fi';
-    const etaMs=new Date(s.eta.eta).getTime();
-    li.innerHTML=`<div class="fi-top"><div class="fi-name">${s.name}</div><span class="badge ${bcls(s.type)}">${s.type}</span></div><div class="fi-eta">${etaSt(etaMs)}</div><div class="fi-cd">${cdown(etaMs)}</div><div class="fi-meta"><span>${mt(s.len)}</span><span>${kn(s.sog)}</span><span>${s.eta.direction}</span>${s.dest?`<span>→ ${s.dest}</span>`:''}</div>`;
-    li.onclick=()=>selectShip(s.mmsi);ul.appendChild(li);
+function renderFuture() {
+  const preds = [...ships.values()].filter(s=>s.eta&&passes(s))
+    .sort((a,b)=>new Date(a.eta.eta)-new Date(b.eta.eta));
+  $('futureCnt').textContent = preds.length; $('sP').textContent = preds.length;
+  const ul = $('futureList'); ul.innerHTML = '';
+  $('futureEmpty').style.display = preds.length ? 'none' : 'block';
+  preds.forEach(s => {
+    const etaMs = new Date(s.eta.eta).getTime();
+    const li = document.createElement('li'); li.className = 'fi';
+    li.innerHTML = `<div class="fi-top"><div class="fi-name">${s.name}</div><span class="badge ${bcls(s.type)}">${s.type}</span></div>
+      <div class="fi-eta">${etaSt(etaMs)}</div><div class="fi-cd">${cdown(etaMs)}</div>
+      <div class="fi-meta"><span>${mt(s.len)}</span><span>${kn(s.sog)}</span><span>${s.eta.direction}</span>${s.dest?`<span>→ ${s.dest}</span>`:''}</div>`;
+    li.onclick = () => selectShip(s.mmsi); ul.appendChild(li);
   });
 }
 
-function updateStats(){
-  const a=[...ships.values()].filter(passes);
-  $('sC').textContent=a.filter(s=>s.type==='Container').length;
-  $('sK').textContent=a.filter(s=>s.type==='Cruise').length;
-  $('sT').textContent=a.filter(s=>s.type==='Tanker').length;
+function updateStats() {
+  const a = [...ships.values()].filter(passes);
+  $('sC').textContent = a.filter(s=>s.type==='Container').length;
+  $('sK').textContent = a.filter(s=>s.type==='Cruise').length;
+  $('sT').textContent = a.filter(s=>s.type==='Tanker').length;
 }
 
-function redraw(){syncMarkers();renderLive();renderFuture();updateStats();}
+function redraw() { syncMarkers(); renderLive(); renderFuture(); updateStats(); }
 
-/* ── WebSocket zum eigenen Backend ── */
-function connectBackend(){
-  const proto=location.protocol==='https:'?'wss':'ws';
-  const ws=new WebSocket(`${proto}://${location.host}`);
-  ws.onopen=()=>{setConn('on','Live');dbg('Verbunden mit Backend');};
-  ws.onmessage=ev=>{
-    try{
-      const d=JSON.parse(ev.data);
-      if(d.type==='ships'){
+/* ═══ WEBSOCKET ═══ */
+function connectBackend() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
+  ws.onopen = () => { setConn('on','Live'); dbg('Verbunden'); sendBoxUpdate(); };
+  ws.onmessage = ev => {
+    try {
+      const d = JSON.parse(ev.data);
+      if (d.type === 'ships') {
         ships.clear();
-        d.data.forEach(s=>ships.set(s.mmsi,s));
+        d.data.forEach(s => ships.set(s.mmsi, s));
         redraw();
         dbg(`${ships.size} Schiffe · Update ${new Date(d.ts).toLocaleTimeString('de-DE')}`);
       }
-    }catch(e){dbg('Parse-Fehler: '+e.message);}
+    } catch(e) { dbg('Parse-Fehler: '+e.message); }
   };
-  ws.onerror=()=>setConn('err','Backend-Fehler');
-  ws.onclose=()=>{setConn('err','Getrennt');setTimeout(connectBackend,5000);};
+  ws.onerror = () => setConn('err','Fehler');
+  ws.onclose = () => { setConn('err','Getrennt'); setTimeout(connectBackend, 5000); };
 }
+function setConn(cls, lbl) { $('dot').className='dot'+(cls?' '+cls:''); $('connLbl').textContent=lbl; }
 
-function setConn(cls,lbl){$('dot').className='dot'+(cls?' '+cls:'');$('connLbl').textContent=lbl;}
-
-$('typeChips').onclick=e=>{
-  const chip=e.target.closest('.chip');if(!chip)return;
+/* ═══ FILTER ═══ */
+$('typeChips').onclick = e => {
+  const chip = e.target.closest('.chip'); if (!chip) return;
   $('typeChips').querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
-  chip.classList.add('on');typeF=chip.dataset.t;redraw();
+  chip.classList.add('on'); typeF = chip.dataset.t; redraw();
 };
-$('lenSlider').oninput=e=>{lenF=+e.target.value;$('lenVal').textContent=lenF===0?'Alle':'≥ '+lenF+' m';redraw();};
-$('dclose').onclick=()=>{$('detail').classList.remove('open');selMmsi=null;redraw();};
-$('themeBtn').onclick=()=>{
-  theme=theme==='dark'?'light':'dark';
+$('lenSlider').oninput = e => { lenF=+e.target.value; $('lenVal').textContent=lenF===0?'Alle':'≥ '+lenF+' m'; redraw(); };
+$('dclose').onclick = () => { $('detail').classList.remove('open'); selMmsi=null; redraw(); };
+$('themeBtn').onclick = () => {
+  theme = theme==='dark'?'light':'dark';
   document.documentElement.setAttribute('data-theme',theme);
-  $('themeBtn').textContent=theme==='dark'?'🌙':'☀️';
+  $('themeBtn').textContent = theme==='dark'?'🌙':'☀️';
 };
 
-fetch('/api/status').then(r=>r.json()).then(s=>{
-  $('backendStatus').textContent=s.demo?'Demo-Modus':'Live · aisstream.io';
-}).catch(()=>{});
+fetch('/api/status').then(r=>r.json()).then(s=>{ $('backendStatus').textContent=s.demo?'Demo-Modus':'Live · aisstream.io'; }).catch(()=>{});
 
-window.addEventListener('DOMContentLoaded',()=>{
-  initMap();requestAnimationFrame(()=>map.invalidateSize());
+window.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  requestAnimationFrame(()=>map.invalidateSize());
   connectBackend();
 });
-window.addEventListener('resize',()=>{if(map)map.invalidateSize();});
+window.addEventListener('resize', () => { if(map) map.invalidateSize(); });
 </script>
 </body>
 </html>
