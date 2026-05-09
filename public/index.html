@@ -9,51 +9,53 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-:root{--font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;
-  --bg:#f2f5f9;--surf:#fff;--surf2:#f8fafc;--off:#edf1f7;--brd:#d6dde8;--div:#e4e9f1;
-  --txt:#18253a;--mut:#5e7290;--fnt:#9aafc6;
-  --blue:#1568c8;--bhi:#dbeafe;--bhov:#0f4ea0;
-  --pur:#7c3aed;--phi:#ede9fe;--amb:#c27c14;--ahi:#fef3c7;--tel:#0d7e6e;--red:#c0303c;}
+:root{
+  --font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;
+  --bg:#f0f4f9;--surf:#fff;--surf2:#f5f8fc;--off:#e8eef6;--brd:#cdd7e5;--div:#dde5f0;
+  --txt:#18253a;--mut:#607a96;--fnt:#9aafc6;
+  --blue:#1568c8;--bhi:#dbeafe;--tel:#0a7a6a;--red:#b92c38;
+  --C:#ff8c00;--K:#ff1493;--T:#e6c200;--F:#00cc66;
+}
 [data-theme="dark"]{
-  --bg:#08111e;--surf:#0d1b2d;--surf2:#112237;--off:#152a40;--brd:#243d5a;--div:#1e3350;
-  --txt:#c8daf0;--mut:#7a9ec0;--fnt:#3d5a7a;
-  --blue:#4da6f5;--bhi:#132840;--bhov:#72b8f8;
-  --pur:#b07ef8;--phi:#1e1240;--amb:#f0bc55;--ahi:#2e2005;--tel:#34d399;--red:#f87171;}
+  --bg:#080f1a;--surf:#0c1828;--surf2:#101e30;--off:#152437;--brd:#1e3350;--div:#192c45;
+  --txt:#bdd0e8;--mut:#6a90b0;--fnt:#2e4a66;
+  --blue:#4aa3f5;--bhi:#0e2040;--tel:#2ec99a;--red:#f07070;
+}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;font-family:var(--font);font-size:14px;color:var(--txt);background:var(--bg);}
 button{cursor:pointer;border:none;background:none;font:inherit;color:inherit;}
 a{color:var(--blue);}
 /* TOPBAR */
-#topbar{position:fixed;top:0;left:0;right:0;height:50px;background:var(--surf);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:10px;padding:0 14px;z-index:50;}
+#topbar{position:fixed;top:0;left:0;right:0;height:50px;background:var(--surf);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:10px;padding:0 14px;z-index:60;}
 .brand{font-weight:800;font-size:15px;letter-spacing:-.02em;display:flex;align-items:center;gap:7px;white-space:nowrap;}
 .topbar-r{display:flex;align-items:center;gap:7px;margin-left:auto;}
 .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border:1px solid var(--brd);border-radius:999px;font-size:11px;color:var(--mut);background:var(--surf2);white-space:nowrap;}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--fnt);flex-shrink:0;}
 .dot.on{background:var(--tel);animation:blink 2s infinite;}.dot.err{background:var(--red);}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
-.ibtn{width:32px;height:32px;border-radius:6px;border:1px solid var(--brd);background:var(--surf2);display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--mut);}
+.ibtn{width:32px;height:32px;border-radius:7px;border:1px solid var(--brd);background:var(--surf2);display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--mut);}
 .ibtn:hover{background:var(--off);}
 /* LAYOUT */
 #content{position:fixed;top:50px;left:0;right:0;bottom:0;display:flex;overflow:hidden;}
-.panel{width:270px;min-width:270px;background:var(--surf);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden;height:100%;}
+.panel{width:270px;min-width:270px;background:var(--surf);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden;}
 .panel.right{border-right:none;border-left:1px solid var(--brd);width:260px;min-width:260px;}
-.ph{padding:11px 13px 9px;border-bottom:1px solid var(--div);flex-shrink:0;}
-.ph h2{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;}
-.ph p{font-size:11px;color:var(--mut);margin-top:2px;}
-.cnt{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:600;background:var(--bhi);color:var(--blue);}
+.ph{padding:10px 13px 8px;border-bottom:1px solid var(--div);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.ph h2{font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;}
+.ph p{font-size:11px;color:var(--mut);margin-top:1px;}
+.cnt{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;background:var(--bhi);color:var(--blue);}
 .pscroll{flex:1;overflow-y:auto;overflow-x:hidden;}
 .pscroll::-webkit-scrollbar{width:3px;}
 .pscroll::-webkit-scrollbar-thumb{background:var(--brd);border-radius:99px;}
-.pfoot{padding:7px 13px;font-size:11px;color:var(--mut);border-top:1px solid var(--div);background:var(--surf2);flex-shrink:0;}
+.pfoot{padding:6px 13px;font-size:11px;color:var(--mut);border-top:1px solid var(--div);background:var(--surf2);flex-shrink:0;}
 /* FILTER */
-.filters{padding:11px 13px;border-bottom:1px solid var(--div);display:grid;gap:11px;flex-shrink:0;}
-.flbl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);font-weight:700;margin-bottom:5px;}
-.chips{display:flex;flex-wrap:wrap;gap:6px;}
-.chip{padding:4px 10px;border:1px solid var(--brd);border-radius:999px;font-size:11px;font-weight:600;color:var(--mut);background:var(--surf2);}
+.filters{padding:10px 13px;border-bottom:1px solid var(--div);display:grid;gap:10px;flex-shrink:0;}
+.flbl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);font-weight:700;margin-bottom:4px;}
+.chips{display:flex;flex-wrap:wrap;gap:5px;}
+.chip{padding:3px 9px;border:1px solid var(--brd);border-radius:999px;font-size:11px;font-weight:600;color:var(--mut);background:var(--surf2);}
 .chip:hover{border-color:var(--blue);color:var(--blue);}
 .chip.on{background:var(--bhi);color:var(--blue);border-color:var(--blue);}
 .slider-row{display:flex;align-items:center;gap:8px;}
-input[type=range]{flex:1;accent-color:var(--blue);cursor:pointer;}
+input[type=range]{flex:1;accent-color:var(--blue);}
 .slider-val{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--blue);min-width:52px;text-align:right;}
 /* SHIP LIST */
 .slist{list-style:none;}
@@ -62,47 +64,54 @@ input[type=range]{flex:1;accent-color:var(--blue);cursor:pointer;}
 .si-top{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
 .si-name{font-size:12px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0;}
-/* Neue kontrastreiche Farben */
-.bc{background:#ff6b0022;color:#ff8c00;border:1px solid #ff8c0055;}   /* Container: Orange */
-.bk{background:#ff006622;color:#ff1493;border:1px solid #ff149355;}   /* Cruise: Pink */
-.bt{background:#ffd70022;color:#ffd700;border:1px solid #ffd70055;}   /* Tanker: Gelb */
-.bf{background:#00ff7f22;color:#00cc66;border:1px solid #00cc6655;}   /* Cargo: Grün */
+.bc{background:#ff8c0022;color:#ff8c00;border:1px solid #ff8c0066;}
+.bk{background:#ff149322;color:#ff1493;border:1px solid #ff149366;}
+.bt{background:#e6c20022;color:#c9aa00;border:1px solid #c9aa0066;}
+.bf{background:#00cc6622;color:#00cc66;border:1px solid #00cc6666;}
 .si-meta{font-size:11px;color:var(--mut);display:flex;flex-wrap:wrap;gap:3px 9px;}
-.si-dir{color:var(--blue);font-weight:700;font-family:var(--mono);}
+.si-dir{font-weight:700;font-family:var(--mono);}
 .si-time{margin-left:auto;color:var(--fnt);}
 .empty{padding:36px 18px;text-align:center;color:var(--mut);font-size:12px;line-height:1.8;}
 /* ETA PANEL */
 .fi{padding:9px 13px;border-bottom:1px solid var(--div);cursor:pointer;}
 .fi:hover{background:var(--off);}
-.fi-top{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
+.fi-top{display:flex;align-items:center;gap:6px;margin-bottom:2px;}
 .fi-name{font-size:12px;font-weight:700;flex:1;}
 .fi-eta{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--blue);}
 .fi-cd{font-family:var(--mono);font-size:11px;color:var(--tel);font-weight:600;margin-bottom:2px;}
 .fi-meta{font-size:11px;color:var(--mut);display:flex;flex-wrap:wrap;gap:3px 8px;}
+/* TABS */
+.tabs{display:flex;border-bottom:1px solid var(--div);flex-shrink:0;}
+.tab{flex:1;padding:8px 4px;font-size:11px;font-weight:700;color:var(--mut);border-bottom:2px solid transparent;text-align:center;}
+.tab:hover{color:var(--txt);}
+.tab.on{color:var(--blue);border-color:var(--blue);}
+.tabcontent{display:none;flex:1;overflow-y:auto;flex-direction:column;}
+.tabcontent.on{display:flex;}
 /* MAP */
 #mapwrap{flex:1;position:relative;overflow:hidden;display:flex;flex-direction:column;}
 #mapbar{padding:5px 13px;background:var(--surf2);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:7px;flex-shrink:0;flex-wrap:wrap;}
 .mbt{font-size:13px;font-weight:700;flex:1;}
-.stat{font-size:11px;color:var(--mut);padding:2px 7px;background:var(--off);border:1px solid var(--div);border-radius:6px;white-space:nowrap;}
+.stat{font-size:11px;color:var(--mut);padding:2px 7px;background:var(--off);border:1px solid var(--div);border-radius:5px;white-space:nowrap;}
 .stat b{font-family:var(--mono);font-weight:700;color:var(--txt);}
 #map{flex:1;min-height:0;width:100%;}
-/* DEBUG BAR – ausblendbar */
-#dbgwrap{flex-shrink:0;overflow:hidden;transition:height .2s;}
-#dbgwrap.collapsed{height:0;}
-#dbgbar{padding:2px 13px;background:#140800;font-size:10px;font-family:var(--mono);color:#f0bc55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid #5a3000;}
-#dbgtoggle{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);z-index:600;
-  background:var(--surf);border:1px solid var(--brd);border-radius:999px;
-  font-size:10px;font-weight:700;padding:2px 10px;color:var(--mut);cursor:pointer;white-space:nowrap;}
+/* DEBUG */
+#dbgwrap{flex-shrink:0;overflow:hidden;max-height:22px;transition:max-height .2s;}
+#dbgwrap.hidden{max-height:0;}
+#dbgbar{padding:2px 13px;background:#120800;font-size:10px;font-family:var(--mono);color:#f0bc55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-top:1px solid #4a2a00;}
+#dbgtoggle{position:absolute;bottom:32px;right:10px;z-index:600;background:var(--surf);border:1px solid var(--brd);border-radius:999px;font-size:10px;font-weight:700;padding:2px 11px;color:var(--mut);}
 #dbgtoggle:hover{background:var(--off);}
 /* LEGENDE */
-#legend{position:absolute;bottom:28px;left:10px;z-index:500;background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:9px 13px;font-size:11px;color:var(--mut);pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2);}
+#legend{position:absolute;bottom:38px;left:10px;z-index:500;background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:9px 13px;font-size:11px;color:var(--mut);pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.25);}
 #legend h4{font-size:10px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;}
 .lr{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
 .ld{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 /* DETAIL */
-#detail{position:absolute;bottom:50px;right:10px;z-index:500;width:min(280px,calc(100% - 20px));background:var(--surf);border:1px solid var(--brd);border-radius:12px;padding:13px 15px;box-shadow:0 8px 32px rgba(0,0,0,.3);display:none;}
-#detail.open{display:grid;gap:9px;animation:slideup .18s ease both;}
+#detail{position:absolute;bottom:50px;right:10px;z-index:500;width:min(300px,calc(100vw - 20px));background:var(--surf);border:1px solid var(--brd);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.3);display:none;overflow:hidden;}
+#detail.open{display:block;animation:slideup .18s ease both;}
 @keyframes slideup{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.dimg{width:100%;height:130px;object-fit:cover;background:var(--off);display:block;}
+.dimg-ph{width:100%;height:100px;background:linear-gradient(135deg,var(--off) 0%,var(--surf2) 100%);display:flex;align-items:center;justify-content:center;font-size:36px;color:var(--brd);}
+.dbody{padding:12px 14px;display:grid;gap:9px;}
 .dh{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
 .dname{font-size:15px;font-weight:800;letter-spacing:-.02em;line-height:1.2;}
 .dx{width:24px;height:24px;border-radius:5px;border:1px solid var(--brd);display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12px;flex-shrink:0;}
@@ -110,13 +119,27 @@ input[type=range]{flex:1;accent-color:var(--blue);cursor:pointer;}
 .kv .k{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);font-weight:700;}
 .kv .v{font-size:12px;font-family:var(--mono);margin-top:1px;}
 .dfoot{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);}
+/* ALERT BUILDER */
+.abwrap{padding:12px 13px;border-bottom:1px solid var(--div);background:var(--surf2);}
+.abwrap h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:8px;}
+.abform{display:grid;gap:7px;}
+.abrow{display:grid;grid-template-columns:auto 1fr;gap:5px 9px;align-items:center;font-size:11px;color:var(--mut);}
+.abrow input,.abrow select{background:var(--off);border:1px solid var(--brd);border-radius:5px;color:var(--txt);font:inherit;font-size:11px;padding:4px 7px;width:100%;}
+.abrow input:focus,.abrow select:focus{outline:none;border-color:var(--blue);}
+.abbtn{padding:5px 12px;border-radius:6px;background:var(--blue);color:#fff;font-size:11px;font-weight:700;border:none;margin-top:3px;}
+.abbtn:hover{opacity:.88;}
+.alert-item{padding:9px 13px;border-bottom:1px solid var(--div);display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:start;}
+.ai-name{font-size:12px;font-weight:700;}
+.ai-desc{font-size:11px;color:var(--mut);margin-top:1px;}
+.ai-del{color:var(--red);font-size:13px;padding:2px 5px;}
+.ai-tog{font-size:12px;padding:2px 7px;border:1px solid var(--brd);border-radius:5px;background:var(--surf2);font-family:var(--mono);}
 /* Leaflet */
-.leaflet-container{background:#0b1826 !important;}
-.leaflet-tooltip{background:var(--surf)!important;color:var(--txt)!important;border:1px solid var(--brd)!important;border-radius:7px!important;font-family:var(--font)!important;font-size:12px!important;padding:4px 9px!important;}
+.leaflet-container{background:#0a1520 !important;}
 .ship-label{background:transparent!important;border:none!important;box-shadow:none!important;font-size:11px!important;font-weight:700!important;color:#fff!important;text-shadow:0 1px 4px rgba(0,0,0,1),0 0 8px rgba(0,0,0,.8)!important;white-space:nowrap!important;pointer-events:none!important;}
+.leaflet-tooltip{background:var(--surf)!important;color:var(--txt)!important;border:1px solid var(--brd)!important;border-radius:7px!important;font-family:var(--font)!important;font-size:12px!important;padding:4px 9px!important;}
 .leaflet-control-zoom a{background:var(--surf)!important;color:var(--txt)!important;border-color:var(--brd)!important;}
-@media(max-width:1050px){.panel.right{display:none;}}
-@media(max-width:650px){.panel{display:none;}}
+@media(max-width:1100px){.panel.right{display:none;}}
+@media(max-width:700px){.panel{display:none;}}
 </style>
 </head>
 <body>
@@ -126,15 +149,18 @@ input[type=range]{flex:1;accent-color:var(--blue);cursor:pointer;}
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span> Schiffe</div>
     <div class="pill">📍 Wedel km 665</div>
-    <button class="ibtn" id="themeBtn" title="Theme wechseln">🌙</button>
+    <button class="ibtn" id="themeBtn" title="Theme">🌙</button>
   </div>
 </header>
 <div id="content">
+  <!-- LEFT PANEL -->
   <aside class="panel">
-    <div class="ph"><h2>Passagen <span class="cnt" id="liveCnt">0</span></h2><p>Schiffe im aktuellen Kartenausschnitt</p></div>
+    <div class="ph">
+      <div><h2>Passagen <span class="cnt" id="liveCnt">0</span></h2><p>Im Kartenausschnitt · ≥ <span id="lenHdr">50</span> m</p></div>
+    </div>
     <div class="filters">
       <div>
-        <div class="flbl">Schiffstyp</div>
+        <div class="flbl">Typ</div>
         <div class="chips" id="typeChips">
           <button class="chip on" data-t="all">Alle</button>
           <button class="chip" data-t="Container">Container</button>
@@ -146,198 +172,198 @@ input[type=range]{flex:1;accent-color:var(--blue);cursor:pointer;}
       <div>
         <div class="flbl">Mindestlänge</div>
         <div class="slider-row">
-          <input type="range" id="lenSlider" min="0" max="400" step="25" value="0"/>
-          <span class="slider-val" id="lenVal">Alle</span>
+          <input type="range" id="lenSlider" min="0" max="400" step="25" value="50"/>
+          <span class="slider-val" id="lenVal">≥ 50 m</span>
         </div>
       </div>
     </div>
-    <div class="pscroll"><ul class="slist" id="liveList"></ul><div class="empty" id="liveEmpty">Noch keine Schiffe.</div></div>
+    <div class="pscroll"><ul class="slist" id="liveList"></ul><div class="empty" id="liveEmpty">Keine Schiffe.</div></div>
     <div class="pfoot">Backend: <span id="backendStatus">–</span></div>
   </aside>
 
+  <!-- MAP -->
   <div id="mapwrap">
     <div id="mapbar">
       <span class="mbt">Elbe vor Wedel</span>
-      <div class="stat" style="color:#ff8c00"><b id="sC">0</b> Container</div>
-      <div class="stat" style="color:#ff1493"><b id="sK">0</b> Kreuzfahrt</div>
-      <div class="stat" style="color:#ffd700"><b id="sT">0</b> Tanker</div>
+      <div class="stat"><b id="sC" style="color:#ff8c00">0</b> Container</div>
+      <div class="stat"><b id="sK" style="color:#ff1493">0</b> Kreuzfahrt</div>
+      <div class="stat"><b id="sT" style="color:#c9aa00">0</b> Tanker</div>
       <div class="stat"><b id="sP">0</b> ETA</div>
       <div class="stat">Zoom <b id="zoomLbl">12</b></div>
     </div>
-    <div id="dbgwrap">
-      <div id="dbgbar">Verbinde mit Backend…</div>
-    </div>
     <div id="map"></div>
-    <button id="dbgtoggle">▲ Log ausblenden</button>
+    <div id="dbgwrap"><div id="dbgbar">–</div></div>
+    <button id="dbgtoggle">▲ Log</button>
     <div id="legend">
       <h4>Legende</h4>
       <div class="lr"><div class="ld" style="background:#ff8c00"></div>Container</div>
       <div class="lr"><div class="ld" style="background:#ff1493"></div>Kreuzfahrt</div>
-      <div class="lr"><div class="ld" style="background:#ffd700"></div>Tanker</div>
+      <div class="lr"><div class="ld" style="background:#c9aa00"></div>Tanker</div>
       <div class="lr"><div class="ld" style="background:#00cc66"></div>Frachter</div>
       <div class="lr" style="margin-top:4px"><div style="width:18px;border-top:2px dashed #f0bc55;flex-shrink:0"></div>Willkomm-Höft</div>
     </div>
+    <!-- DETAIL -->
     <div id="detail">
-      <div class="dh"><div class="dname" id="dname">–</div><button class="dx" id="dclose">✕</button></div>
-      <div id="dbadge"></div>
-      <div class="dgrid" id="dgrid"></div>
-      <div class="dfoot"><span id="dtime"></span><a id="dlink" href="#" target="_blank">MarineTraffic ↗</a></div>
+      <div id="dimgwrap"></div>
+      <div class="dbody">
+        <div class="dh"><div class="dname" id="dname">–</div><button class="dx" id="dclose">✕</button></div>
+        <div id="dbadge"></div>
+        <div class="dgrid" id="dgrid"></div>
+        <div class="dfoot"><span id="dtime"></span><a id="dlink" href="#" target="_blank">MarineTraffic ↗</a></div>
+      </div>
     </div>
   </div>
 
+  <!-- RIGHT PANEL: Tabs ETA + Alerts -->
   <aside class="panel right">
-    <div class="ph"><h2>ETA Willkomm-Höft <span class="cnt" id="futureCnt">0</span></h2><p>Prognose nächste 6 h · Telegram-Alerts ab 200 m</p></div>
-    <div class="pscroll"><ul class="slist" id="futureList"></ul><div class="empty" id="futureEmpty">Noch keine Prognosen.</div></div>
-    <div class="pfoot"><a href="https://www.marinetraffic.com" target="_blank">MarineTraffic ↗</a></div>
+    <div class="tabs">
+      <button class="tab on" data-tab="eta">ETA <span class="cnt" id="futureCnt">0</span></button>
+      <button class="tab" data-tab="alerts">🔔 Alerts</button>
+    </div>
+    <!-- ETA TAB -->
+    <div class="tabcontent on" id="tab-eta">
+      <div class="pscroll"><ul class="slist" id="futureList"></ul><div class="empty" id="futureEmpty">Noch keine Prognosen.</div></div>
+    </div>
+    <!-- ALERTS TAB -->
+    <div class="tabcontent" id="tab-alerts">
+      <div class="abwrap">
+        <h3>Neuer Alert</h3>
+        <div class="abform">
+          <div class="abrow"><label>Name</label><input id="aName" placeholder="z.B. Große Container"/></div>
+          <div class="abrow"><label>Typ</label>
+            <select id="aType"><option value="">Alle</option><option>Container</option><option>Cruise</option><option>Tanker</option><option>Cargo</option></select>
+          </div>
+          <div class="abrow"><label>Namensteil</label><input id="aNameF" placeholder="z.B. MSC"/></div>
+          <div class="abrow"><label>Min. Länge m</label><input id="aLen" type="number" min="0" max="500" value="0" placeholder="0 = alle"/></div>
+          <div class="abrow"><label>ETA ≤ Min.</label><input id="aEta" type="number" min="5" max="720" value="360" placeholder="360"/></div>
+          <button class="abbtn" id="aSave">✚ Alert anlegen</button>
+        </div>
+      </div>
+      <div class="pscroll"><ul class="slist" id="alertList"></ul><div class="empty" id="alertEmpty">Noch keine Alerts.</div></div>
+    </div>
+    <div class="pfoot">History: <span id="histInfo">–</span></div>
   </aside>
 </div>
 
 <script>
-/* ═══ FARBEN ═══ */
-const COLORS = { Container:'#ff8c00', Cruise:'#ff1493', Tanker:'#ffd700', Cargo:'#00cc66' };
-const col  = t => COLORS[t] || '#8aabb8';
-const bcls = t => ({Cruise:'bk',Container:'bc',Tanker:'bt',Cargo:'bf'})[t] || 'bf';
+/* ─── Farben ─────────────────────────────────────────────────────────────── */
+const COLORS={Container:'#ff8c00',Cruise:'#ff1493',Tanker:'#c9aa00',Cargo:'#00cc66'};
+const col  = t => COLORS[t]||'#8aabb8';
+const bcls = t => ({Cruise:'bk',Container:'bc',Tanker:'bt',Cargo:'bf'})[t]||'bf';
 
-/* ═══ HELPERS ═══ */
-const $   = id => document.getElementById(id);
-const dbg = m  => { $('dbgbar').textContent = m; };
-const dirLbl = c => c==null ? '–' : (+c>=30&&+c<=200) ? '▶ HH' : '◀ NS';
-const kn   = v => v==null ? '–' : (+v/10).toFixed(1)+' kn';
-const mt   = v => v ? v+' m' : '–';
-const drf  = v => v ? (+v/10).toFixed(1)+' m' : '–';
-const hm   = ts => new Date(ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-const etaSt= ts => new Date(ts).toLocaleString('de-DE',{weekday:'short',hour:'2-digit',minute:'2-digit'});
-const cdown= ts => { const d=Math.round((ts-Date.now())/60000); return d<1?'jetzt':d<60?`in ${d} Min`:`in ${Math.floor(d/60)}h ${d%60?d%60+'m':''}`; };
-
-/* ═══ SCHIFFSUMRISS-ICON (proportionales SVG aus len×wid) ═══ */
-const ZOOM_LABEL = 13;
-const MAP_SCALE  = 0.06; // px pro Meter bei Zoom 12
-
-function shipIconSize(len, wid) {
-  const l = Math.max(len || 80, 40);
-  const w = Math.max(wid || Math.round(l * 0.14), 8);
-  const h = Math.max(Math.round(l * MAP_SCALE), 10);
-  const bw = Math.max(Math.round(w * MAP_SCALE * 3.5), 4);
-  return { h, bw };
-}
-
-function makeIcon(s, sel = false) {
-  const c = col(s.type);
-  const rot = +(s.heading ?? s.cog ?? 0);
-  const { h, bw } = shipIconSize(s.len, s.wid);
-  const w = bw;
-  // Schiffsumriss: Spitzer Bug oben, breiteres Heck unten, leicht trapezförmig
-  const bugW  = Math.max(1, w * 0.15);   // Bugspitze schmal
-  const midW  = w * 0.5;                 // Mitte
-  const heckW = w * 0.45;               // Heck etwas schmaler als Mitte
-  const bugY  = 1;
-  const midY  = h * 0.35;
-  const heckY = h - 1;
-  // SVG Pfad: Bug (Spitze oben) → rechte Seite → Heck → linke Seite
-  const path = [
-    `M${w/2} ${bugY}`,
-    `L${w/2 + midW} ${midY}`,
-    `L${w/2 + heckW} ${heckY}`,
-    `L${w/2 - heckW} ${heckY}`,
-    `L${w/2 - midW} ${midY}`,
-    `Z`
-  ].join(' ');
-  const glow = sel ? `drop-shadow(0 0 6px ${c}) drop-shadow(0 0 2px #fff)` : `drop-shadow(0 1px 2px rgba(0,0,0,.7))`;
-  const html = `<div style="transform:rotate(${rot}deg);filter:${glow}">
-    <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="${path}" fill="${c}" stroke="rgba(0,0,0,0.6)" stroke-width="0.8" stroke-linejoin="round"/>
-      <line x1="${w/2}" y1="${midY}" x2="${w/2}" y2="${heckY}" stroke="rgba(0,0,0,0.25)" stroke-width="0.5"/>
-    </svg></div>`;
-  return L.divIcon({ className:'', html, iconSize:[w,h], iconAnchor:[w/2, h*0.35] });
-}
-
-/* ═══ STATE ═══ */
-let ships=new Map(), markers=new Map(), labelShown=new Set(), map, ws;
-let selMmsi=null, typeF='all', lenF=0, theme='dark', currentZoom=12;
-let dbgVisible = true;
-const passes = s => (typeF==='all'||s.type===typeF) && (s.len||0) >= lenF;
-
-/* ═══ DEBUG TOGGLE ═══ */
-$('dbgtoggle').onclick = () => {
-  dbgVisible = !dbgVisible;
-  $('dbgwrap').classList.toggle('collapsed', !dbgVisible);
-  $('dbgtoggle').textContent = dbgVisible ? '▲ Log ausblenden' : '▼ Log anzeigen';
+/* ─── Helpers ────────────────────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const dbg = m => { $('dbgbar').textContent = m; };
+const dirLbl = c => c==null?'–':(+c>=30&&+c<=200)?'▶ HH':'◀ NS';
+const kn  = v => v==null?'–':(+v/10).toFixed(1)+' kn';
+const mt  = v => v?v+' m':'–';
+const drf = v => v?(+v/10).toFixed(1)+' m':'–';
+const hm  = ts => new Date(ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+const etaSt = ts => new Date(ts).toLocaleString('de-DE',{weekday:'short',hour:'2-digit',minute:'2-digit'});
+const cdown = ts => {
+  const d=Math.round((ts-Date.now())/60000);
+  return d<1?'jetzt':d<60?`in ${d} Min`:`in ${Math.floor(d/60)}h ${d%60?d%60+'m':''}`;
 };
 
-/* ═══ KARTE ═══ */
-function initMap() {
-  map = L.map('map',{zoomControl:true,attributionControl:true}).setView([53.570,9.730],12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    maxZoom:19, attribution:'© <a href="https://openstreetmap.org">OpenStreetMap</a>'
-  }).addTo(map);
-  // Willkomm-Höft Meridian
-  L.polyline([[53.490,9.6981],[53.620,9.6981]],{color:'#f0bc55',weight:1.5,dashArray:'5 7',opacity:.6})
-   .addTo(map).bindTooltip('Willkomm-Höft / ETA-Meridian',{sticky:true});
-  L.marker([53.5688,9.6981],{icon:L.divIcon({className:'',
-    html:'<div style="width:11px;height:11px;border-radius:50%;background:#f0bc55;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)"></div>',
-    iconSize:[11,11],iconAnchor:[5,5]})}).addTo(map).bindTooltip('Willkomm-Höft',{direction:'top',offset:[0,-8]});
+/* ─── Schiffsumriss-Icon ─────────────────────────────────────────────────── */
+const ZOOM_LABEL=13;
 
-  map.on('click',()=>{selMmsi=null;$('detail').classList.remove('open');redraw();});
-  map.on('zoomend moveend', () => {
-    currentZoom = map.getZoom();
-    $('zoomLbl').textContent = currentZoom;
-    sendBoxUpdate();
-    updateAllLabels();
-  });
-  currentZoom = map.getZoom();
+function shipIconSize(len,wid,zoom){
+  const scale = Math.pow(2, zoom-12) * 0.07;
+  const h = Math.max(Math.round((len||80)*scale), 8);
+  const bw= Math.max(Math.round((wid||Math.max(len||80,40)*0.14)*scale*3), 4);
+  return {h, bw};
 }
 
-/* Neue BoundingBox ans Backend senden */
-function sendBoxUpdate() {
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  const b = map.getBounds();
-  ws.send(JSON.stringify({ type:'setBox', box:{
-    n: +b.getNorth().toFixed(4), s: +b.getSouth().toFixed(4),
-    w: +b.getWest().toFixed(4),  e: +b.getEast().toFixed(4),
+function makeIcon(s, sel=false, zoom=12){
+  const c=col(s.type), rot=+(s.heading??s.cog??0);
+  const {h,bw}=shipIconSize(s.len,s.wid,zoom);
+  const w=bw, mid=w*0.5, heck=w*0.42, bugY=1, midY=h*0.3, heckY=h-1;
+  const path=[`M${w/2} ${bugY}`,`L${w/2+mid} ${midY}`,`L${w/2+heck} ${heckY}`,
+               `L${w/2-heck} ${heckY}`,`L${w/2-mid} ${midY}`,'Z'].join(' ');
+  const glow=sel?`drop-shadow(0 0 6px ${c}) drop-shadow(0 0 2px #fff)`:`drop-shadow(0 1px 3px rgba(0,0,0,.8))`;
+  const html=`<div style="transform:rotate(${rot}deg);filter:${glow}">
+    <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none">
+      <path d="${path}" fill="${c}" stroke="rgba(0,0,0,.55)" stroke-width="0.8" stroke-linejoin="round"/>
+    </svg></div>`;
+  return L.divIcon({className:'',html,iconSize:[w,h],iconAnchor:[w/2,h*0.3]});
+}
+
+/* ─── State ──────────────────────────────────────────────────────────────── */
+let ships=new Map(), markers=new Map(), labelShown=new Set(), map, ws;
+let selMmsi=null, typeF='all', lenF=50, theme='dark', currentZoom=12, dbgVisible=false;
+const passes = s => (typeF==='all'||s.type===typeF) && (s.len||0)>=lenF;
+
+/* ─── Debug toggle (default: versteckt) ─────────────────────────────────── */
+$('dbgwrap').classList.add('hidden');
+$('dbgtoggle').textContent='▼ Log';
+$('dbgtoggle').onclick = () => {
+  dbgVisible=!dbgVisible;
+  $('dbgwrap').classList.toggle('hidden',!dbgVisible);
+  $('dbgtoggle').textContent=dbgVisible?'▲ Log':'▼ Log';
+};
+
+/* ─── Karte ──────────────────────────────────────────────────────────────── */
+function initMap(){
+  map=L.map('map',{zoomControl:true,attributionControl:true}).setView([53.570,9.730],12);
+  // Gedämpfte Karte: CartoDB Positron (hell) / DarkMatter (dunkel)
+  const tiles = theme==='dark'
+    ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
+  L.tileLayer(tiles,{maxZoom:19,attribution:'© <a href="https://openstreetmap.org">OSM</a> · CartoDB'}).addTo(map);
+  // Willkomm-Höft
+  L.polyline([[53.490,9.6981],[53.620,9.6981]],{color:'#f0bc55',weight:1.5,dashArray:'5 7',opacity:.7}).addTo(map)
+   .bindTooltip('Willkomm-Höft',{sticky:true});
+  L.marker([53.5688,9.6981],{icon:L.divIcon({className:'',
+    html:'<div style="width:11px;height:11px;border-radius:50%;background:#f0bc55;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)"></div>',
+    iconSize:[11,11],iconAnchor:[5,5]})}).addTo(map).bindTooltip('Willkomm-Höft',{direction:'top'});
+
+  map.on('click',()=>{selMmsi=null;$('detail').classList.remove('open');redraw();});
+  map.on('zoomend moveend',()=>{
+    currentZoom=map.getZoom(); $('zoomLbl').textContent=currentZoom;
+    sendBoxUpdate(); updateAllLabels();
+  });
+}
+
+function sendBoxUpdate(){
+  if(!ws||ws.readyState!==WebSocket.OPEN) return;
+  const b=map.getBounds();
+  ws.send(JSON.stringify({type:'setBox',box:{
+    n:+b.getNorth().toFixed(4),s:+b.getSouth().toFixed(4),
+    w:+b.getWest().toFixed(4), e:+b.getEast().toFixed(4),
   }}));
 }
 
-/* ═══ MARKER ═══ */
-function syncMarkers() {
-  for (const [mmsi, s] of ships) {
-    if (!s.lat || !s.lon) continue;
-    const show = passes(s), mk = markers.get(mmsi);
-    if (!show) {
-      if (mk) { mk.unbindTooltip(); map.removeLayer(mk); markers.delete(mmsi); labelShown.delete(mmsi); }
-      continue;
-    }
-    const ic = makeIcon(s, selMmsi === mmsi);
-    if (mk) {
-      mk.setLatLng([s.lat, s.lon]);
-      mk.setIcon(ic);
-      if (!labelShown.has(mmsi)) {
-        mk.setTooltipContent?.(`<b>${s.name||'?'}</b> · ${kn(s.sog)} · ${dirLbl(s.cog)}`);
-      }
-    } else {
-      const m2 = L.marker([s.lat, s.lon], {icon:ic}).addTo(map);
+/* ─── Marker ─────────────────────────────────────────────────────────────── */
+function syncMarkers(){
+  for(const [mmsi,s] of ships){
+    if(!s.lat||!s.lon) continue;
+    const show=passes(s), mk=markers.get(mmsi);
+    if(!show){if(mk){mk.unbindTooltip();map.removeLayer(mk);markers.delete(mmsi);labelShown.delete(mmsi);}continue;}
+    const ic=makeIcon(s,selMmsi===mmsi,currentZoom);
+    if(mk){mk.setLatLng([s.lat,s.lon]);mk.setIcon(ic);}
+    else{
+      const m2=L.marker([s.lat,s.lon],{icon:ic}).addTo(map);
       m2.bindTooltip(`<b>${s.name||'?'}</b> · ${kn(s.sog)} · ${dirLbl(s.cog)}`,{direction:'top',offset:[0,-8]});
-      m2.on('click', e => { L.DomEvent.stopPropagation(e); selectShip(mmsi); });
-      markers.set(mmsi, m2);
+      m2.on('click',e=>{L.DomEvent.stopPropagation(e);selectShip(mmsi);});
+      markers.set(mmsi,m2);
     }
   }
-  // Entfernte Schiffe aufräumen
-  for (const [mmsi, mk] of markers) {
-    if (!ships.has(mmsi) || !passes(ships.get(mmsi))) {
-      mk.unbindTooltip(); map.removeLayer(mk); markers.delete(mmsi); labelShown.delete(mmsi);
-    }
+  for(const [mmsi,mk] of markers){
+    if(!ships.has(mmsi)||!passes(ships.get(mmsi))){mk.unbindTooltip();map.removeLayer(mk);markers.delete(mmsi);labelShown.delete(mmsi);}
   }
   updateAllLabels();
 }
 
-function updateAllLabels() {
-  const show = currentZoom >= ZOOM_LABEL;
-  for (const [mmsi, mk] of markers) {
-    const s = ships.get(mmsi); if (!s) continue;
-    if (show && !labelShown.has(mmsi)) {
+function updateAllLabels(){
+  const show=currentZoom>=ZOOM_LABEL;
+  for(const [mmsi,mk] of markers){
+    const s=ships.get(mmsi);if(!s) continue;
+    if(show&&!labelShown.has(mmsi)){
       mk.unbindTooltip();
-      mk.bindTooltip(s.name||'?',{permanent:true,direction:'right',offset:[shipIconSize(s.len,s.wid).bw+3,0],className:'ship-label'});
+      mk.bindTooltip(s.name||'?',{permanent:true,direction:'right',offset:[shipIconSize(s.len,s.wid,currentZoom).bw/2+4,0],className:'ship-label'});
       labelShown.add(mmsi);
-    } else if (!show && labelShown.has(mmsi)) {
+    } else if(!show&&labelShown.has(mmsi)){
       mk.unbindTooltip();
       mk.bindTooltip(`<b>${s.name||'?'}</b> · ${kn(s.sog)} · ${dirLbl(s.cog)}`,{direction:'top',offset:[0,-8]});
       labelShown.delete(mmsi);
@@ -345,108 +371,174 @@ function updateAllLabels() {
   }
 }
 
-/* ═══ SELECT ═══ */
-function selectShip(mmsi) {
-  selMmsi = mmsi; const s = ships.get(mmsi); if (!s) return;
-  $('dname').textContent = s.name || 'Unbekannt';
-  $('dbadge').innerHTML = `<span class="badge ${bcls(s.type)}">${s.type}</span> <span style="font-size:11px;color:var(--mut)">${dirLbl(s.cog)}</span>`;
-  const etaTs = s.eta ? new Date(s.eta.eta).getTime() : null;
-  $('dgrid').innerHTML = [
-    ['Geschw.', kn(s.sog)], ['Kurs', s.cog!=null?s.cog+'°':'–'],
-    ['Länge', mt(s.len)],    ['Breite', mt(s.wid)],
-    ['Tiefgang', drf(s.drg)],['Rufzeichen', s.cs||'–'],
-    ['Ziel', s.dest||'–'],   ['ETA Willkomm', etaTs ? etaSt(etaTs) : '–'],
+/* ─── Schiffsbild ────────────────────────────────────────────────────────── */
+function loadShipImage(mmsi){
+  const wrap=$('dimgwrap'); wrap.innerHTML='';
+  // VesselFinder Foto-URL (öffentlich, kein API-Key)
+  const img=document.createElement('img');
+  img.className='dimg';
+  img.alt='Schiff';
+  img.onerror=()=>{ wrap.innerHTML=`<div class="dimg-ph">🚢</div>`; };
+  img.src=`https://photos.marinetraffic.com/ais/showphoto.aspx?mmsi=${mmsi}&size=thumb800`;
+  wrap.appendChild(img);
+}
+
+/* ─── Select ─────────────────────────────────────────────────────────────── */
+function selectShip(mmsi){
+  selMmsi=mmsi; const s=ships.get(mmsi); if(!s) return;
+  loadShipImage(mmsi);
+  $('dname').textContent=s.name||'Unbekannt';
+  $('dbadge').innerHTML=`<span class="badge ${bcls(s.type)}">${s.type}</span> <span style="font-size:11px;color:var(--mut)">${dirLbl(s.cog)}</span>`;
+  const etaTs=s.eta_ts||null;
+  $('dgrid').innerHTML=[
+    ['Geschw.',kn(s.sog)],['Kurs',s.cog!=null?s.cog+'°':'–'],
+    ['Länge',mt(s.len)],['Breite',mt(s.wid)],
+    ['Tiefgang',drf(s.drg)],['Rufzeichen',s.cs||'–'],
+    ['Ziel',s.dest||'–'],['ETA Willkomm',etaTs?etaSt(etaTs):'–'],
   ].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
-  $('dtime').textContent = 'Zuletzt '+hm(s.seen);
-  $('dlink').href = `https://www.marinetraffic.com/en/ais/details/ships/mmsi:${mmsi}`;
+  $('dtime').textContent='Zuletzt '+hm(s.seen);
+  $('dlink').href=`https://www.marinetraffic.com/en/ais/details/ships/mmsi:${mmsi}`;
   $('detail').classList.add('open');
-  if (s.lat && s.lon) map.panTo([s.lat, s.lon],{animate:true,duration:.6});
+  if(s.lat&&s.lon) map.panTo([s.lat,s.lon],{animate:true,duration:.6});
   redraw();
 }
 
-/* ═══ RENDER ═══ */
-function renderLive() {
-  const list = [...ships.values()].filter(passes).sort((a,b)=>(b.seen||0)-(a.seen||0));
-  $('liveCnt').textContent = list.length;
-  $('shipNum').textContent = ships.size;
-  const ul = $('liveList'); ul.innerHTML = '';
-  $('liveEmpty').style.display = list.length ? 'none' : 'block';
-  list.forEach(s => {
-    const li = document.createElement('li'); li.className = 'si'+(selMmsi===s.mmsi?' sel':'');
-    li.innerHTML = `<div class="si-top"><div class="si-name">${s.name||'?'}</div><span class="badge ${bcls(s.type)}">${s.type}</span></div>
+/* ─── Render ─────────────────────────────────────────────────────────────── */
+function renderLive(){
+  const list=[...ships.values()].filter(passes).sort((a,b)=>(b.seen||0)-(a.seen||0));
+  $('liveCnt').textContent=list.length;
+  $('shipNum').textContent=ships.size;
+  const ul=$('liveList'); ul.innerHTML='';
+  $('liveEmpty').style.display=list.length?'none':'block';
+  list.forEach(s=>{
+    const li=document.createElement('li'); li.className='si'+(selMmsi===s.mmsi?' sel':'');
+    li.innerHTML=`<div class="si-top"><div class="si-name">${s.name||'?'}</div><span class="badge ${bcls(s.type)}">${s.type}</span></div>
       <div class="si-meta"><span class="si-dir">${dirLbl(s.cog)}</span><span>${kn(s.sog)}</span><span>${mt(s.len)}</span>${s.dest?`<span>→ ${s.dest}</span>`:''}<span class="si-time">${hm(s.seen)}</span></div>`;
-    li.onclick = () => selectShip(s.mmsi); ul.appendChild(li);
+    li.onclick=()=>selectShip(s.mmsi); ul.appendChild(li);
   });
 }
 
-function renderFuture() {
-  const preds = [...ships.values()].filter(s=>s.eta&&passes(s))
-    .sort((a,b)=>new Date(a.eta.eta)-new Date(b.eta.eta));
-  $('futureCnt').textContent = preds.length; $('sP').textContent = preds.length;
-  const ul = $('futureList'); ul.innerHTML = '';
-  $('futureEmpty').style.display = preds.length ? 'none' : 'block';
-  preds.forEach(s => {
-    const etaMs = new Date(s.eta.eta).getTime();
-    const li = document.createElement('li'); li.className = 'fi';
-    li.innerHTML = `<div class="fi-top"><div class="fi-name">${s.name}</div><span class="badge ${bcls(s.type)}">${s.type}</span></div>
-      <div class="fi-eta">${etaSt(etaMs)}</div><div class="fi-cd">${cdown(etaMs)}</div>
-      <div class="fi-meta"><span>${mt(s.len)}</span><span>${kn(s.sog)}</span><span>${s.eta.direction}</span>${s.dest?`<span>→ ${s.dest}</span>`:''}</div>`;
-    li.onclick = () => selectShip(s.mmsi); ul.appendChild(li);
+function renderFuture(){
+  const preds=[...ships.values()].filter(s=>s.eta_ts&&passes(s))
+    .sort((a,b)=>a.eta_ts-b.eta_ts);
+  $('futureCnt').textContent=preds.length; $('sP').textContent=preds.length;
+  const ul=$('futureList'); ul.innerHTML='';
+  $('futureEmpty').style.display=preds.length?'none':'block';
+  preds.forEach(s=>{
+    const li=document.createElement('li'); li.className='fi';
+    li.innerHTML=`<div class="fi-top"><div class="fi-name">${s.name}</div><span class="badge ${bcls(s.type)}">${s.type}</span></div>
+      <div class="fi-eta">${etaSt(s.eta_ts)}</div><div class="fi-cd">${cdown(s.eta_ts)}</div>
+      <div class="fi-meta"><span>${mt(s.len)}</span><span>${kn(s.sog)}</span>${s.eta_dir?`<span>${s.eta_dir}</span>`:''}</div>`;
+    li.onclick=()=>selectShip(s.mmsi); ul.appendChild(li);
   });
 }
 
-function updateStats() {
-  const a = [...ships.values()].filter(passes);
-  $('sC').textContent = a.filter(s=>s.type==='Container').length;
-  $('sK').textContent = a.filter(s=>s.type==='Cruise').length;
-  $('sT').textContent = a.filter(s=>s.type==='Tanker').length;
+function updateStats(){
+  const a=[...ships.values()].filter(passes);
+  $('sC').textContent=a.filter(s=>s.type==='Container').length;
+  $('sK').textContent=a.filter(s=>s.type==='Cruise').length;
+  $('sT').textContent=a.filter(s=>s.type==='Tanker').length;
 }
 
-function redraw() { syncMarkers(); renderLive(); renderFuture(); updateStats(); }
+function redraw(){ syncMarkers(); renderLive(); renderFuture(); updateStats(); }
 
-/* ═══ WEBSOCKET ═══ */
-function connectBackend() {
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(`${proto}://${location.host}`);
-  ws.onopen = () => { setConn('on','Live'); dbg('Verbunden'); sendBoxUpdate(); };
-  ws.onmessage = ev => {
-    try {
-      const d = JSON.parse(ev.data);
-      if (d.type === 'ships') {
-        ships.clear();
-        d.data.forEach(s => ships.set(s.mmsi, s));
-        redraw();
-        dbg(`${ships.size} Schiffe · Update ${new Date(d.ts).toLocaleTimeString('de-DE')}`);
-      }
-    } catch(e) { dbg('Parse-Fehler: '+e.message); }
-  };
-  ws.onerror = () => setConn('err','Fehler');
-  ws.onclose = () => { setConn('err','Getrennt'); setTimeout(connectBackend, 5000); };
+/* ─── Alerts ─────────────────────────────────────────────────────────────── */
+function loadAlerts(){
+  fetch('/api/alerts').then(r=>r.json()).then(rows=>{
+    const ul=$('alertList'); ul.innerHTML='';
+    $('alertEmpty').style.display=rows.length?'none':'block';
+    rows.forEach(a=>{
+      const li=document.createElement('li'); li.className='alert-item';
+      const parts=[];
+      if(a.ship_type) parts.push(a.ship_type);
+      if(a.name_filter) parts.push(`"${a.name_filter}"`);
+      if(a.min_len>0) parts.push(`≥${a.min_len} m`);
+      parts.push(`ETA ≤ ${a.max_eta_min} Min`);
+      li.innerHTML=`<div><div class="ai-name">${a.name}</div><div class="ai-desc">${parts.join(' · ')}</div></div>
+        <button class="ai-tog" title="Ein/Aus">${a.active?'✅':'⏸'}</button>
+        <button class="ai-del" title="Löschen">🗑</button>`;
+      li.querySelector('.ai-tog').onclick=()=>{
+        fetch(`/api/alerts/${a.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({active:!a.active})}).then(loadAlerts);
+      };
+      li.querySelector('.ai-del').onclick=()=>{
+        if(confirm(`Alert "${a.name}" löschen?`))
+          fetch(`/api/alerts/${a.id}`,{method:'DELETE'}).then(loadAlerts);
+      };
+      ul.appendChild(li);
+    });
+  });
 }
-function setConn(cls, lbl) { $('dot').className='dot'+(cls?' '+cls:''); $('connLbl').textContent=lbl; }
 
-/* ═══ FILTER ═══ */
-$('typeChips').onclick = e => {
-  const chip = e.target.closest('.chip'); if (!chip) return;
-  $('typeChips').querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
-  chip.classList.add('on'); typeF = chip.dataset.t; redraw();
+$('aSave').onclick=()=>{
+  const name=$('aName').value.trim();
+  if(!name){$('aName').focus();return;}
+  fetch('/api/alerts',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name,ship_type:$('aType').value||null,
+      name_filter:$('aNameF').value.trim()||null,
+      min_len:+$('aLen').value||0, max_eta_min:+$('aEta').value||360, active:1})
+  }).then(()=>{$('aName').value='';$('aNameF').value='';$('aLen').value='0';loadAlerts();});
 };
-$('lenSlider').oninput = e => { lenF=+e.target.value; $('lenVal').textContent=lenF===0?'Alle':'≥ '+lenF+' m'; redraw(); };
-$('dclose').onclick = () => { $('detail').classList.remove('open'); selMmsi=null; redraw(); };
-$('themeBtn').onclick = () => {
-  theme = theme==='dark'?'light':'dark';
+
+/* ─── Tabs ───────────────────────────────────────────────────────────────── */
+document.querySelectorAll('.tab').forEach(btn=>btn.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.tabcontent').forEach(t=>t.classList.remove('on'));
+  btn.classList.add('on');
+  $('tab-'+btn.dataset.tab).classList.add('on');
+  if(btn.dataset.tab==='alerts') loadAlerts();
+});
+
+/* ─── Filter ─────────────────────────────────────────────────────────────── */
+$('typeChips').onclick=e=>{
+  const c=e.target.closest('.chip');if(!c)return;
+  document.querySelectorAll('#typeChips .chip').forEach(x=>x.classList.remove('on'));
+  c.classList.add('on'); typeF=c.dataset.t; redraw();
+};
+$('lenSlider').oninput=e=>{
+  lenF=+e.target.value;
+  const lbl=lenF===0?'Alle':'≥ '+lenF+' m';
+  $('lenVal').textContent=lbl; $('lenHdr').textContent=lenF||0;
+  redraw();
+};
+$('dclose').onclick=()=>{$('detail').classList.remove('open');selMmsi=null;redraw();};
+$('themeBtn').onclick=()=>{
+  theme=theme==='dark'?'light':'dark';
   document.documentElement.setAttribute('data-theme',theme);
-  $('themeBtn').textContent = theme==='dark'?'🌙':'☀️';
+  $('themeBtn').textContent=theme==='dark'?'🌙':'☀️';
 };
 
-fetch('/api/status').then(r=>r.json()).then(s=>{ $('backendStatus').textContent=s.demo?'Demo-Modus':'Live · aisstream.io'; }).catch(()=>{});
+/* ─── WebSocket ──────────────────────────────────────────────────────────── */
+function connectBackend(){
+  const proto=location.protocol==='https:'?'wss':'ws';
+  ws=new WebSocket(`${proto}://${location.host}`);
+  ws.onopen=()=>{setConn('on','Live');dbg('Verbunden');sendBoxUpdate();};
+  ws.onmessage=ev=>{
+    try{
+      const d=JSON.parse(ev.data);
+      if(d.type==='ships'){
+        ships.clear(); d.data.forEach(s=>ships.set(s.mmsi,s));
+        redraw();
+        dbg(`${ships.size} Schiffe · ${new Date(d.ts).toLocaleTimeString('de-DE')}`);
+      }
+    }catch(e){dbg('Fehler: '+e.message);}
+  };
+  ws.onerror=()=>setConn('err','Fehler');
+  ws.onclose=()=>{setConn('err','Getrennt');setTimeout(connectBackend,5000);};
+}
+function setConn(cls,lbl){$('dot').className='dot'+(cls?' '+cls:'');$('connLbl').textContent=lbl;}
 
-window.addEventListener('DOMContentLoaded', () => {
+fetch('/api/status').then(r=>r.json()).then(s=>{
+  $('backendStatus').textContent=s.demo?'Demo-Modus':'Live · aisstream.io';
+  $('histInfo').textContent=`${s.retainDays} Tage`;
+}).catch(()=>{});
+
+window.addEventListener('DOMContentLoaded',()=>{
   initMap();
   requestAnimationFrame(()=>map.invalidateSize());
   connectBackend();
 });
-window.addEventListener('resize', () => { if(map) map.invalidateSize(); });
+window.addEventListener('resize',()=>{if(map)map.invalidateSize();});
 </script>
 </body>
 </html>
