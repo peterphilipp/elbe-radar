@@ -310,7 +310,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     <div class="login-logo">🚢</div>
     <div class="login-title">Elbe Radar</div>
     <div class="login-sub" id="loginSub">Bitte anmelden</div>
-    <div class="login-tabs">
+    <div class="login-tabs" id="loginTabs">
       <button class="ltab on" id="ltabLogin" onclick="showLoginMode('login')">Anmelden</button>
       <button class="ltab"    id="ltabReg"   onclick="showLoginMode('register')">Registrieren</button>
     </div>
@@ -337,7 +337,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.1</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.3</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="settingsBtn" title="Einstellungen">⚙️</button>
     <button class="ibtn" id="themeBtn" title="Theme">🌙</button>
@@ -574,7 +574,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.3.1</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.3.3</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -699,21 +699,37 @@ $('userBtn').onclick = () => {
 
 /* ─── Init: Auth prüfen ──────────────────────────────────────────────────── */
 async function checkAuth() {
-  // Version im Login-Dialog anzeigen
-  fetch('/api/version').then(r=>r.json()).then(v=>{
-    $('loginVersion').textContent = `v${v.version}` + (v.sha && v.sha!=='dev' ? ` · ${v.sha.substring(0,7)}` : '');
-  }).catch(()=>{ $('loginVersion').textContent = 'Server nicht erreichbar'; });
-  // Erst prüfen ob überhaupt User existieren
-  const info = await fetch('/api/auth/hasUsers').then(r=>r.json()).catch(()=>({hasUsers:true}));
-  if (!info.hasUsers) {
-    $('loginSub').textContent='Erstelle deinen Account';
-    showLoginMode('register');
-    $('ltabLogin').disabled=true;
-    $('ltabLogin').style.opacity='.4';
-    return; // Login-Overlay zeigen
+  // Version laden und anzeigen
+  try {
+    const v = await fetch('/api/version').then(r=>r.json());
+    const sha = v.sha && v.sha!=='dev' ? ' · '+v.sha.substring(0,7) : '';
+    $('loginVersion').textContent = 'v'+v.version+sha;
+  } catch(e) {
+    $('loginVersion').textContent = 'Server nicht erreichbar';
   }
-  if (!authToken) return; // Login zeigen
-  const r = await fetch('/api/auth/me', {headers:{'Authorization':`Bearer ${authToken}`}}).catch(()=>null);
+
+  // Prüfen ob überhaupt User existieren
+  let info;
+  try {
+    info = await fetch('/api/auth/hasUsers').then(r=>r.json());
+  } catch(e) {
+    $('loginSub').textContent = 'Server nicht erreichbar';
+    return;
+  }
+
+  if (!info.hasUsers) {
+    // Kein User → direkt Setup-Modus, Tabs ausblenden
+    $('loginSub').textContent = 'Erstelle deinen Admin-Account';
+    $('loginTabs').style.display = 'none';
+    showLoginMode('register');
+    return;
+  }
+
+  // User vorhanden aber kein Token → Login zeigen (Standard)
+  if (!authToken) return;
+
+  // Token vorhanden → validieren
+  const r = await fetch('/api/auth/me', {headers:{'Authorization':'Bearer '+authToken}}).catch(()=>null);
   if (!r||!r.ok) { authToken=''; localStorage.removeItem('elbr_token'); return; }
   const u = await r.json();
   currentUser = { username: u.username, isAdmin: u.isAdmin };
@@ -1011,7 +1027,8 @@ function startApp(){
 }
 
 window.addEventListener('resize',()=>{if(map)map.invalidateSize();});
-window.addEventListener('DOMContentLoaded',()=>checkAuth());
+// Direkt aufrufen – Script läuft nach DOM-Parse, DOMContentLoaded bereits gefeuert
+checkAuth();
 </script>
 </body>
 </html>
