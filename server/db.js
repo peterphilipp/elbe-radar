@@ -11,7 +11,7 @@ const db = new Database(path.join(DATA_DIR, 'elbe-radar.db'));
 db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');
 
-// ── Schema – NUR CREATE IF NOT EXISTS, kein ALTER hier ───────────────────────
+// ── Schema ────────────────────────────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS ships (
     mmsi       TEXT PRIMARY KEY,
@@ -34,19 +34,23 @@ db.exec(`
     ship_type        TEXT,
     name_filter      TEXT,
     min_len          INTEGER DEFAULT 0,
-    max_eta_min      INTEGER DEFAULT 360,
+    max_eta_min      INTEGER DEFAULT 30,
     min_length_alert INTEGER DEFAULT 150,
     active           INTEGER DEFAULT 1,
     created          INTEGER DEFAULT (strftime('%s','now'))
   );
+  CREATE TABLE IF NOT EXISTS alerted (
+    key  TEXT PRIMARY KEY,
+    ts   INTEGER NOT NULL
+  );
 `);
 
-// ── Migrations: ALTER TABLE sicher mit try/catch pro Statement ───────────────
+// ── Migrations ────────────────────────────────────────────────────────────────
 const migrations = [
   `ALTER TABLE alerts ADD COLUMN min_length_alert INTEGER DEFAULT 150`,
 ];
 for (const sql of migrations) {
-  try { db.exec(sql); } catch(e) { /* Spalte existiert bereits – ok */ }
+  try { db.exec(sql); } catch(e) {}
 }
 
 // ── Prepared Statements ───────────────────────────────────────────────────────
@@ -63,12 +67,10 @@ const upsertShip = db.prepare(`
     lat=excluded.lat, lon=excluded.lon, sog=excluded.sog, cog=excluded.cog, heading=excluded.heading,
     seen=excluded.seen, eta_ts=excluded.eta_ts, eta_dir=excluded.eta_dir, eta_dist=excluded.eta_dist
 `);
-
-const insertHistory = db.prepare(`
-  INSERT INTO history (mmsi,name,type,len,lat,lon,sog,cog,ts)
-  VALUES (@mmsi,@name,@type,@len,@lat,@lon,@sog,@cog,@ts)
-`);
-const lastHistoryTs = db.prepare(`SELECT MAX(ts) as ts FROM history WHERE mmsi=?`);
+const insertHistory  = db.prepare(`INSERT INTO history (mmsi,name,type,len,lat,lon,sog,cog,ts) VALUES (@mmsi,@name,@type,@len,@lat,@lon,@sog,@cog,@ts)`);
+const lastHistoryTs  = db.prepare(`SELECT MAX(ts) as ts FROM history WHERE mmsi=?`);
+const getAlertedStmt = db.prepare(`SELECT ts FROM alerted WHERE key=?`);
+const setAlertedStmt = db.prepare(`INSERT OR REPLACE INTO alerted (key,ts) VALUES (?,?)`);
 const HISTORY_INTERVAL = 30 * 60 * 1000;
 
 function saveShip(ship) {
@@ -85,11 +87,7 @@ function saveShip(ship) {
   });
   const lastTs = (lastHistoryTs.get(ship.mmsi)||{}).ts || 0;
   if ((ship.seen||Date.now()) - lastTs >= HISTORY_INTERVAL && ship.lat && ship.lon) {
-    insertHistory.run({
-      mmsi:ship.mmsi, name:ship.name||'', type:ship.type||'',
-      len:ship.len||0, lat:ship.lat, lon:ship.lon,
-      sog:ship.sog||0, cog:ship.cog||0, ts:ship.seen||Date.now(),
-    });
+    insertHistory.run({ mmsi:ship.mmsi, name:ship.name||'', type:ship.type||'', len:ship.len||0, lat:ship.lat, lon:ship.lon, sog:ship.sog||0, cog:ship.cog||0, ts:ship.seen||Date.now() });
   }
 }
 
@@ -97,6 +95,7 @@ function cleanup() {
   const cutoff = Date.now() - RETAIN_DAYS * 24 * 3600 * 1000;
   const r1 = db.prepare(`DELETE FROM history WHERE ts < ?`).run(cutoff);
   const r2 = db.prepare(`DELETE FROM ships WHERE seen < ?`).run(Date.now() - 20*60*1000);
+  db.prepare(`DELETE FROM alerted WHERE ts < ?`).run(Date.now() - 7*24*3600*1000);
   console.log(`[DB] Cleanup: ${r1.changes} History, ${r2.changes} Schiffe`);
 }
 setInterval(cleanup, 3600 * 1000);
@@ -108,14 +107,13 @@ module.exports = {
   getHistory: (days=1) =>
     db.prepare(`SELECT * FROM history WHERE ts > ? ORDER BY ts DESC LIMIT 5000`).all(Date.now()-days*24*3600*1000),
   getTrack: (mmsi, hours=24) =>
-    db.prepare(`SELECT lat,lon,sog,cog,ts FROM history WHERE mmsi=? AND ts > ? ORDER BY ts ASC`)
-      .all(mmsi, Date.now()-hours*3600*1000),
+    db.prepare(`SELECT lat,lon,sog,cog,ts FROM history WHERE mmsi=? AND ts > ? ORDER BY ts ASC`).all(mmsi, Date.now()-hours*3600*1000),
   getAlerts: () => db.prepare(`SELECT * FROM alerts WHERE active=1`).all(),
-  insertAlert: a => db.prepare(`
-    INSERT INTO alerts (name,ship_type,name_filter,min_len,max_eta_min,min_length_alert,active)
-    VALUES (@name,@ship_type,@name_filter,@min_len,@max_eta_min,@min_length_alert,@active)
-  `).run(a),
+  insertAlert: a => db.prepare(`INSERT INTO alerts (name,ship_type,name_filter,min_len,max_eta_min,min_length_alert,active) VALUES (@name,@ship_type,@name_filter,@min_len,@max_eta_min,@min_length_alert,@active)`).run(a),
   deleteAlert: id => db.prepare(`DELETE FROM alerts WHERE id=?`).run(id),
   toggleAlert: (id,v) => db.prepare(`UPDATE alerts SET active=? WHERE id=?`).run(v,id),
+  // Telegram-Alert-Dedup: persistent, überlebt Neustarts
+  isAlerted:   (key, cooldownMs=6*3600*1000) => { const r=getAlertedStmt.get(key); return !!(r&&(Date.now()-r.ts)<cooldownMs); },
+  markAlerted: key => setAlertedStmt.run(key, Date.now()),
   db,
 };
