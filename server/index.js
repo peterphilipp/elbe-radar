@@ -169,11 +169,26 @@ app.patch('/api/alerts/:id', authMiddleware, (req, res) => {
 // ── STATISTICS ────────────────────────────────────────────────────────────────
 app.get('/api/stats/passages', authMiddleware, (req, res) => {
   const days = +(req.query.days||30);
-  res.json(db.getPassages(days));
+  const { type, direction, min_len } = req.query;
+  let sql = `SELECT * FROM passages WHERE ts > ?`;
+  const params = [Date.now() - days*24*3600*1000];
+  if (type)      { sql += ` AND type=?`;        params.push(type); }
+  if (direction) { sql += ` AND direction=?`;   params.push(direction); }
+  if (min_len)   { sql += ` AND len >= ?`;      params.push(+min_len); }
+  sql += ` ORDER BY ts DESC LIMIT 2000`;
+  res.json(db.db.prepare(sql).all(...params));
 });
 app.get('/api/stats/passages/summary', authMiddleware, (req, res) => {
   const days = +(req.query.days||30);
-  res.json(db.getPassageStats(days));
+  const { type, direction, min_len } = req.query;
+  let where = `WHERE ts > ?`;
+  const params = [Date.now() - days*24*3600*1000];
+  if (type)      { where += ` AND type=?`;      params.push(type); }
+  if (direction) { where += ` AND direction=?`; params.push(direction); }
+  if (min_len)   { where += ` AND len >= ?`;    params.push(+min_len); }
+  const daily  = db.db.prepare(`SELECT date_de, direction, type, COUNT(*) as cnt FROM passages ${where} GROUP BY date_de, direction, type ORDER BY date_de DESC`).all(...params);
+  const byName = db.db.prepare(`SELECT name, type, direction, COUNT(*) as cnt FROM passages ${where} GROUP BY name, direction ORDER BY cnt DESC LIMIT 50`).all(...params);
+  res.json({ daily, byName });
 });
 
 // ── SHIP TYPE via API ─────────────────────────────────────────────────────────
@@ -242,11 +257,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.3.5',
+  uptime: Math.floor(process.uptime()), version:'0.3.6',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.3.5' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.3.6' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));
@@ -259,7 +274,7 @@ app.use(express.static(path.join(__dirname,'..','public')));
 app.get('*', (req,res) => res.sendFile(path.join(__dirname,'..','public','index.html')));
 
 server.listen(PORT, () => {
-  console.log(`[Server] Elbe Radar v0.3.5 · Port ${PORT}`);
+  console.log(`[Server] Elbe Radar v0.3.6 · Port ${PORT}`);
   console.log(`[Server] AIS-Key:    ${process.env.AIS_API_KEY       ? 'gesetzt'           : 'NICHT gesetzt (Demo)'}`);
   console.log(`[Server] Reg-Code:   ${REG_CODE                      ? 'gesetzt'           : 'offen (jeder kann sich registrieren)'}`);
   console.log(`[Server] History:    ${process.env.RETAIN_DAYS||7} Tage · Intervall 5 min`);

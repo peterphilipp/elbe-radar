@@ -228,7 +228,9 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .li-dir{font-family:var(--mono);font-size:11px;font-weight:700;flex-shrink:0;}
 .li-meta{font-size:11px;color:var(--mut);display:flex;flex-wrap:wrap;gap:2px 10px;}
 .li-time{margin-left:auto;color:var(--fnt);}
-.li-eta{text-align:right;flex-shrink:0;min-width:90px;}
+.li-eta{text-align:right;flex-shrink:0;min-width:80px;display:flex;flex-direction:column;justify-content:center;gap:0;}
+.li-etat{font-size:12px;font-weight:700;white-space:nowrap;}
+.li-etacd{font-size:10px;color:var(--mut);white-space:nowrap;}
 .li-etat{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--blue);}
 .li-etacd{font-family:var(--mono);font-size:11px;color:var(--tel);font-weight:600;}
 .li-noeta{color:var(--fnt);font-size:11px;}
@@ -285,9 +287,12 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     z-index:600!important;
     border-bottom:none!important;
   }
-  /* Legende kompakter auf mobile */
-  #legend{bottom:auto;top:58px;left:8px;padding:5px 9px;}
+  /* Legende unterhalb Zoom-Buttons auf mobile */
+  #legend{bottom:auto;top:112px;left:8px;padding:5px 9px;}
   #legend h4{display:none;}
+  /* Leaflet zoom unten rechts auf mobile um Kollision zu vermeiden */
+  .leaflet-top.leaflet-left{top:4px;}
+  .leaflet-control-zoom{margin-top:4px!important;margin-left:8px!important;}
   .lr{margin-bottom:1px;}
   /* Buildinfo ausblenden auf mobile */
   #buildinfo{display:none;}
@@ -360,7 +365,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.5</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.6</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="settingsBtn" title="Einstellungen">⚙️</button>
@@ -605,7 +610,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.3.5</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.3.6</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -844,11 +849,11 @@ function calcETA(ship, ref) {
 
 let ships=new Map(),markers=new Map(),labelShown=new Set(),trackLayer=null,extrapLayer=null;
 let map,tileLayer,ws,refPointLayer=null;
-let selMmsi=null,typeF='all',lenF=50,etaF=60,theme='dark',currentZoom=12;
+let selMmsi=null,typeFSet=new Set(['all']),lenF=50,etaF=60,theme='dark',currentZoom=12;
 let logOpen=false,logTypeF='all',logLenF=0,logDirF='all';
 let currentRefPoint={...DEFAULT_REF};
 const passes=s=>{
-  if((typeF!=='all')&&s.type!==typeF) return false;
+  if(!typeFSet.has('all')&&!typeFSet.has(s.type)) return false;
   if((s.len||0)<lenF) return false;
   return true;
 };
@@ -971,7 +976,11 @@ function selectShip(mmsi){
   $('dtime').textContent='Zuletzt '+hm(s.seen);
   $('dlink').href=`https://www.marinetraffic.com/en/ais/home/centerx:${s.lon.toFixed(3)}/centery:${s.lat.toFixed(3)}/zoom:14`;
   $('detail').classList.add('open');
-  if(window.innerWidth<=700){$('detailBackdrop').classList.add('on');$('detailHandle').style.display='block';}
+  if(window.innerWidth<=700){
+    $('detailBackdrop').classList.add('on');
+    $('detailHandle').style.display='block';
+    $('mobile-bottom').classList.add('collapsed');
+  }
   if(s.lat&&s.lon)map.panTo([s.lat,s.lon],{animate:true,duration:.6});
   drawTrack(mmsi);redraw();
 }
@@ -1057,7 +1066,7 @@ function loadAlerts(){
   apiFetch('/api/alerts').then(r=>r.json()).then(rows=>{
     ['alertList','mobAlertList'].forEach(id=>{const ul=$(id);if(!ul)return;ul.innerHTML='';$('alertEmpty')&&($('alertEmpty').style.display=rows.length?'none':'block');$('mobAlertEmpty')&&($('mobAlertEmpty').style.display=rows.length?'none':'block');
       rows.forEach(a=>{const li=document.createElement('li');li.className='alert-item';const parts=[];if(a.ship_type)parts.push(a.ship_type);if(a.name_filter)parts.push(`"${a.name_filter}"`);if(a.min_length_alert>0)parts.push(`≥ ${a.min_length_alert} m`);parts.push(`ETA ≤ ${a.max_eta_min} Min`);
-        li.innerHTML=`<div><div class="ai-name">${a.name}</div><div class="ai-desc">${parts.join(' · ')}</div></div><button class="ai-tog">${a.active?'✅':'⏸'}</button><button class="ai-del">🗑</button>`;
+        li.innerHTML=`<div style="min-width:0"><div class="ai-name">${a.name}</div><div class="ai-desc">${parts.join(' · ')}</div></div><button class="ai-tog" title="${a.active?'Pausieren':'Aktivieren'}">${a.active?'✅':'⏸'}</button><button class="ai-del" title="Löschen">🗑</button>`;
         li.querySelector('.ai-tog').onclick=()=>apiFetch(`/api/alerts/${a.id}`,{method:'PATCH',body:JSON.stringify({active:!a.active})}).then(r=>r.ok?loadAlerts():null);
         li.querySelector('.ai-del').onclick=()=>{if(confirm(`"${a.name}" löschen?`))apiFetch(`/api/alerts/${a.id}`,{method:'DELETE'}).then(r=>r.ok?loadAlerts():null);};
         ul.appendChild(li);});});});
@@ -1069,10 +1078,27 @@ $('mASave').onclick=()=>{saveAlert($('mAName').value.trim(),$('mAType').value,$(
 document.querySelectorAll('.tab').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));document.querySelectorAll('.tabcontent').forEach(t=>t.classList.remove('on'));btn.classList.add('on');$('tab-'+btn.dataset.tab).classList.add('on');if(btn.dataset.tab==='alerts')loadAlerts();});
 document.querySelectorAll('.mob-tab').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('.mob-tab').forEach(t=>t.classList.remove('on'));document.querySelectorAll('.mob-content').forEach(t=>t.classList.remove('on'));btn.classList.add('on');$(btn.dataset.mob).classList.add('on');if(btn.dataset.mob==='mob-alerts')loadAlerts();});
 
-$('typeChips').onclick=e=>{const c=e.target.closest('.chip');if(!c)return;document.querySelectorAll('#typeChips .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');typeF=c.dataset.t;checkSelectionValid();redraw();};
+$('typeChips').onclick=e=>{
+  const c=e.target.closest('.chip'); if(!c) return;
+  const t=c.dataset.t;
+  if(t==='all') {
+    typeFSet=new Set(['all']);
+    document.querySelectorAll('#typeChips .chip, #mTypeChips .chip').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('#typeChips .chip[data-t="all"], #mTypeChips .chip[data-t="all"]').forEach(x=>x.classList.add('on'));
+  } else {
+    typeFSet.delete('all');
+    document.querySelectorAll('#typeChips .chip[data-t="all"], #mTypeChips .chip[data-t="all"]').forEach(x=>x.classList.remove('on'));
+    c.classList.toggle('on');
+    if(c.classList.contains('on')) typeFSet.add(t); else typeFSet.delete(t);
+    // Sync mobile chip
+    document.querySelectorAll(`#mTypeChips .chip[data-t="${t}"]`).forEach(x=>x.classList.toggle('on', typeFSet.has(t)));
+    if(typeFSet.size===0){ typeFSet.add('all'); document.querySelectorAll('#typeChips .chip[data-t="all"], #mTypeChips .chip[data-t="all"]').forEach(x=>x.classList.add('on')); }
+  }
+  checkSelectionValid(); redraw(); updateStats();
+};
 $('lenSlider').oninput=e=>{lenF=+e.target.value;$('lenVal').textContent=lenF===0?'Alle':'≥ '+lenF+' m';checkSelectionValid();redraw();};
 $('dclose').onclick=()=>closeDetail();
-function closeDetail(){$('detail').classList.remove('open');$('detailBackdrop').classList.remove('on');selMmsi=null;clearTrackLayers();redraw();}
+function closeDetail(){$('detail').classList.remove('open');$('detailBackdrop').classList.remove('on');$('mobile-bottom').classList.remove('collapsed');selMmsi=null;clearTrackLayers();redraw();}
 // Show drag handle on mobile
 if(window.innerWidth<=700){$('detailHandle').style.display='block';}
 $('themeBtn').onclick=()=>{theme=theme==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',theme);$('themeBtn').textContent=theme==='dark'?'🌙':'☀️';};
@@ -1118,17 +1144,23 @@ document.querySelectorAll('#etaChips .chip').forEach(btn => {
 });
 
 /* ─── Mobile Filter Chips ────────────────────────────────────────────────── */
-document.querySelectorAll('#mTypeChips .chip').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('#mTypeChips .chip, #typeChips .chip').forEach(b => b.classList.remove('on'));
-    btn.classList.add('on');
-    document.querySelectorAll('#typeChips .chip').forEach(b => {
-      if (b.dataset.t === btn.dataset.t) b.classList.add('on');
-    });
-    typeF = btn.dataset.t;
-    redraw(); renderETA(); updateStats();
-  };
-});
+$('mTypeChips').onclick=e=>{
+  const c=e.target.closest('.chip'); if(!c) return;
+  const t=c.dataset.t;
+  if(t==='all') {
+    typeFSet=new Set(['all']);
+    document.querySelectorAll('#mTypeChips .chip, #typeChips .chip').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('#mTypeChips .chip[data-t="all"], #typeChips .chip[data-t="all"]').forEach(x=>x.classList.add('on'));
+  } else {
+    typeFSet.delete('all');
+    document.querySelectorAll('#mTypeChips .chip[data-t="all"], #typeChips .chip[data-t="all"]').forEach(x=>x.classList.remove('on'));
+    c.classList.toggle('on');
+    if(c.classList.contains('on')) typeFSet.add(t); else typeFSet.delete(t);
+    document.querySelectorAll(`#typeChips .chip[data-t="${t}"]`).forEach(x=>x.classList.toggle('on', typeFSet.has(t)));
+    if(typeFSet.size===0){ typeFSet.add('all'); document.querySelectorAll('#mTypeChips .chip[data-t="all"], #typeChips .chip[data-t="all"]').forEach(x=>x.classList.add('on')); }
+  }
+  checkSelectionValid(); redraw(); renderETA(); updateStats();
+};
 document.querySelectorAll('#mEtaChips .chip').forEach(btn => {
   btn.onclick = () => {
     document.querySelectorAll('#mEtaChips .chip, #etaChips .chip').forEach(b => b.classList.remove('on'));
@@ -1175,16 +1207,23 @@ function closeStats() {
   $('statsBtn').classList.remove('active');
 }
 $('statsBtn').onclick = () => statsOpen ? closeStats() : openStats();
-$('statsDays').onchange = () => { if (statsOpen) loadStats(); };
+$('statsDays').onchange  = () => { if (statsOpen) loadStats(); };
+$('statsType').onchange  = () => { if (statsOpen) loadStats(); };
+$('statsDir').onchange   = () => { if (statsOpen) loadStats(); };
+$('statsMinLen').onchange = () => { if (statsOpen) loadStats(); };
 
 async function loadStats() {
   $('statsLoading').style.display = 'block';
   $('statsChart').innerHTML = '';
-  const days = $('statsDays').value;
+  const days    = $('statsDays').value;
+  const type    = $('statsType').value;
+  const dir     = $('statsDir').value;
+  const minLen  = $('statsMinLen').value;
+  const qs = new URLSearchParams({ days, ...(type&&{type}), ...(dir&&{direction:dir}), ...(minLen&&{min_len:minLen}) });
   try {
     const [summary, passages] = await Promise.all([
-      apiFetch(`/api/stats/passages/summary?days=${days}`).then(r=>r.json()),
-      apiFetch(`/api/stats/passages?days=${days}`).then(r=>r.json()),
+      apiFetch(`/api/stats/passages/summary?${qs}`).then(r=>r.json()),
+      apiFetch(`/api/stats/passages?${qs}`).then(r=>r.json()),
     ]);
     $('statsLoading').style.display = 'none';
     renderStats(summary, passages, +days);
@@ -1193,9 +1232,12 @@ async function loadStats() {
   }
 }
 
-function renderStats(summary, passages, days) {
+function renderStats(summaryObj, passages, days) {
   const chart = $('statsChart');
   chart.innerHTML = '';
+  // Support both old flat array and new {daily, byName} format
+  const summary = Array.isArray(summaryObj) ? summaryObj : (summaryObj.daily || []);
+  const byNameData = Array.isArray(summaryObj) ? [] : (summaryObj.byName || []);
 
   // ── Pro-Tag Balkendiagramm ────────────────────────────────────────────────
   const byDate = {};
@@ -1275,6 +1317,41 @@ function renderStats(summary, passages, days) {
   }
   sec3.appendChild(wrap3);
   chart.appendChild(sec3);
+
+  // ── Top-Schiffe nach Passagen ─────────────────────────────────────────────
+  if (byNameData.length > 0) {
+    const sec4 = document.createElement('div');
+    sec4.className = 'stats-section';
+    sec4.innerHTML = `<h3>🏆 Top-Schiffe nach Passagen</h3>
+      <table class="stats-tbl">
+        <thead><tr>
+          <th>#</th><th>Name</th><th>Typ</th><th>▶ HH</th><th>◀ NS</th><th>Gesamt</th>
+        </tr></thead>
+        <tbody id="namesTbody"></tbody>
+      </table>`;
+    chart.appendChild(sec4);
+    const nbody = sec4.querySelector('#namesTbody');
+    // Group by name (combine HH+NS)
+    const nameMap = {};
+    for (const r of byNameData) {
+      if (!nameMap[r.name]) nameMap[r.name] = { name:r.name, type:r.type, hh:0, ns:0 };
+      if (r.direction==='Hamburg') nameMap[r.name].hh += r.cnt;
+      else nameMap[r.name].ns += r.cnt;
+    }
+    const sorted = Object.values(nameMap).sort((a,b)=>(b.hh+b.ns)-(a.hh+a.ns));
+    sorted.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      const tot = r.hh + r.ns;
+      const typeColors = { Container:'#ff8c00', Cruise:'#ff1493', Tanker:'#c9aa00', Cargo:'#00cc66' };
+      tr.innerHTML = `<td style="color:var(--mut)">${i+1}</td>
+        <td><b>${r.name||'?'}</b></td>
+        <td><span style="color:${typeColors[r.type]||'var(--mut)'}">${r.type||'–'}</span></td>
+        <td style="color:#00cc99">${r.hh||0}</td>
+        <td style="color:#f0bc55">${r.ns||0}</td>
+        <td style="font-weight:700">${tot}</td>`;
+      nbody.appendChild(tr);
+    });
+  }
 }
 
 
@@ -1286,11 +1363,27 @@ checkAuth();
 <div id="statsPage">
   <div id="statsBar">
     <h2>📊 Passage-Statistik</h2>
-    <div class="log-filters">
+    <div class="log-filters" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
       <select class="log-search" id="statsDays" style="width:130px">
         <option value="7">Letzte 7 Tage</option>
         <option value="30" selected>Letzte 30 Tage</option>
         <option value="90">Letzte 90 Tage</option>
+      </select>
+      <select class="log-search" id="statsType" style="width:120px">
+        <option value="">Alle Typen</option>
+        <option>Container</option><option>Cruise</option><option>Tanker</option><option>Cargo</option>
+      </select>
+      <select class="log-search" id="statsDir" style="width:120px">
+        <option value="">Alle Richtungen</option>
+        <option value="Hamburg">▶ Hamburg</option>
+        <option value="Nordsee">◀ Nordsee</option>
+      </select>
+      <select class="log-search" id="statsMinLen" style="width:110px">
+        <option value="">Alle Längen</option>
+        <option value="100">≥ 100 m</option>
+        <option value="150">≥ 150 m</option>
+        <option value="200">≥ 200 m</option>
+        <option value="300">≥ 300 m</option>
       </select>
     </div>
     <button class="pill" onclick="closeStats()">✕ Schließen</button>
