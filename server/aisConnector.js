@@ -1,8 +1,8 @@
 'use strict';
 const WebSocket      = require('ws');
-const { calcETA }    = require('./etaCalculator');
+const { calcETA, DEFAULT_REF } = require('./etaCalculator');
 const { checkAlerts }= require('./telegramBot');
-const { saveShip }   = require('./db');
+const { saveShip, getSetting } = require('./db');
 
 function shipType(code, name='') {
   const n = (name||'').toLowerCase();
@@ -16,11 +16,14 @@ function shipType(code, name='') {
 
 class AISConnector {
   constructor(onUpdate) {
-    this.onUpdate = onUpdate;
-    this.ships = new Map();
-    this.ws = null;
-    this.apiKey = process.env.AIS_API_KEY || '';
-    this.currentBox = { n:53.640, s:53.470, w:8.900, e:10.200 };
+    this.onUpdate    = onUpdate;
+    this.ships       = new Map();
+    this.ws          = null;
+    this.apiKey      = process.env.AIS_API_KEY || '';
+    this.currentBox  = { n:53.640, s:53.470, w:8.900, e:10.200 };
+    // Referenzpunkt-Cache (30 s TTL – vermeidet DB-Reads bei jedem Schiff-Update)
+    this._refCache   = null;
+    this._refCacheTs = 0;
   }
 
   start() {
@@ -31,6 +34,16 @@ class AISConnector {
   updateBox(box) {
     this.currentBox = box;
     if (this.ws && this.ws.readyState === WebSocket.OPEN) this._subscribe();
+  }
+
+  _getRefPoint() {
+    if (Date.now() - this._refCacheTs < 30000 && this._refCache) return this._refCache;
+    try {
+      const v = getSetting('refpoint');
+      this._refCache = v ? JSON.parse(v) : DEFAULT_REF;
+    } catch { this._refCache = DEFAULT_REF; }
+    this._refCacheTs = Date.now();
+    return this._refCache;
   }
 
   _subscribe() {
@@ -47,33 +60,27 @@ class AISConnector {
     if (this.ws) try { this.ws.terminate(); } catch(e) {}
     console.log('[AIS] Verbinde …');
     this.ws = new WebSocket('wss://stream.aisstream.io/v0/stream');
-    this.ws.on('open', () => { console.log('[AIS] Verbunden'); this._subscribe(); });
-    this.ws.on('message', data => {
-      try { this._handleMsg(JSON.parse(data.toString('utf8'))); } catch(e) {}
-    });
-    this.ws.on('error', e => console.error('[AIS] Fehler:', e.message));
-    this.ws.on('close', code => {
-      console.warn(`[AIS] Getrennt (${code}) – Reconnect in 15s`);
-      setTimeout(() => this._connect(), 15000);
-    });
+    this.ws.on('open',    () => { console.log('[AIS] Verbunden'); this._subscribe(); });
+    this.ws.on('message', data => { try { this._handleMsg(JSON.parse(data.toString('utf8'))); } catch(e) {} });
+    this.ws.on('error',   e  => console.error('[AIS] Fehler:', e.message));
+    this.ws.on('close',   code => { console.warn(`[AIS] Getrennt (${code}) – Reconnect in 15s`); setTimeout(() => this._connect(), 15000); });
   }
 
   _handleMsg(d) {
     const mtype = d.MessageType||'', meta = d.MetaData||{}, msg = d.Message||{};
     const mmsi = String(meta.MMSI||meta.UserID||''); if (!mmsi) return;
     const ex = this.ships.get(mmsi) || {};
-
     if (mtype === 'ShipStaticData') {
       const sd = msg.ShipStaticData||msg, dim = sd.Dimension||{};
       const name = (meta.ShipName||sd.Name||'').trim();
       this._upsert({ mmsi,
-        lat: parseFloat(meta.latitude||meta.Latitude||0)||ex.lat,
-        lon: parseFloat(meta.longitude||meta.Longitude||0)||ex.lon,
+        lat:  parseFloat(meta.latitude||meta.Latitude||0)||ex.lat,
+        lon:  parseFloat(meta.longitude||meta.Longitude||0)||ex.lon,
         name: name||ex.name||'', type: shipType(sd.Type,name)||ex.type||'Cargo',
         dest: (sd.Destination||'').trim()||ex.dest||'', cs: sd.CallSign||ex.cs||'',
-        len: dim.A&&dim.B ? +dim.A + +dim.B : ex.len||0,
-        wid: dim.C&&dim.D ? +dim.C + +dim.D : ex.wid||0,
-        drg: sd.MaximumStaticDraught ? +sd.MaximumStaticDraught*10 : ex.drg||0,
+        len:  dim.A&&dim.B ? +dim.A + +dim.B : ex.len||0,
+        wid:  dim.C&&dim.D ? +dim.C + +dim.D : ex.wid||0,
+        drg:  sd.MaximumStaticDraught ? +sd.MaximumStaticDraught*10 : ex.drg||0,
         sog: ex.sog, cog: ex.cog, heading: ex.heading,
       }); return;
     }
@@ -82,23 +89,21 @@ class AISConnector {
     if (!lat||!lon) return;
     const pr = msg.PositionReport||msg.StandardClassBPositionReport||msg;
     this._upsert({ mmsi, lat, lon,
-      name: (meta.ShipName||'').trim()||ex.name||'',
-      type: ex.type||shipType(null,meta.ShipName||'')||'Cargo',
-      dest: ex.dest||'', cs: ex.cs||'',
-      len: ex.len||0, wid: ex.wid||0, drg: ex.drg||0,
-      sog: pr.Sog!=null ? +pr.Sog*10 : ex.sog,
-      cog: pr.Cog!=null ? +pr.Cog : ex.cog,
+      name:    (meta.ShipName||'').trim()||ex.name||'',
+      type:    ex.type||shipType(null,meta.ShipName||'')||'Cargo',
+      dest:    ex.dest||'', cs: ex.cs||'',
+      len:     ex.len||0, wid: ex.wid||0, drg: ex.drg||0,
+      sog:     pr.Sog!=null ? +pr.Sog*10 : ex.sog,
+      cog:     pr.Cog!=null ? +pr.Cog    : ex.cog,
       heading: pr.TrueHeading!=null&&+pr.TrueHeading<360 ? +pr.TrueHeading : ex.heading,
     });
   }
 
   _upsert(p) {
     const merged = { ...(this.ships.get(p.mmsi)||{}), ...p, seen: Date.now() };
-    // ETA berechnen
-    const eta = calcETA(merged);
+    const eta = calcETA(merged, this._getRefPoint());
     if (eta) { merged.eta = eta; checkAlerts(merged, eta); }
     this.ships.set(p.mmsi, merged);
-    // In DB speichern
     saveShip(merged);
     this.onUpdate(this.ships);
   }
@@ -118,9 +123,11 @@ class AISConnector {
       for (const s of this.ships.values()) {
         const east = s.cog>=30&&s.cog<=200;
         s.lon += east ? 0.007 : -0.007;
-        if (s.lon>10.050) s.lon=9.110; if (s.lon<9.100) s.lon=10.040;
-        s.seen=Date.now();
-        const eta=calcETA(s); if(eta){s.eta=eta;checkAlerts(s,eta);}
+        if (s.lon>10.050) s.lon=9.110;
+        if (s.lon<9.100)  s.lon=10.040;
+        s.seen = Date.now();
+        const eta = calcETA(s, this._getRefPoint());
+        if (eta) { s.eta=eta; checkAlerts(s,eta); }
         saveShip(s);
       }
       this.onUpdate(this.ships);

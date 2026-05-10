@@ -50,12 +50,12 @@ app.get('/api/history',          (req,res) => res.json(db.getHistory(+(req.query
 app.get('/api/ship/:mmsi/track', (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status',           (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'2.4.0',
+  uptime: Math.floor(process.uptime()), version:'0.2.5',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
   authRequired: !!API_SECRET,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'2.4.0' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.2.5' }));
 
 // ── Einstellungen (Kartenstil, etc.) ──────────────────────────────────────────
 app.get('/api/settings/:key', (req,res) => {
@@ -91,7 +91,7 @@ app.use(express.static(path.join(__dirname,'..','public')));
 app.get('*',(req,res) => res.sendFile(path.join(__dirname,'..','public','index.html')));
 
 server.listen(PORT, () => {
-  console.log(`[Server] Elbe Radar v2.4 · Port ${PORT}`);
+  console.log(`[Server] Elbe Radar v0.2.5 · Port ${PORT}`);
   console.log(`[Server] AIS-Key:    ${process.env.AIS_API_KEY       ? 'gesetzt'           : 'NICHT gesetzt (Demo)'}`);
   console.log(`[Server] Telegram:   ${process.env.TELEGRAM_BOT_TOKEN ? 'aktiv'            : 'nicht konfiguriert'}`);
   console.log(`[Server] Auth:       ${API_SECRET                     ? 'aktiv (API_SECRET)': 'deaktiviert'}`);
