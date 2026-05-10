@@ -337,7 +337,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.3</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.4</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="settingsBtn" title="Einstellungen">⚙️</button>
     <button class="ibtn" id="themeBtn" title="Theme">🌙</button>
@@ -574,7 +574,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.3.3</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.3.4</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -612,6 +612,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 </div>
 
 <script>
+const $ = id => document.getElementById(id);
 /* ─── Auth State ─────────────────────────────────────────────────────────── */
 let authToken = localStorage.getItem('elbr_token') || '';
 let currentUser = null;
@@ -750,7 +751,6 @@ const MAP_BG     = { dark:'#0a1520', voyager:'#c8d9e6', light:'#e8eef5' };
 const DEFAULT_REF= { name:'Willkomm-Höft', lat:53.5688, lon:9.6981 };
 const JUMP_THR   = 0.3;
 
-const $ = id => document.getElementById(id);
 const dbg= m => { $('dbgbar').textContent=m; };
 const col = t => COLORS[t]||'#8aabb8';
 const bcls= t => ({Cruise:'bk',Container:'bc',Tanker:'bt',Cargo:'bf'})[t]||'bf';
