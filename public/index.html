@@ -251,12 +251,48 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
 /* ── MOBILE ──────────────────────────────────────────────────────────────── */
 @media(max-width:1100px){.panel.right{display:none;}}
-@media(max-width:700px){.panel{display:none;}#mobile-bottom{display:flex!important;}#settingsPage{width:100vw;}}
-#mobile-bottom{display:none;position:fixed;bottom:0;left:0;right:0;z-index:70;background:var(--surf);border-top:1px solid var(--brd);max-height:45vh;overflow-y:auto;}
+@media(max-width:700px){
+  .panel{display:none;}
+  #mobile-bottom{display:flex!important;}
+  #settingsPage{width:100vw;}
+  /* Detail panel: vollbild bottom-sheet auf mobile */
+  #detail{
+    position:fixed!important;
+    bottom:0!important; left:0!important; right:0!important;
+    width:100%!important;
+    max-height:60vh!important;
+    border-radius:16px 16px 0 0!important;
+    z-index:600!important;
+    border-bottom:none!important;
+  }
+  /* Legende kompakter auf mobile */
+  #legend{bottom:auto;top:58px;left:8px;padding:5px 9px;}
+  #legend h4{display:none;}
+  .lr{margin-bottom:1px;}
+  /* Buildinfo ausblenden auf mobile */
+  #buildinfo{display:none;}
+}
+/* Backdrop für detail panel auf mobile */
+#detailBackdrop{display:none;position:fixed;inset:0;z-index:590;background:rgba(0,0,0,.4);}
+#detailBackdrop.on{display:block;}
+
+#mobile-bottom{display:none;position:fixed;bottom:0;left:0;right:0;z-index:70;background:var(--surf);border-top:1px solid var(--brd);max-height:30vh;overflow-y:auto;}
 .mob-tabs{display:flex;border-bottom:1px solid var(--div);}
-.mob-tab{flex:1;padding:8px 4px;font-size:11px;font-weight:700;color:var(--mut);border-bottom:2px solid transparent;text-align:center;}
+.mob-tab{flex:1;padding:7px 4px;font-size:11px;font-weight:700;color:var(--mut);border-bottom:2px solid transparent;text-align:center;}
 .mob-tab.on{color:var(--blue);border-color:var(--blue);}
 .mob-content{display:none;}.mob-content.on{display:block;}
+/* Mobil: kompaktere Alert-Liste */
+@media(max-width:700px){
+  .abwrap{padding:8px 10px;}
+  .abwrap h3{margin-bottom:5px;}
+  .abform{gap:5px;}
+  .abrow2{grid-template-columns:1fr 1fr;gap:5px;}
+  .abbtn{padding:5px 10px;}
+  .abinput{padding:5px 8px;font-size:12px;}
+  /* Topbar kompakter */
+  #topbar{padding:0 8px;}
+  .topbar-r .pill{padding:3px 8px;font-size:10px;}
+}
 
 /* ── LEAFLET ─────────────────────────────────────────────────────────────── */
 .leaflet-container{background:var(--map-bg)!important;}
@@ -288,7 +324,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <input class="abinput" id="regUser"  placeholder="Benutzername (mind. 3 Zeichen)" autocomplete="username"/>
       <input class="abinput" id="regPass"  type="password" placeholder="Passwort (mind. 6 Zeichen)" autocomplete="new-password"/>
       <input class="abinput" id="regPass2" type="password" placeholder="Passwort wiederholen"/>
-      <input class="abinput" id="regCode"  placeholder="Einladungscode (falls erforderlich)" id="regCode"/>
+      <input class="abinput" id="regCode"  placeholder="Einladungscode (falls erforderlich)"/>
       <button class="lbtn" onclick="doRegister()">Registrieren</button>
       <div class="login-err" id="regErr"></div>
     </div>
@@ -300,7 +336,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.0</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.1</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="settingsBtn" title="Einstellungen">⚙️</button>
     <button class="ibtn" id="themeBtn" title="Theme">🌙</button>
@@ -367,7 +403,9 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <div class="lr"><div style="width:18px;border-top:2px dashed #f0bc55"></div>Extrapolation</div>
     </div>
     <div id="buildinfo">–</div>
+    <div id="detailBackdrop" onclick="closeDetail()"></div>
     <div id="detail">
+      <div style="display:none" class="mob-drag-handle" id="detailHandle"><div style="width:36px;height:4px;background:var(--brd);border-radius:99px;margin:8px auto 4px;"></div></div>
       <div id="dimgwrap"></div>
       <div class="dbody">
         <div class="dh"><div class="dname" id="dname">–</div><button class="dx" id="dclose">✕</button></div>
@@ -535,7 +573,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.3.0</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.3.1</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -598,11 +636,20 @@ function showLoginMode(mode) {
 async function doLogin() {
   const username = $('loginUser').value.trim();
   const password = $('loginPass').value;
+  $('loginErr').textContent = '';
   if (!username||!password) { $('loginErr').textContent='Benutzername und Passwort eingeben'; return; }
-  const r = await fetch('/api/auth/login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
-  const d = await r.json();
-  if (!r.ok) { $('loginErr').textContent=d.error||'Anmeldung fehlgeschlagen'; return; }
-  onLoggedIn(d);
+  const btn = $('loginFormWrap').querySelector('.lbtn');
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    const r = await fetch('/api/auth/login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+    const d = await r.json();
+    if (!r.ok) { $('loginErr').textContent = d.error || 'Anmeldung fehlgeschlagen'; return; }
+    onLoggedIn(d);
+  } catch(e) {
+    $('loginErr').textContent = 'Server nicht erreichbar – bitte neu laden';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Anmelden';
+  }
 }
 $('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 $('loginUser').addEventListener('keydown', e => { if(e.key==='Enter') $('loginPass').focus(); });
@@ -612,12 +659,21 @@ async function doRegister() {
   const password = $('regPass').value;
   const pass2    = $('regPass2').value;
   const code     = $('regCode').value.trim();
+  $('regErr').textContent = '';
   if (!username||!password) { $('regErr').textContent='Alle Felder ausfüllen'; return; }
   if (password !== pass2)   { $('regErr').textContent='Passwörter stimmen nicht überein'; return; }
-  const r = await fetch('/api/auth/register', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,invite_code:code})});
-  const d = await r.json();
-  if (!r.ok) { $('regErr').textContent=d.error||'Registrierung fehlgeschlagen'; return; }
-  onLoggedIn(d);
+  const btn = $('regFormWrap').querySelector('.lbtn');
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    const r = await fetch('/api/auth/register', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,invite_code:code})});
+    const d = await r.json();
+    if (!r.ok) { $('regErr').textContent = d.error || 'Registrierung fehlgeschlagen'; return; }
+    onLoggedIn(d);
+  } catch(e) {
+    $('regErr').textContent = 'Server nicht erreichbar – bitte neu laden';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Registrieren';
+  }
 }
 
 function onLoggedIn(d) {
@@ -722,7 +778,7 @@ function makeIcon(s,sel=false,zoom=12){
 function initMap(){
   map=L.map('map',{zoomControl:true}).setView([53.570,9.730],12);
   apiFetch('/api/settings/tile').then(r=>r.json()).then(d=>setTile(d.value||'dark')).catch(()=>setTile('dark'));
-  map.on('click',()=>{selMmsi=null;$('detail').classList.remove('open');clearTrackLayers();redraw();});
+  map.on('click',()=>{selMmsi=null;$('detail').classList.remove('open');$('detailBackdrop').classList.remove('on');clearTrackLayers();redraw();});
   map.on('zoomend moveend',()=>{currentZoom=map.getZoom();$('zoomLbl').textContent=currentZoom;sendBoxUpdate();updateAllLabels();});
 }
 
@@ -819,6 +875,7 @@ function selectShip(mmsi){
   $('dtime').textContent='Zuletzt '+hm(s.seen);
   $('dlink').href=`https://www.marinetraffic.com/en/ais/home/centerx:${s.lon.toFixed(3)}/centery:${s.lat.toFixed(3)}/zoom:14`;
   $('detail').classList.add('open');
+  if(window.innerWidth<=700){$('detailBackdrop').classList.add('on');$('detailHandle').style.display='block';}
   if(s.lat&&s.lon)map.panTo([s.lat,s.lon],{animate:true,duration:.6});
   drawTrack(mmsi);redraw();
 }
@@ -918,7 +975,10 @@ document.querySelectorAll('.mob-tab').forEach(btn=>btn.onclick=()=>{document.que
 
 $('typeChips').onclick=e=>{const c=e.target.closest('.chip');if(!c)return;document.querySelectorAll('#typeChips .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');typeF=c.dataset.t;checkSelectionValid();redraw();};
 $('lenSlider').oninput=e=>{lenF=+e.target.value;$('lenVal').textContent=lenF===0?'Alle':'≥ '+lenF+' m';checkSelectionValid();redraw();};
-$('dclose').onclick=()=>{$('detail').classList.remove('open');selMmsi=null;clearTrackLayers();redraw();};
+$('dclose').onclick=()=>closeDetail();
+function closeDetail(){$('detail').classList.remove('open');$('detailBackdrop').classList.remove('on');selMmsi=null;clearTrackLayers();redraw();}
+// Show drag handle on mobile
+if(window.innerWidth<=700){$('detailHandle').style.display='block';}
 $('themeBtn').onclick=()=>{theme=theme==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',theme);$('themeBtn').textContent=theme==='dark'?'🌙':'☀️';};
 $('showBuild').onclick=e=>{e.preventDefault();alert($('buildinfo').textContent);};
 $('buildPill').onclick=()=>alert($('buildinfo').textContent);
