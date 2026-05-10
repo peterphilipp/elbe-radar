@@ -212,7 +212,7 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
     const url = 'https://api.open-meteo.com/v1/forecast?latitude=53.5765&longitude=9.6922' +
       '&current=temperature_2m,windspeed_10m,winddirection_10m,weathercode,apparent_temperature' +
       '&hourly=windspeed_10m,winddirection_10m,precipitation_probability' +
-      '&forecast_days=1&timezone=Europe%2FBerlin&windspeed_unit=kn';
+      '&forecast_days=1&timezone=Europe%2FBerlin';
     const data = await new Promise((resolve, reject) => {
       const r = https.get(url, { headers: { 'User-Agent': 'ElbeRadar/0.3' } }, resp => {
         let d = ''; resp.on('data', c => d += c); resp.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { reject(e); } });
@@ -275,6 +275,8 @@ app.get('/api/playback/range', authMiddleware, (req, res) => {
 try { db.db.exec(`ALTER TABLE ships ADD COLUMN photo_url TEXT DEFAULT NULL`); } catch(e) {}
 try { db.db.exec(`ALTER TABLE ships ADD COLUMN imo TEXT DEFAULT NULL`); } catch(e) {}
 try { db.db.exec(`ALTER TABLE ships ADD COLUMN photo_checked INTEGER DEFAULT 0`); } catch(e) {}
+// Schlechte Einträge zurücksetzen damit beim nächsten Klick Wikipedia versucht wird
+try { db.db.exec(`UPDATE ships SET photo_checked=0, photo_url=NULL WHERE photo_checked=1 AND photo_url IS NULL`); } catch(e) {}
 
 // Hilfsfunktion: prüft ob URL ein Bild liefert (ohne zu streamen)
 function probeImage(url_or_opts) {
@@ -335,22 +337,96 @@ function tryPhotoSources(mmsi, sources, res) {
   req2.setTimeout(5000, () => { req2.destroy(); tryPhotoSources(mmsi, rest, res); });
 }
 
+// Hilfsfunktion: HTTPS-JSON abrufen
+function fetchJsonHTTPS(url) {
+  return new Promise((resolve, reject) => {
+    const r = https.get(url, { headers: { 'User-Agent': 'ElbeRadar/0.4 (contact: admin)' } }, resp => {
+      // Redirects folgen
+      if (resp.statusCode === 301 || resp.statusCode === 302) {
+        resp.resume();
+        return resolve(fetchJsonHTTPS(resp.headers.location));
+      }
+      let d = ''; resp.on('data', c => d += c);
+      resp.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { reject(e); } });
+    });
+    r.on('error', reject); r.setTimeout(7000, () => { r.destroy(); reject(new Error('timeout')); });
+  });
+}
+
 app.get('/api/ship/:mmsi/photo', (req, res) => {
   const mmsi = req.params.mmsi.replace(/\D/g, '');
   if (!mmsi) return res.status(400).end();
-  const ua = 'Mozilla/5.0 (compatible; ElbeRadar/0.3)';
+  const ua = 'Mozilla/5.0 (compatible; ElbeRadar/0.4)';
+
+  // 1. Gecachte URL aus DB
+  try {
+    const row = db.db.prepare('SELECT photo_url, photo_checked, name FROM ships WHERE mmsi=?').get(mmsi);
+    if (row && row.photo_checked && row.photo_url) return res.redirect(302, row.photo_url);
+    if (row && row.photo_checked && !row.photo_url) return res.status(404).end();
+  } catch(e) { /* DB nicht bereit */ }
+
+  // Wrapper: nach tryPhotoSources 404 → Wikipedia/Commons asynchron
+  const patchedRes = {
+    get headersSent() { return res.headersSent; },
+    setHeader: (k, v) => { if (!res.headersSent) res.setHeader(k, v); },
+    status: (c) => ({
+      end: () => {
+        if (!res.headersSent) {
+          // MarineTraffic hat nichts → Wikipedia/Commons versuchen
+          fetchWikipediaPhoto(mmsi).then(url => {
+            if (url) {
+              try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=? WHERE mmsi=?').run(url, mmsi); } catch(e){}
+              if (!res.headersSent) res.redirect(302, url);
+            } else {
+              try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=NULL WHERE mmsi=?').run(mmsi); } catch(e){}
+              if (!res.headersSent) res.status(404).end();
+            }
+          }).catch(() => { if (!res.headersSent) res.status(404).end(); });
+        }
+      }
+    }),
+    pipe: (src) => {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      src.pipe(res);
+      // Cache: kein URL aber erfolgreich gestreamt – mark checked without url
+      setTimeout(() => { try { db.db.prepare('UPDATE ships SET photo_checked=1 WHERE mmsi=? AND photo_url IS NULL').run(mmsi); } catch(e){} }, 500);
+    },
+  };
+
   tryPhotoSources(mmsi, [
-    // Quelle 1: MarineTraffic Thumbnail
-    { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=${mmsi}&size=thumb800`,
-      headers:{ 'Referer':'https://www.marinetraffic.com/', 'User-Agent':ua } },
-    // Quelle 2: MarineTraffic large
-    { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=${mmsi}`,
-      headers:{ 'Referer':'https://www.marinetraffic.com/', 'User-Agent':ua } },
-    // Quelle 3: VesselFinder
-    { hostname:'photos.vesseltracker.com', path:`/photos/vessels/thumb_${mmsi}.jpg`,
-      headers:{ 'Referer':'https://www.vesseltracker.com/', 'User-Agent':ua } },
-  ], res);
+    { hostname: 'photos.marinetraffic.com', path: `/ais/showphoto.aspx?mmsi=${mmsi}&size=thumb800`, headers: { 'Referer': 'https://www.marinetraffic.com/', 'User-Agent': ua } },
+    { hostname: 'photos.marinetraffic.com', path: `/ais/showphoto.aspx?mmsi=${mmsi}`,               headers: { 'Referer': 'https://www.marinetraffic.com/', 'User-Agent': ua } },
+    { hostname: 'photos.vesseltracker.com', path: `/photos/vessels/thumb_${mmsi}.jpg`,              headers: { 'Referer': 'https://www.vesseltracker.com/', 'User-Agent': ua } },
+  ], patchedRes);
 });
+
+async function fetchWikipediaPhoto(mmsi) {
+  try {
+    const row = db.db.prepare('SELECT name FROM ships WHERE mmsi=?').get(mmsi);
+    if (!row || !row.name) return null;
+    const nameClean = row.name.trim();
+
+    // Versuch 1: Wikipedia REST API (beste Qualität, direkt Thumbnail)
+    const slug = encodeURIComponent(nameClean.replace(/\s+/g, '_'));
+    try {
+      const wiki = await fetchJsonHTTPS(`https://en.wikipedia.org/api/rest_v1/page/summary/${slug}`);
+      const thumb = wiki?.thumbnail?.source || wiki?.originalimage?.source;
+      if (thumb) return thumb.replace(/\/\d+px-/, '/600px-');
+    } catch(e) { /* Kein Wikipedia-Artikel */ }
+
+    // Versuch 2: Wikimedia Commons Dateisuche
+    const q = encodeURIComponent(nameClean + ' ship');
+    const commons = await fetchJsonHTTPS(
+      `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${q}&srnamespace=6&srlimit=5&format=json`
+    );
+    const hits = (commons?.query?.search || []).filter(r => /\.(jpg|jpeg|png)/i.test(r.title));
+    if (hits.length > 0) {
+      const title = hits[0].title.replace(/^File:/, '');
+      return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(title)}?width=600`;
+    }
+    return null;
+  } catch(e) { return null; }
+}
 
 // ── AIS STATUS ────────────────────────────────────────────────────────────────
 app.get('/api/ships',            authMiddleware, (req,res) => res.json(db.getActiveShips()));
@@ -358,11 +434,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.3.9',
+  uptime: Math.floor(process.uptime()), version:'0.4.0',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.3.9' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.4.0' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));
@@ -386,7 +462,7 @@ app.use(express.static(path.join(__dirname,'..','public'), {
 app.get('*', (req,res) => res.sendFile(path.join(__dirname,'..','public','index.html')));
 
 server.listen(PORT, () => {
-  console.log(`[Server] Elbe Radar v0.3.9 · Port ${PORT}`);
+  console.log(`[Server] Elbe Radar v0.4.0 · Port ${PORT}`);
   console.log(`[Server] AIS-Key:    ${process.env.AIS_API_KEY       ? 'gesetzt'           : 'NICHT gesetzt (Demo)'}`);
   console.log(`[Server] Reg-Code:   ${REG_CODE                      ? 'gesetzt'           : 'offen (jeder kann sich registrieren)'}`);
   console.log(`[Server] History:    ${process.env.RETAIN_DAYS||7} Tage · Intervall 5 min`);

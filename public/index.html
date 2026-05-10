@@ -345,22 +345,9 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .leaflet-tooltip{background:var(--surf)!important;color:var(--txt)!important;border:1px solid var(--brd)!important;border-radius:7px!important;font-family:var(--font)!important;font-size:12px!important;padding:4px 9px!important;}
 .leaflet-control-zoom a{background:var(--surf)!important;color:var(--txt)!important;border-color:var(--brd)!important;}
 
-/* ── FABs (Floating Action Buttons) ─────────────────────────────────────── */
-#fab-group{position:absolute;bottom:60px;right:12px;z-index:500;display:flex;flex-direction:column;gap:10px;pointer-events:none;}
-.fab{width:44px;height:44px;border-radius:50%;border:none;box-shadow:0 3px 12px rgba(0,0,0,.35);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;pointer-events:all;transition:transform .15s,box-shadow .15s;background:var(--surf);color:var(--txt);border:1px solid var(--brd);}
-.fab:active{transform:scale(.92);box-shadow:0 1px 5px rgba(0,0,0,.3);}
-.fab.locating{animation:pulse 1s ease infinite;}
-.fab.loc-active{background:var(--blue);color:#fff;border-color:var(--blue);}
-@keyframes pulse{0%,100%{box-shadow:0 3px 12px rgba(0,0,0,.35);}50%{box-shadow:0 3px 20px rgba(74,163,245,.6);}}
-@media(max-width:700px){
-  #fab-group{bottom:calc(30vh + 18px);right:10px;}
-  #fab-group.detail-open{bottom:calc(60vh + 14px);}
-}
 /* safe-area für iPhone Notch */
 @supports(padding-bottom: env(safe-area-inset-bottom)){
   #mobile-bottom{padding-bottom:env(safe-area-inset-bottom);}
-  #fab-group{bottom:calc(60px + env(safe-area-inset-bottom));}
-  @media(max-width:700px){#fab-group{bottom:calc(30vh + 18px + env(safe-area-inset-bottom));}}
 }
 
 /* ── WETTER WIDGET ───────────────────────────────────────────────────────── */
@@ -422,7 +409,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.9</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.4.0</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -504,14 +491,11 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     </div>
     <div id="buildinfo">–</div>
     <div id="weatherWidget" class="loading" title="Klicken zum Aktualisieren">
-      <div class="ww-row"><span class="ww-icon" id="wwIcon">🌤</span><div><div class="ww-main" id="wwWind">– kn</div><div class="ww-sub" id="wwTemp">–°C</div></div></div>
+      <div class="ww-row"><span class="ww-icon" id="wwIcon">🌤</span><div><div class="ww-main" id="wwWind">– m/s</div><div class="ww-sub" id="wwTemp">–°C</div></div></div>
       <div class="ww-sub" id="wwDir">–</div>
-      <div class="ww-tide" id="wwTide" style="display:none">Pegel Wedel: <b id="wwPegel">–</b> cm</div>
+      <div class="ww-tide" id="wwTide" style="display:none">🌊 Pegel Wedel: <b id="wwPegel">–</b> cm NN</div>
     </div>
-    <div id="fab-group">
-      <button class="fab" id="fabHome" title="Zur Heimansicht">🏠</button>
-      <button class="fab" id="fabLoc"  title="Mein Standort">📍</button>
-    </div>
+
     <div id="detailBackdrop" onclick="closeDetail()"></div>
     <div id="detail">
       <div style="display:none" class="mob-drag-handle" id="detailHandle"><div style="width:36px;height:4px;background:var(--brd);border-radius:99px;margin:8px auto 4px;"></div></div>
@@ -682,7 +666,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.3.9</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.4.0</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -752,6 +736,15 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     <ul class="slist" id="mobAlertList"></ul>
     <div class="empty" id="mobAlertEmpty">Keine Alerts.</div>
   </div>
+</div>
+
+<!-- PLAYBACK BAR -->
+<div id="playbackBar">
+  <span class="pb-title">⏮ Playback</span>
+  <button class="pb-btn" id="pbPlay">▶</button>
+  <input type="range" id="pbSlider" min="0" max="100" value="0" step="1"/>
+  <span id="pbTime">–</span>
+  <button class="pb-btn" id="pbClose">✕ Live</button>
 </div>
 
 <script>
@@ -1046,13 +1039,6 @@ function loadShipImage(mmsi){
 }
 
 /* ─── FAB Position helper (defined early, used by selectShip) ────────────── */
-function updateFabPos() {
-  if (isMobile()) {
-    const open = $('detail').classList.contains('open');
-    $('fab-group').classList.toggle('detail-open', open);
-  }
-}
-
 function selectShip(mmsi){
   selMmsi=mmsi;const s=ships.get(mmsi);if(!s)return;
   loadShipImage(mmsi);
@@ -1074,7 +1060,6 @@ function selectShip(mmsi){
     $('detailHandle').style.display='block';
     $('mobile-bottom').classList.add('collapsed');
   }
-  updateFabPos();
   if(s.lat&&s.lon)map.panTo([s.lat,s.lon],{animate:true,duration:.6});
   drawTrack(mmsi);redraw();
 }
@@ -1456,51 +1441,7 @@ function renderStats(summaryObj, passages, days) {
 /* ─── Helpers ───────────────────────────────────────────────────────────── */
 const HOME_VIEW = { lat: 53.570, lon: 9.730, zoom: 12 };
 
-/* ─── FAB: Home ─────────────────────────────────────────────────────────── */
-$('fabHome').onclick = () => {
-  map.flyTo([HOME_VIEW.lat, HOME_VIEW.lon], HOME_VIEW.zoom, { duration: 0.8 });
-};
-
-/* ─── FAB: Eigener Standort ─────────────────────────────────────────────── */
-let locMarker = null, locWatch = null, locActive = false;
-$('fabLoc').onclick = () => {
-  if (locActive) {
-    // Deaktivieren
-    if (locWatch !== null) { navigator.geolocation.clearWatch(locWatch); locWatch = null; }
-    if (locMarker) { map.removeLayer(locMarker); locMarker = null; }
-    $('fabLoc').classList.remove('loc-active', 'locating');
-    locActive = false;
-    return;
-  }
-  if (!navigator.geolocation) { alert('Geolocation wird von diesem Browser nicht unterstützt.'); return; }
-  $('fabLoc').classList.add('locating');
-  locActive = true;
-  locWatch = navigator.geolocation.watchPosition(
-    pos => {
-      $('fabLoc').classList.remove('locating');
-      $('fabLoc').classList.add('loc-active');
-      const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-      if (!locMarker) {
-        const icon = L.divIcon({ className: '', iconSize: [18, 18], iconAnchor: [9, 9],
-          html: `<div style="width:18px;height:18px;border-radius:50%;background:#4aa3f5;border:3px solid #fff;box-shadow:0 0 0 2px #4aa3f5,0 2px 8px rgba(0,0,0,.4)"></div>` });
-        locMarker = L.marker([lat, lng], { icon, zIndexOffset: 900 }).addTo(map);
-        if (accuracy < 500) {
-          L.circle([lat, lng], { radius: accuracy, color: '#4aa3f5', fillColor: '#4aa3f5',
-            fillOpacity: 0.12, weight: 1.5, dashArray: '4 4' }).addTo(map);
-        }
-        map.panTo([lat, lng], { animate: true, duration: 0.6 });
-      } else {
-        locMarker.setLatLng([lat, lng]);
-      }
-    },
-    err => {
-      $('fabLoc').classList.remove('locating', 'loc-active');
-      locActive = false; locWatch = null;
-      if (err.code === 1) alert('Standort-Zugriff verweigert. Bitte in den Browser-Einstellungen erlauben.');
-    },
-    { enableHighAccuracy: true, maximumAge: 10000 }
-  );
-};
+/* FABs entfernt auf Wunsch des Nutzers */
 
 /* ─── Swipe-to-Dismiss für Detail Bottom Sheet ──────────────────────────── */
 (function() {
@@ -1552,13 +1493,14 @@ async function loadWeather() {
     const d = await apiFetch('/api/weather').then(r => r.json());
     const cur = d.weather?.current;
     if (!cur) return;
-    const spd = Math.round(cur.windspeed_10m || 0);
-    const dirDeg = cur.winddirection_10m || 0;
-    const temp = Math.round(cur.temperature_2m ?? 0);
-    const bft = spd < 1?0:spd<6?1:spd<12?2:spd<20?3:spd<29?4:spd<39?5:spd<50?6:spd<62?7:spd<75?8:9;
-    $('wwWind').textContent = `${spd} kn (Bft ${bft})`;
+    const spdMs = +(cur.windspeed_10m || 0).toFixed(1);
+    const dirDeg = Math.round(cur.winddirection_10m || 0);
+    const temp = cur.temperature_2m != null ? Math.round(cur.temperature_2m) : null;
+    // Beaufort aus m/s
+    const bft = spdMs<0.3?0:spdMs<1.6?1:spdMs<3.4?2:spdMs<5.5?3:spdMs<8?4:spdMs<10.8?5:spdMs<13.9?6:spdMs<17.2?7:spdMs<20.8?8:9;
+    $('wwWind').textContent = `${spdMs} m/s (Bft ${bft})`;
     $('wwDir').textContent  = `Wind: ${windDirName(dirDeg)} (${dirDeg}°)`;
-    $('wwTemp').textContent = `${temp}°C`;
+    $('wwTemp').textContent = temp != null ? `${temp}°C` : '–°C';
     $('wwIcon').textContent = WMO_ICONS[cur.weathercode] || '🌤';
     $('weatherWidget').classList.remove('loading');
     // Pegel
@@ -1629,13 +1571,13 @@ function renderPlaybackMap(shipMap) {
 }
 
 // Playback controls – bound after DOM is ready (elements added before script)
-if($('pbSlider')) $('pbSlider').oninput = () => {
+$('pbSlider').oninput = () => {
   const pct = +$('pbSlider').value / 1000;
   const ts = Math.round(pbMinTs + pct * (pbMaxTs - pbMinTs));
   pbSeek(ts);
 };
 
-if($('pbPlay')) $('pbPlay').onclick = () => {
+$('pbPlay').onclick = () => {
   if (pbTimer) {
     clearInterval(pbTimer); pbTimer = null;
     $('pbPlay').textContent = '▶'; $('pbPlay').classList.remove('active');
@@ -1648,7 +1590,7 @@ if($('pbPlay')) $('pbPlay').onclick = () => {
   }
 };
 
-if($('pbClose')) $('pbClose').onclick = () => closePlayback();
+$('pbClose').onclick = () => closePlayback();
 $('playbackBtn').onclick = () => playbackMode ? closePlayback() : openPlayback();
 
 
@@ -1696,16 +1638,6 @@ checkAuth();
     <table id="statsTable" style="display:none;width:100%;border-collapse:collapse;font-size:12px"></table>
     <div id="statsChart" style="padding:16px"></div>
   </div>
-</div>
-
-
-<!-- PLAYBACK BAR -->
-<div id="playbackBar">
-  <span class="pb-title">⏮ Playback</span>
-  <button class="pb-btn" id="pbPlay">▶</button>
-  <input type="range" id="pbSlider" min="0" max="100" value="0" step="1"/>
-  <span id="pbTime">–</span>
-  <button class="pb-btn" id="pbClose">✕ Live</button>
 </div>
 
 </body>
