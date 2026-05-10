@@ -328,6 +328,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <button class="lbtn" onclick="doRegister()">Registrieren</button>
       <div class="login-err" id="regErr"></div>
     </div>
+    <div id="loginVersion" style="font-size:10px;color:var(--fnt);text-align:center;margin-top:14px;font-family:var(--mono);opacity:.7;">v–</div>
   </div>
 </div>
 
@@ -698,6 +699,10 @@ $('userBtn').onclick = () => {
 
 /* ─── Init: Auth prüfen ──────────────────────────────────────────────────── */
 async function checkAuth() {
+  // Version im Login-Dialog anzeigen
+  fetch('/api/version').then(r=>r.json()).then(v=>{
+    $('loginVersion').textContent = `v${v.version}` + (v.sha && v.sha!=='dev' ? ` · ${v.sha.substring(0,7)}` : '');
+  }).catch(()=>{ $('loginVersion').textContent = 'Server nicht erreichbar'; });
   // Erst prüfen ob überhaupt User existieren
   const info = await fetch('/api/auth/hasUsers').then(r=>r.json()).catch(()=>({hasUsers:true}));
   if (!info.hasUsers) {
