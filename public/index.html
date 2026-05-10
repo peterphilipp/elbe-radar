@@ -327,8 +327,15 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   .abbtn{padding:5px 10px;}
   .abinput{padding:5px 8px;font-size:12px;}
   /* Topbar kompakter */
-  #topbar{padding:0 8px;}
-  .topbar-r .pill{padding:3px 8px;font-size:10px;}
+  #topbar{padding:0 4px;gap:4px;}
+  .topbar-r{overflow-x:auto;-webkit-overflow-scrolling:touch;gap:4px;scrollbar-width:none;padding-right:4px;}
+  .topbar-r::-webkit-scrollbar{display:none;}
+  .topbar-r .pill{display:none;}  /* Pills auf Mobile ausblenden */
+  #buildPill{display:none!important;}
+  .topbar-r .ibtn{min-width:36px;height:36px;font-size:14px;}
+  .brand-sub{display:none;}
+  .brand-text{display:none;}
+  #topbarBrand{flex-shrink:0;font-size:18px;}
 }
 
 /* ── LEAFLET ─────────────────────────────────────────────────────────────── */
@@ -411,11 +418,11 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 </div>
 
 <header id="topbar">
-  <div class="brand">🚢 Elbe Radar<span class="brand-sub" id="refNameBrand">Wedel</span></div>
+  <div class="brand" id="topbarBrand">🚢 <span class="brand-text">Elbe Radar</span><span class="brand-sub" id="refNameBrand">Wedel</span></div>
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.8</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.9</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -675,7 +682,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.3.8</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.3.9</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -685,7 +692,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="mob-tabs">
     <button class="mob-tab on" data-mob="mob-eta">ETA <span class="cnt" id="mobFutureCnt">0</span></button>
     <button class="mob-tab" data-mob="mob-alerts">🔔 Alerts</button>
-    <button class="mob-tab" data-mob="mob-filter">⚙️ Filter</button>
+    <button class="mob-tab" data-mob="mob-filter">⚙️ Filter <span id="filterBadge" style="display:none;background:var(--blue);color:#fff;border-radius:99px;font-size:9px;padding:1px 5px;margin-left:2px">!</span></button>
     <button class="mob-tab mob-collapse-btn" id="mobCollapseBtn" title="Einklappen">▼</button>
   </div>
   <div class="mob-content on" id="mob-eta">
@@ -957,7 +964,8 @@ function initMap(){
   map=L.map('map',{zoomControl:true}).setView([53.570,9.730],12);
   apiFetch('/api/settings/tile').then(r=>r.json()).then(d=>setTile(d.value||'dark')).catch(()=>setTile('dark'));
   map.on('click',()=>{selMmsi=null;$('detail').classList.remove('open');$('detailBackdrop').classList.remove('on');clearTrackLayers();redraw();});
-  map.on('zoomend moveend',()=>{currentZoom=map.getZoom();$('zoomLbl').textContent=currentZoom;sendBoxUpdate();updateAllLabels();});
+  map.on('zoomend',()=>{currentZoom=map.getZoom();$('zoomLbl').textContent=currentZoom;sendBoxUpdate();syncMarkers();});
+  map.on('moveend',()=>{sendBoxUpdate();});
 }
 
 function setTile(name){
@@ -1180,11 +1188,12 @@ $('typeChips').onclick=e=>{
     document.querySelectorAll(`#mTypeChips .chip[data-t="${t}"]`).forEach(x=>x.classList.toggle('on', typeFSet.has(t)));
     if(typeFSet.size===0){ typeFSet.add('all'); document.querySelectorAll('#typeChips .chip[data-t="all"], #mTypeChips .chip[data-t="all"]').forEach(x=>x.classList.add('on')); }
   }
-  checkSelectionValid(); redraw(); updateStats();
+  checkSelectionValid(); redraw(); updateStats(); updateFilterBadge();
 };
 // Mindestlänge Chips (Desktop + Mobile synced)
 function setLenFilter(v) {
   lenF = v;
+  updateFilterBadge();
   ['lenChips','mLenChips'].forEach(id => {
     const el = $(id); if(!el) return;
     el.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', +c.dataset.len === v));
@@ -1619,13 +1628,14 @@ function renderPlaybackMap(shipMap) {
   ships = live;
 }
 
-$('pbSlider').oninput = () => {
+// Playback controls – bound after DOM is ready (elements added before script)
+if($('pbSlider')) $('pbSlider').oninput = () => {
   const pct = +$('pbSlider').value / 1000;
   const ts = Math.round(pbMinTs + pct * (pbMaxTs - pbMinTs));
   pbSeek(ts);
 };
 
-$('pbPlay').onclick = () => {
+if($('pbPlay')) $('pbPlay').onclick = () => {
   if (pbTimer) {
     clearInterval(pbTimer); pbTimer = null;
     $('pbPlay').textContent = '▶'; $('pbPlay').classList.remove('active');
@@ -1638,9 +1648,16 @@ $('pbPlay').onclick = () => {
   }
 };
 
-$('pbClose').onclick = () => closePlayback();
+if($('pbClose')) $('pbClose').onclick = () => closePlayback();
 $('playbackBtn').onclick = () => playbackMode ? closePlayback() : openPlayback();
 
+
+/* ─── Filter-Badge (zeigt aktive Filter an) ─────────────────────────────── */
+function updateFilterBadge() {
+  const active = !typeFSet.has('all') || lenF > 0 || etaF < 9999;
+  const badge = $('filterBadge');
+  if (badge) badge.style.display = active ? '' : 'none';
+}
 // Direkt aufrufen – Script läuft nach DOM-Parse, DOMContentLoaded bereits gefeuert
 checkAuth();
 </script>

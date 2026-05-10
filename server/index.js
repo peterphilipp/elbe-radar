@@ -300,72 +300,6 @@ function fetchJson(url) {
   });
 }
 
-app.get('/api/ship/:mmsi/photo', async (req, res) => {
-  const mmsi = req.params.mmsi.replace(/\D/g, '');
-  if (!mmsi) return res.status(400).end();
-  const ua = 'Mozilla/5.0 (compatible; ElbeRadar/0.3)';
-
-  // 1) Gecachte URL prüfen
-  const ship = db.db.prepare('SELECT photo_url, photo_checked, name FROM ships WHERE mmsi=?').get(mmsi);
-  function markChecked(url) {
-    db.db.prepare('UPDATE ships SET photo_url=?, photo_checked=1 WHERE mmsi=?').run(url||null, mmsi);
-  }
-  if (ship && ship.photo_checked) {
-    if (ship.photo_url) return res.redirect(302, ship.photo_url);
-    return res.status(404).end();
-  }
-
-  // 2) MarineTraffic direkt streamen (bestehende tryPhotoSources Logik)
-  // Wrap in promise: resolve with 'streamed' if successful, null if not
-  let mtStreamed = false;
-  await new Promise(resolve => {
-    const mockRes = Object.assign(Object.create(res), {
-      setHeader: (k,v) => res.setHeader(k,v),
-      status: (c) => { resolve(null); return { end: () => {} }; },
-      pipe: () => { mtStreamed = true; resolve('ok'); },
-      redirect: (c, url) => { markChecked(url); res.redirect(c, url); resolve('redirected'); }
-    });
-    // Use tryPhotoSources with real res – if it streams successfully we're done
-    let resolved = false;
-    const origEnd = res.end.bind(res);
-    tryPhotoSources(mmsi, [
-      { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=\${mmsi}&size=thumb800`,
-        headers:{'Referer':'https://www.marinetraffic.com/','User-Agent':ua} },
-      { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=\${mmsi}`,
-        headers:{'Referer':'https://www.marinetraffic.com/','User-Agent':ua} },
-    ], {
-      setHeader: (k,v) => { if(!res.headersSent) res.setHeader(k,v); },
-      status:    (c)   => ({ end: () => { if(!resolved){resolved=true;resolve(null);} } }),
-      pipe:      (src) => { if(!resolved){resolved=true;markChecked(null);src.pipe(res);resolve('piped');} },
-      redirect:  (c,u) => { if(!resolved){resolved=true;markChecked(u);res.redirect(c,u);resolve('redir');} }
-    });
-    setTimeout(() => { if(!resolved){resolved=true;resolve(null);} }, 9000);
-  });
-  if (res.headersSent) return;
-
-  // 3) Wikimedia Commons via Schiffsname
-  if (ship && ship.name) {
-    try {
-      const q = encodeURIComponent(ship.name.trim() + ' ship');
-      const wikiData = await fetchJson(
-        `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=\${q}&srnamespace=6&srlimit=5&format=json`
-      );
-      const results = (wikiData?.query?.search || []).filter(r => /\.(jpg|jpeg|png)/i.test(r.title));
-      if (results.length > 0) {
-        const title = results[0].title.replace(/^File:/,'');
-        const thumbUrl = `https://commons.wikimedia.org/wiki/Special:FilePath/\${encodeURIComponent(title)}?width=600`;
-        const ok = await probeImage(thumbUrl);
-        if (ok) {
-          markChecked(thumbUrl);
-          return res.redirect(302, thumbUrl);
-        }
-      }
-    } catch(e) { /* Wikimedia nicht erreichbar */ }
-  }
-
-  markChecked(null);
-  res.status(404).end();
-});
 
 
 function tryPhotoSources(mmsi, sources, res) {
@@ -424,11 +358,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.3.8',
+  uptime: Math.floor(process.uptime()), version:'0.3.9',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.3.8' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.3.9' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));
@@ -452,7 +386,7 @@ app.use(express.static(path.join(__dirname,'..','public'), {
 app.get('*', (req,res) => res.sendFile(path.join(__dirname,'..','public','index.html')));
 
 server.listen(PORT, () => {
-  console.log(`[Server] Elbe Radar v0.3.8 · Port ${PORT}`);
+  console.log(`[Server] Elbe Radar v0.3.9 · Port ${PORT}`);
   console.log(`[Server] AIS-Key:    ${process.env.AIS_API_KEY       ? 'gesetzt'           : 'NICHT gesetzt (Demo)'}`);
   console.log(`[Server] Reg-Code:   ${REG_CODE                      ? 'gesetzt'           : 'offen (jeder kann sich registrieren)'}`);
   console.log(`[Server] History:    ${process.env.RETAIN_DAYS||7} Tage · Intervall 5 min`);
