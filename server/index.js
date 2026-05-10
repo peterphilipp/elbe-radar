@@ -203,6 +203,7 @@ app.get('/api/ship/:mmsi/type', authMiddleware, (req, res) => {
 // ── WEATHER & TIDE PROXY ──────────────────────────────────────────────────────
 // Open-Meteo: kostenlos, kein Key, HTTPS
 let weatherCache = null, weatherCacheTs = 0;
+// Cache beim Start leer, damit neue Stationsnamen sofort ausprobiert werden
 app.get('/api/weather', authMiddleware, async (req, res) => {
   if (weatherCache && Date.now() - weatherCacheTs < 10 * 60 * 1000) {
     return res.json(weatherCache);
@@ -219,20 +220,41 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
       });
       r.on('error', reject); r.setTimeout(8000, () => { r.destroy(); reject(new Error('timeout')); });
     });
-    // Pegelonline – Station WEDEL (uuid known)
+    // Pegelonline WSV – Station Wedel an der Elbe
+    // Stationsname: WEDEL (ELBE) – Pegelonline shortname ist case-sensitive URL-encoded
     let tide = null;
-    try {
-      tide = await new Promise((resolve, reject) => {
-        const tr = https.get('https://www.pegelonline.wsv.de/webservices/rest/v2/stations/WEDEL/W/measurements.json?start=PT3H', {
-          headers: { 'User-Agent': 'ElbeRadar/0.3' }
-        }, resp => {
-          let d = ''; resp.on('data', c => d += c);
-          resp.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { resolve(null); } });
+    const pegelStations = [
+      'WEDEL%20(ELBE)',   // vollständiger Name
+      'WEDEL',            // Kurzname als Fallback
+      'SCHULAU',          // Backup: Schulau liegt ebenfalls bei Wedel
+    ];
+    for (const station of pegelStations) {
+      try {
+        const tideRaw = await new Promise((resolve, reject) => {
+          const url = `https://www.pegelonline.wsv.de/webservices/rest/v2/stations/${station}/W/measurements.json?start=PT6H`;
+          const tr = https.get(url, { headers: { 'User-Agent': 'ElbeRadar/0.4' } }, resp => {
+            let d = ''; resp.on('data', c => d += c);
+            resp.on('end', () => {
+              try {
+                const parsed = JSON.parse(d);
+                resolve(parsed);
+              } catch(e) { resolve(null); }
+            });
+          });
+          tr.on('error', () => resolve(null));
+          tr.setTimeout(6000, () => { tr.destroy(); resolve(null); });
         });
-        tr.on('error', () => resolve(null));
-        tr.setTimeout(6000, () => { tr.destroy(); resolve(null); });
-      });
-    } catch(e) { tide = null; }
+        if (Array.isArray(tideRaw) && tideRaw.length > 0) {
+          tide = tideRaw;
+          console.log(`[Pegel] Station ${station}: ${tideRaw.length} Messpunkte, letzter Wert: ${tideRaw[tideRaw.length-1]?.value} cm`);
+          break;
+        } else {
+          console.log(`[Pegel] Station ${station}: keine Daten (${JSON.stringify(tideRaw)?.slice(0,80)})`);
+        }
+      } catch(e) {
+        console.log(`[Pegel] Station ${station}: Fehler: ${e.message}`);
+      }
+    }
     weatherCache = { weather: data, tide, fetchedAt: Date.now() };
     weatherCacheTs = Date.now();
     res.json(weatherCache);
@@ -358,6 +380,18 @@ app.get('/api/ship/:mmsi/photo', (req, res) => {
   if (!mmsi) return res.status(400).end();
   const ua = 'Mozilla/5.0 (compatible; ElbeRadar/0.4)';
 
+  // Harter Timeout: Photo-Anfrage darf max 4s dauern
+  // Verhindert dass Browser-Verbindungspool durch langsame externe APIs blockiert wird
+  let responded = false;
+  const photoTimeout = setTimeout(() => {
+    if (!responded && !res.headersSent) {
+      responded = true;
+      res.status(504).end();
+    }
+  }, 4000);
+  const origEnd = res.end.bind(res);
+  res.end = (...args) => { responded = true; clearTimeout(photoTimeout); return origEnd(...args); };
+
   // 1. Gecachte URL aus DB
   try {
     const row = db.db.prepare('SELECT photo_url, photo_checked, name FROM ships WHERE mmsi=?').get(mmsi);
@@ -434,11 +468,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.4.0',
+  uptime: Math.floor(process.uptime()), version:'0.4.1',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.4.0' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.4.1' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));
@@ -462,7 +496,7 @@ app.use(express.static(path.join(__dirname,'..','public'), {
 app.get('*', (req,res) => res.sendFile(path.join(__dirname,'..','public','index.html')));
 
 server.listen(PORT, () => {
-  console.log(`[Server] Elbe Radar v0.4.0 · Port ${PORT}`);
+  console.log(`[Server] Elbe Radar v0.4.1 · Port ${PORT}`);
   console.log(`[Server] AIS-Key:    ${process.env.AIS_API_KEY       ? 'gesetzt'           : 'NICHT gesetzt (Demo)'}`);
   console.log(`[Server] Reg-Code:   ${REG_CODE                      ? 'gesetzt'           : 'offen (jeder kann sich registrieren)'}`);
   console.log(`[Server] History:    ${process.env.RETAIN_DAYS||7} Tage · Intervall 5 min`);

@@ -2,7 +2,7 @@
  * Strategie: Shell (HTML/CSS/JS/Leaflet) aus Cache, API-Calls immer live.
  * Version: muss bei jedem Deploy erhöht werden damit der SW sich aktualisiert.
  */
-const CACHE   = 'elbe-radar-v0.4.0';
+const CACHE   = 'elbe-radar-v0.4.1';
 const SHELL   = [
   '/',
   '/manifest.json',

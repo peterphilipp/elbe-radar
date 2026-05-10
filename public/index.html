@@ -409,7 +409,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.4.0</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.4.1</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -666,7 +666,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.4.0</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.4.1</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -753,6 +753,9 @@ const isMobile = () => window.innerWidth <= 700;
 /* ─── Auth State ─────────────────────────────────────────────────────────── */
 let authToken = localStorage.getItem('elbr_token') || '';
 let currentUser = null;
+
+// Token vorhanden → Overlay sofort ausblenden, wird bei Fehler wieder eingeblendet
+if (authToken) document.getElementById('loginOverlay').classList.add('hidden');
 
 function authHeaders(extra={}) {
   return { 'Content-Type':'application/json', 'Authorization':`Bearer ${authToken}`, ...extra };
@@ -868,7 +871,11 @@ async function checkAuth() {
 
   // Token vorhanden → validieren
   const r = await fetch('/api/auth/me', {headers:{'Authorization':'Bearer '+authToken}}).catch(()=>null);
-  if (!r||!r.ok) { authToken=''; localStorage.removeItem('elbr_token'); return; }
+  if (!r||!r.ok) {
+    authToken=''; localStorage.removeItem('elbr_token');
+    $('loginOverlay').classList.remove('hidden'); // wieder einblenden
+    return;
+  }
   const u = await r.json();
   currentUser = { username: u.username, isAdmin: u.isAdmin };
   $('userLabel').textContent  = u.username;
@@ -1506,9 +1513,17 @@ async function loadWeather() {
     // Pegel
     const tide = d.tide;
     if (tide && Array.isArray(tide) && tide.length > 0) {
-      const latest = tide[tide.length - 1];
-      $('wwPegel').textContent = Math.round(latest.value) + ' cm';
+      const latest  = tide[tide.length - 1];
+      const prev    = tide.length > 1 ? tide[tide.length - 2] : null;
+      const val     = Math.round(latest.value);
+      const trend   = prev ? (latest.value > prev.value + 2 ? '↑' : latest.value < prev.value - 2 ? '↓' : '→') : '';
+      const measTime = latest.timestamp ? new Date(latest.timestamp).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : '';
+      $('wwPegel').textContent = `${val} cm ${trend}`;
+      if (measTime) $('wwPegel').title = `Messung um ${measTime}`;
       $('wwTide').style.display = 'block';
+    } else {
+      // Pegel nicht verfügbar - Widget trotzdem anzeigen, Pegel-Zeile weglassen
+      $('wwTide').style.display = 'none';
     }
   } catch(e) { $('weatherWidget').classList.remove('loading'); }
 }
