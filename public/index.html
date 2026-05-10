@@ -140,7 +140,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .mbt{font-size:13px;font-weight:700;flex:1;}
 .mstat{font-size:11px;color:var(--mut);padding:2px 7px;background:var(--off);border:1px solid var(--div);border-radius:5px;white-space:nowrap;}
 .mstat b{font-family:var(--mono);font-weight:700;color:var(--txt);}
-#map{flex:1;min-height:0;width:100%;}
+#map{flex:1;min-height:200px;width:100%;height:100%;}
 .tile-group{display:flex;gap:3px;border:1px solid var(--brd);border-radius:7px;padding:2px;background:var(--off);}
 .tbt{font-size:13px;width:26px;height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;opacity:.5;transition:opacity .15s,background .15s;}
 .tbt:hover{opacity:.8;}.tbt.on{opacity:1;background:var(--surf);box-shadow:0 1px 3px rgba(0,0,0,.15);}
@@ -409,7 +409,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.4.1</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.4.2</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -666,7 +666,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.4.1</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.4.2</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -754,8 +754,13 @@ const isMobile = () => window.innerWidth <= 700;
 let authToken = localStorage.getItem('elbr_token') || '';
 let currentUser = null;
 
-// Token vorhanden → Overlay sofort ausblenden, wird bei Fehler wieder eingeblendet
-if (authToken) document.getElementById('loginOverlay').classList.add('hidden');
+// Overlay: bei vorhandenem Token nur kurz transparent machen (kein Flash),
+// wird erst in checkAuth() vollständig ausgeblendet
+if (authToken) {
+  const ov = document.getElementById('loginOverlay');
+  ov.style.opacity = '0';
+  ov.style.pointerEvents = 'none';
+}
 
 function authHeaders(extra={}) {
   return { 'Content-Type':'application/json', 'Authorization':`Bearer ${authToken}`, ...extra };
@@ -873,14 +878,18 @@ async function checkAuth() {
   const r = await fetch('/api/auth/me', {headers:{'Authorization':'Bearer '+authToken}}).catch(()=>null);
   if (!r||!r.ok) {
     authToken=''; localStorage.removeItem('elbr_token');
-    $('loginOverlay').classList.remove('hidden'); // wieder einblenden
+    const ov = $('loginOverlay');
+    ov.style.opacity = ''; ov.style.pointerEvents = '';
+    ov.classList.remove('hidden'); // wieder einblenden
     return;
   }
   const u = await r.json();
   currentUser = { username: u.username, isAdmin: u.isAdmin };
   $('userLabel').textContent  = u.username;
   $('sUsername').textContent  = u.username;
-  $('loginOverlay').classList.add('hidden');
+  const ov = $('loginOverlay');
+  ov.style.opacity = ''; ov.style.pointerEvents = '';
+  ov.classList.add('hidden');
   startApp();
 }
 
@@ -1215,7 +1224,10 @@ function loadBuildInfo(){apiFetch('/api/version').then(r=>r.json()).then(v=>{con
 
 function startApp(){
   initMap();
+  // Mehrfache invalidateSize – sicherstellt dass Leaflet die Containergröße erkennt
   requestAnimationFrame(()=>map.invalidateSize());
+  setTimeout(()=>{if(map)map.invalidateSize();}, 100);
+  setTimeout(()=>{if(map)map.invalidateSize();}, 500);
   loadRefPoint();
   connectBackend();
   loadBuildInfo();
