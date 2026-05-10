@@ -355,6 +355,29 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   #fab-group{bottom:calc(60px + env(safe-area-inset-bottom));}
   @media(max-width:700px){#fab-group{bottom:calc(30vh + 18px + env(safe-area-inset-bottom));}}
 }
+
+/* ── WETTER WIDGET ───────────────────────────────────────────────────────── */
+#weatherWidget{position:absolute;top:50px;right:10px;z-index:490;background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:7px 11px;font-size:11px;color:var(--txt);box-shadow:0 4px 16px rgba(0,0,0,.2);min-width:150px;cursor:default;}
+#weatherWidget.loading{opacity:.6;}
+.ww-row{display:flex;align-items:center;gap:7px;margin-bottom:3px;}
+.ww-icon{font-size:20px;line-height:1;}
+.ww-main{font-size:16px;font-weight:700;}
+.ww-sub{font-size:10px;color:var(--mut);}
+.ww-tide{margin-top:4px;padding-top:4px;border-top:1px solid var(--div);font-size:10px;color:var(--mut);}
+.ww-tide b{color:var(--txt);}
+@media(max-width:700px){#weatherWidget{top:auto;bottom:calc(30vh + 60px);right:10px;font-size:10px;min-width:130px;}}
+#weatherWidget.hidden{display:none;}
+
+/* ── PLAYBACK BAR ────────────────────────────────────────────────────────── */
+#playbackBar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--surf);border-top:2px solid var(--blue);padding:8px 14px;align-items:center;gap:10px;flex-wrap:wrap;}
+#playbackBar.on{display:flex;}
+.pb-title{font-size:11px;font-weight:700;color:var(--blue);white-space:nowrap;}
+#pbSlider{flex:1;min-width:120px;accent-color:var(--blue);}
+#pbTime{font-family:var(--mono);font-size:11px;color:var(--txt);white-space:nowrap;min-width:110px;}
+.pb-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--brd);background:var(--surf2);font-size:11px;font-weight:700;cursor:pointer;color:var(--txt);}
+.pb-btn.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+#pbClose{margin-left:auto;}
+@media(max-width:700px){#playbackBar{bottom:calc(30vh);font-size:10px;padding:6px 10px;gap:6px;}#pbSlider{min-width:80px;}}
 </style>
 </head>
 <body>
@@ -392,9 +415,10 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.7</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.8</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
+    <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
     <button class="ibtn" id="settingsBtn" title="Einstellungen">⚙️</button>
     <button class="ibtn" id="themeBtn" title="Theme">🌙</button>
     <button class="ibtn user-pill" id="userBtn" title="Abmelden">👤 <span id="userLabel">–</span></button>
@@ -420,9 +444,14 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       </div>
       <div>
         <div class="flbl">Mindestlänge</div>
-        <div class="slider-row">
-          <input type="range" id="lenSlider" min="0" max="400" step="25" value="50"/>
-          <span class="slider-val" id="lenVal">≥ 50 m</span>
+        <div class="chips" id="lenChips">
+          <button class="chip" data-len="0">Alle</button>
+          <button class="chip on" data-len="50">≥ 50 m</button>
+          <button class="chip" data-len="100">≥ 100 m</button>
+          <button class="chip" data-len="200">≥ 200 m</button>
+          <button class="chip" data-len="300">≥ 300 m</button>
+        </div>
+      </div>
       <div>
         <div class="flbl">ETA-Fenster</div>
         <div class="chips" id="etaChips">
@@ -467,6 +496,11 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <div class="lr"><div style="width:18px;border-top:2px dashed #f0bc55"></div>Extrapolation</div>
     </div>
     <div id="buildinfo">–</div>
+    <div id="weatherWidget" class="loading" title="Klicken zum Aktualisieren">
+      <div class="ww-row"><span class="ww-icon" id="wwIcon">🌤</span><div><div class="ww-main" id="wwWind">– kn</div><div class="ww-sub" id="wwTemp">–°C</div></div></div>
+      <div class="ww-sub" id="wwDir">–</div>
+      <div class="ww-tide" id="wwTide" style="display:none">Pegel Wedel: <b id="wwPegel">–</b> cm</div>
+    </div>
     <div id="fab-group">
       <button class="fab" id="fabHome" title="Zur Heimansicht">🏠</button>
       <button class="fab" id="fabLoc"  title="Mein Standort">📍</button>
@@ -641,7 +675,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.3.7</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.3.8</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -681,9 +715,12 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       </div>
       <div>
         <div class="flbl">Mindestlänge</div>
-        <div class="slider-row">
-          <input type="range" id="mLenSlider" min="0" max="400" step="25" value="50"/>
-          <span class="slider-val" id="mLenVal">≥ 50 m</span>
+        <div class="chips" id="mLenChips">
+          <button class="chip" data-len="0">Alle</button>
+          <button class="chip on" data-len="50">≥ 50 m</button>
+          <button class="chip" data-len="100">≥ 100 m</button>
+          <button class="chip" data-len="200">≥ 200 m</button>
+          <button class="chip" data-len="300">≥ 300 m</button>
         </div>
       </div>
     </div>
@@ -712,6 +749,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
 <script>
 const $ = id => document.getElementById(id);
+const isMobile = () => window.innerWidth <= 700;
 /* ─── Auth State ─────────────────────────────────────────────────────────── */
 let authToken = localStorage.getItem('elbr_token') || '';
 let currentUser = null;
@@ -898,7 +936,15 @@ const passesEta=s=>{
 };
 
 const ZOOM_LABEL=13;
-function shipIconSize(len,wid,zoom){const scale=Math.pow(2,zoom-12)*0.07;return{h:Math.max(Math.round((len||80)*scale),8),bw:Math.max(Math.round((wid||Math.max(len||80,40)*0.14)*scale*3),4)};}
+function shipIconSize(len,wid,zoom){
+  // Geo-korrekte Skalierung: 1 Pixel = mpp Meter bei lat 53.57
+  const mpp = 156543.03 * Math.cos(53.57 * Math.PI / 180) / Math.pow(2, zoom);
+  const ppm = 1 / mpp; // pixel pro meter
+  const l = len || 80, w = wid || Math.max(l * 0.14, 20);
+  const h  = Math.max(8, Math.min(80, Math.round(l * ppm)));
+  const bw = Math.max(4, Math.min(24, Math.round(w * ppm * 2.5))); // leicht übertrieben für Sichtbarkeit
+  return { h, bw };
+}
 function makeIcon(s,sel=false,zoom=12){
   const c=col(s.type),rot=+(s.heading??s.cog??0);const{h,bw}=shipIconSize(s.len,s.wid,zoom);
   const w=bw,mid=w*0.5,heck=w*0.42;
@@ -989,6 +1035,14 @@ function loadShipImage(mmsi){
   img.onerror=()=>{wrap.innerHTML='<div class="dimg-ph">🚢</div>';};
   img.src=`/api/ship/${mmsi}/photo`;
   wrap.appendChild(img);
+}
+
+/* ─── FAB Position helper (defined early, used by selectShip) ────────────── */
+function updateFabPos() {
+  if (isMobile()) {
+    const open = $('detail').classList.contains('open');
+    $('fab-group').classList.toggle('detail-open', open);
+  }
 }
 
 function selectShip(mmsi){
@@ -1128,7 +1182,16 @@ $('typeChips').onclick=e=>{
   }
   checkSelectionValid(); redraw(); updateStats();
 };
-$('lenSlider').oninput=e=>{lenF=+e.target.value;$('lenVal').textContent=lenF===0?'Alle':'≥ '+lenF+' m';checkSelectionValid();redraw();};
+// Mindestlänge Chips (Desktop + Mobile synced)
+function setLenFilter(v) {
+  lenF = v;
+  ['lenChips','mLenChips'].forEach(id => {
+    const el = $(id); if(!el) return;
+    el.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', +c.dataset.len === v));
+  });
+  checkSelectionValid(); redraw(); renderETA(); updateStats();
+}
+$('lenChips').onclick = e => { const c=e.target.closest('.chip'); if(c) setLenFilter(+c.dataset.len); };
 $('dclose').onclick=()=>closeDetail();
 function closeDetail(){$('detail').classList.remove('open');$('detailBackdrop').classList.remove('on');$('mobile-bottom').classList.remove('collapsed');selMmsi=null;clearTrackLayers();redraw();updateFabPos();}
 // Show drag handle on mobile
@@ -1157,6 +1220,8 @@ function startApp(){
   loadBuildInfo();
   apiFetch('/api/status').then(r=>r.json()).then(s=>{$('backendStatus').textContent=s.demo?'⚠ Demo':'✓ Live';$('histInfo').textContent=s.retainDays+' Tage';}).catch(()=>{});
   loadAlerts();
+  loadWeather();
+  setInterval(loadWeather, 15 * 60 * 1000);
 }
 
 window.addEventListener('resize',()=>{if(map)map.invalidateSize();});
@@ -1204,16 +1269,7 @@ document.querySelectorAll('#mEtaChips .chip').forEach(btn => {
     redraw(); renderETA();
   };
 });
-const mLenSlider = $('mLenSlider');
-if (mLenSlider) {
-  mLenSlider.oninput = () => {
-    lenF = +mLenSlider.value;
-    $('mLenVal').textContent = `≥ ${lenF} m`;
-    $('lenSlider').value = lenF;
-    $('lenVal').textContent = `≥ ${lenF} m`;
-    redraw(); renderETA(); updateStats();
-  };
-}
+if($('mLenChips')) $('mLenChips').onclick = e => { const c=e.target.closest('.chip'); if(c) setLenFilter(+c.dataset.len); };
 
 /* ─── Mobile collapse button ─────────────────────────────────────────────── */
 const mobCollapseBtn = $('mobCollapseBtn');
@@ -1389,7 +1445,6 @@ function renderStats(summaryObj, passages, days) {
 
 
 /* ─── Helpers ───────────────────────────────────────────────────────────── */
-const isMobile = () => window.innerWidth <= 700;
 const HOME_VIEW = { lat: 53.570, lon: 9.730, zoom: 12 };
 
 /* ─── FAB: Home ─────────────────────────────────────────────────────────── */
@@ -1463,16 +1518,6 @@ $('fabLoc').onclick = () => {
   }, { passive: true });
 })();
 
-/* ─── FAB-Position wenn Detail offen ────────────────────────────────────── */
-const origSelectShip = window.selectShip;
-// Patch: FAB group moves up when detail is open on mobile
-function updateFabPos() {
-  if (isMobile()) {
-    const open = $('detail').classList.contains('open');
-    $('fab-group').classList.toggle('detail-open', open);
-  }
-}
-
 /* ─── Service Worker registrieren ───────────────────────────────────────── */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -1481,6 +1526,120 @@ if ('serviceWorker' in navigator) {
       .catch(err => console.warn('[SW] Fehler:', err));
   });
 }
+
+
+/* ─── Wetter Widget ─────────────────────────────────────────────────────── */
+const WMO_ICONS = {
+  0:'☀️',1:'🌤',2:'⛅',3:'☁️',45:'🌫',48:'🌫',
+  51:'🌦',53:'🌦',55:'🌧',61:'🌧',63:'🌧',65:'🌧',
+  71:'🌨',73:'🌨',75:'❄️',80:'🌦',81:'🌧',82:'⛈',
+  95:'⛈',96:'⛈',99:'⛈'
+};
+const DIR_NAMES = ['N','NNO','NO','ONO','O','OSO','SO','SSO','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+function windDirName(deg) { return DIR_NAMES[Math.round((deg||0)/22.5) % 16]; }
+
+async function loadWeather() {
+  try {
+    const d = await apiFetch('/api/weather').then(r => r.json());
+    const cur = d.weather?.current;
+    if (!cur) return;
+    const spd = Math.round(cur.windspeed_10m || 0);
+    const dirDeg = cur.winddirection_10m || 0;
+    const temp = Math.round(cur.temperature_2m ?? 0);
+    const bft = spd < 1?0:spd<6?1:spd<12?2:spd<20?3:spd<29?4:spd<39?5:spd<50?6:spd<62?7:spd<75?8:9;
+    $('wwWind').textContent = `${spd} kn (Bft ${bft})`;
+    $('wwDir').textContent  = `Wind: ${windDirName(dirDeg)} (${dirDeg}°)`;
+    $('wwTemp').textContent = `${temp}°C`;
+    $('wwIcon').textContent = WMO_ICONS[cur.weathercode] || '🌤';
+    $('weatherWidget').classList.remove('loading');
+    // Pegel
+    const tide = d.tide;
+    if (tide && Array.isArray(tide) && tide.length > 0) {
+      const latest = tide[tide.length - 1];
+      $('wwPegel').textContent = Math.round(latest.value) + ' cm';
+      $('wwTide').style.display = 'block';
+    }
+  } catch(e) { $('weatherWidget').classList.remove('loading'); }
+}
+$('weatherWidget').onclick = () => { $('weatherWidget').classList.add('loading'); loadWeather(); };
+
+/* ─── Playback ──────────────────────────────────────────────────────────── */
+let playbackMode = false, pbTimer = null, pbShips = new Map();
+let pbMinTs = 0, pbMaxTs = 0, pbCurrentTs = 0;
+
+async function openPlayback() {
+  const range = await apiFetch('/api/playback/range').then(r => r.json()).catch(() => null);
+  if (!range || !range.min_ts) { alert('Keine History-Daten vorhanden.'); return; }
+  pbMinTs = range.min_ts;
+  pbMaxTs = range.max_ts;
+  pbCurrentTs = pbMaxTs;
+  const slider = $('pbSlider');
+  slider.min = 0; slider.max = 1000; slider.value = 1000;
+  playbackMode = true;
+  $('playbackBar').classList.add('on');
+  $('playbackBtn').classList.add('active');
+  $('dot').style.background = '#f0bc55';
+  $('connLbl').textContent = 'Playback';
+  await pbSeek(pbCurrentTs);
+}
+
+function closePlayback() {
+  playbackMode = false;
+  if (pbTimer) { clearInterval(pbTimer); pbTimer = null; }
+  $('playbackBar').classList.remove('on');
+  $('playbackBtn').classList.remove('active');
+  $('pbPlay').textContent = '▶';
+  $('pbPlay').classList.remove('active');
+  $('dot').style.background = '';
+  $('connLbl').textContent = 'Live';
+  // Zurück zu Live-Daten
+  redraw();
+}
+
+async function pbSeek(ts) {
+  pbCurrentTs = ts;
+  // Slider position
+  const pct = pbMaxTs > pbMinTs ? (ts - pbMinTs) / (pbMaxTs - pbMinTs) * 1000 : 0;
+  $('pbSlider').value = Math.round(pct);
+  $('pbTime').textContent = new Date(ts).toLocaleString('de-DE',
+    {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const data = await apiFetch(`/api/playback?ts=${ts}`).then(r => r.json()).catch(() => null);
+  if (!data) return;
+  // Karte mit historischen Schiffen rendern
+  pbShips = new Map(data.ships.map(s => [s.mmsi, { ...s, seen: s.ts }]));
+  renderPlaybackMap(pbShips);
+}
+
+function renderPlaybackMap(shipMap) {
+  if (!playbackMode) return;
+  // Temporär ships-Map ersetzen für redraw
+  const live = ships;
+  ships = shipMap;
+  redraw();
+  ships = live;
+}
+
+$('pbSlider').oninput = () => {
+  const pct = +$('pbSlider').value / 1000;
+  const ts = Math.round(pbMinTs + pct * (pbMaxTs - pbMinTs));
+  pbSeek(ts);
+};
+
+$('pbPlay').onclick = () => {
+  if (pbTimer) {
+    clearInterval(pbTimer); pbTimer = null;
+    $('pbPlay').textContent = '▶'; $('pbPlay').classList.remove('active');
+  } else {
+    $('pbPlay').textContent = '⏸'; $('pbPlay').classList.add('active');
+    pbTimer = setInterval(() => {
+      if (pbCurrentTs >= pbMaxTs) { clearInterval(pbTimer); pbTimer = null; $('pbPlay').textContent='▶'; $('pbPlay').classList.remove('active'); return; }
+      pbSeek(pbCurrentTs + 5 * 60 * 1000); // 5 Min pro Schritt
+    }, 800);
+  }
+};
+
+$('pbClose').onclick = () => closePlayback();
+$('playbackBtn').onclick = () => playbackMode ? closePlayback() : openPlayback();
 
 // Direkt aufrufen – Script läuft nach DOM-Parse, DOMContentLoaded bereits gefeuert
 checkAuth();
@@ -1520,6 +1679,16 @@ checkAuth();
     <table id="statsTable" style="display:none;width:100%;border-collapse:collapse;font-size:12px"></table>
     <div id="statsChart" style="padding:16px"></div>
   </div>
+</div>
+
+
+<!-- PLAYBACK BAR -->
+<div id="playbackBar">
+  <span class="pb-title">⏮ Playback</span>
+  <button class="pb-btn" id="pbPlay">▶</button>
+  <input type="range" id="pbSlider" min="0" max="100" value="0" step="1"/>
+  <span id="pbTime">–</span>
+  <button class="pb-btn" id="pbClose">✕ Live</button>
 </div>
 
 </body>

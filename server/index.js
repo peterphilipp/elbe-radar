@@ -200,7 +200,174 @@ app.get('/api/ship/:mmsi/type', authMiddleware, (req, res) => {
 });
 
 // ── SHIP PHOTO PROXY (umgeht CORS & Referer-Check) ────────────────────────────
-// Photo-Quellen der Reihe nach ausprobieren
+// ── WEATHER & TIDE PROXY ──────────────────────────────────────────────────────
+// Open-Meteo: kostenlos, kein Key, HTTPS
+let weatherCache = null, weatherCacheTs = 0;
+app.get('/api/weather', authMiddleware, async (req, res) => {
+  if (weatherCache && Date.now() - weatherCacheTs < 10 * 60 * 1000) {
+    return res.json(weatherCache);
+  }
+  try {
+    // Wedel: 53.5765° N, 9.6922° E
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=53.5765&longitude=9.6922' +
+      '&current=temperature_2m,windspeed_10m,winddirection_10m,weathercode,apparent_temperature' +
+      '&hourly=windspeed_10m,winddirection_10m,precipitation_probability' +
+      '&forecast_days=1&timezone=Europe%2FBerlin&windspeed_unit=kn';
+    const data = await new Promise((resolve, reject) => {
+      const r = https.get(url, { headers: { 'User-Agent': 'ElbeRadar/0.3' } }, resp => {
+        let d = ''; resp.on('data', c => d += c); resp.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { reject(e); } });
+      });
+      r.on('error', reject); r.setTimeout(8000, () => { r.destroy(); reject(new Error('timeout')); });
+    });
+    // Pegelonline – Station WEDEL (uuid known)
+    let tide = null;
+    try {
+      tide = await new Promise((resolve, reject) => {
+        const tr = https.get('https://www.pegelonline.wsv.de/webservices/rest/v2/stations/WEDEL/W/measurements.json?start=PT3H', {
+          headers: { 'User-Agent': 'ElbeRadar/0.3' }
+        }, resp => {
+          let d = ''; resp.on('data', c => d += c);
+          resp.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { resolve(null); } });
+        });
+        tr.on('error', () => resolve(null));
+        tr.setTimeout(6000, () => { tr.destroy(); resolve(null); });
+      });
+    } catch(e) { tide = null; }
+    weatherCache = { weather: data, tide, fetchedAt: Date.now() };
+    weatherCacheTs = Date.now();
+    res.json(weatherCache);
+  } catch(e) {
+    console.error('[Weather] Fehler:', e.message);
+    res.status(502).json({ error: 'Wetterdaten nicht verfügbar', detail: e.message });
+  }
+});
+
+// ── PLAYBACK API ──────────────────────────────────────────────────────────────
+// GET /api/playback?ts=<unix_ms> – Alle Schiffe zum Zeitpunkt ts (±5 Min Fenster)
+app.get('/api/playback', authMiddleware, (req, res) => {
+  const ts = +(req.query.ts);
+  if (!ts || isNaN(ts)) return res.status(400).json({ error: 'ts required' });
+  const window_ms = 5 * 60 * 1000;
+  // Für jede MMSI den Eintrag mit dem kleinsten Abstand zu ts nehmen
+  const rows = db.db.prepare(`
+    SELECT h.*, ABS(h.ts - ?) as diff
+    FROM history h
+    INNER JOIN (
+      SELECT mmsi, MIN(ABS(ts - ?)) as min_diff
+      FROM history
+      WHERE ts BETWEEN ? AND ?
+      GROUP BY mmsi
+    ) best ON h.mmsi = best.mmsi AND ABS(h.ts - ?) = best.min_diff
+    WHERE h.ts BETWEEN ? AND ?
+    ORDER BY h.mmsi
+  `).all(ts, ts, ts - window_ms, ts + window_ms, ts, ts - window_ms, ts + window_ms);
+  res.json({ ts, count: rows.length, ships: rows });
+});
+
+// GET /api/playback/range – Zeitbereich der verfügbaren History
+app.get('/api/playback/range', authMiddleware, (req, res) => {
+  const range = db.db.prepare(`SELECT MIN(ts) as min_ts, MAX(ts) as max_ts, COUNT(DISTINCT mmsi) as ships FROM history`).get();
+  res.json(range);
+});
+
+// ── SHIP PHOTO: IMO via Wikimedia ─────────────────────────────────────────────
+// Cache in DB: ships.photo_url Spalte (Migration)
+try { db.db.exec(`ALTER TABLE ships ADD COLUMN photo_url TEXT DEFAULT NULL`); } catch(e) {}
+try { db.db.exec(`ALTER TABLE ships ADD COLUMN imo TEXT DEFAULT NULL`); } catch(e) {}
+try { db.db.exec(`ALTER TABLE ships ADD COLUMN photo_checked INTEGER DEFAULT 0`); } catch(e) {}
+
+// Hilfsfunktion: prüft ob URL ein Bild liefert (ohne zu streamen)
+function probeImage(url_or_opts) {
+  return new Promise(resolve => {
+    const req2 = https.get(url_or_opts, imgRes => {
+      const ct = imgRes.headers['content-type'] || '';
+      imgRes.resume();
+      if (imgRes.statusCode === 200 && ct.startsWith('image/')) resolve(true);
+      else resolve(false);
+    });
+    req2.on('error', () => resolve(false));
+    req2.setTimeout(5000, () => { req2.destroy(); resolve(false); });
+  });
+}
+
+function fetchJson(url) {
+  return new Promise((resolve, reject) => {
+    const r = https.get(url, { headers: { 'User-Agent': 'ElbeRadar/0.3' } }, resp => {
+      let d = ''; resp.on('data', c => d += c);
+      resp.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { reject(e); } });
+    });
+    r.on('error', reject); r.setTimeout(6000, () => { r.destroy(); reject(new Error('timeout')); });
+  });
+}
+
+app.get('/api/ship/:mmsi/photo', async (req, res) => {
+  const mmsi = req.params.mmsi.replace(/\D/g, '');
+  if (!mmsi) return res.status(400).end();
+  const ua = 'Mozilla/5.0 (compatible; ElbeRadar/0.3)';
+
+  // 1) Gecachte URL prüfen
+  const ship = db.db.prepare('SELECT photo_url, photo_checked, name FROM ships WHERE mmsi=?').get(mmsi);
+  function markChecked(url) {
+    db.db.prepare('UPDATE ships SET photo_url=?, photo_checked=1 WHERE mmsi=?').run(url||null, mmsi);
+  }
+  if (ship && ship.photo_checked) {
+    if (ship.photo_url) return res.redirect(302, ship.photo_url);
+    return res.status(404).end();
+  }
+
+  // 2) MarineTraffic direkt streamen (bestehende tryPhotoSources Logik)
+  // Wrap in promise: resolve with 'streamed' if successful, null if not
+  let mtStreamed = false;
+  await new Promise(resolve => {
+    const mockRes = Object.assign(Object.create(res), {
+      setHeader: (k,v) => res.setHeader(k,v),
+      status: (c) => { resolve(null); return { end: () => {} }; },
+      pipe: () => { mtStreamed = true; resolve('ok'); },
+      redirect: (c, url) => { markChecked(url); res.redirect(c, url); resolve('redirected'); }
+    });
+    // Use tryPhotoSources with real res – if it streams successfully we're done
+    let resolved = false;
+    const origEnd = res.end.bind(res);
+    tryPhotoSources(mmsi, [
+      { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=\${mmsi}&size=thumb800`,
+        headers:{'Referer':'https://www.marinetraffic.com/','User-Agent':ua} },
+      { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=\${mmsi}`,
+        headers:{'Referer':'https://www.marinetraffic.com/','User-Agent':ua} },
+    ], {
+      setHeader: (k,v) => { if(!res.headersSent) res.setHeader(k,v); },
+      status:    (c)   => ({ end: () => { if(!resolved){resolved=true;resolve(null);} } }),
+      pipe:      (src) => { if(!resolved){resolved=true;markChecked(null);src.pipe(res);resolve('piped');} },
+      redirect:  (c,u) => { if(!resolved){resolved=true;markChecked(u);res.redirect(c,u);resolve('redir');} }
+    });
+    setTimeout(() => { if(!resolved){resolved=true;resolve(null);} }, 9000);
+  });
+  if (res.headersSent) return;
+
+  // 3) Wikimedia Commons via Schiffsname
+  if (ship && ship.name) {
+    try {
+      const q = encodeURIComponent(ship.name.trim() + ' ship');
+      const wikiData = await fetchJson(
+        `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=\${q}&srnamespace=6&srlimit=5&format=json`
+      );
+      const results = (wikiData?.query?.search || []).filter(r => /\.(jpg|jpeg|png)/i.test(r.title));
+      if (results.length > 0) {
+        const title = results[0].title.replace(/^File:/,'');
+        const thumbUrl = `https://commons.wikimedia.org/wiki/Special:FilePath/\${encodeURIComponent(title)}?width=600`;
+        const ok = await probeImage(thumbUrl);
+        if (ok) {
+          markChecked(thumbUrl);
+          return res.redirect(302, thumbUrl);
+        }
+      }
+    } catch(e) { /* Wikimedia nicht erreichbar */ }
+  }
+
+  markChecked(null);
+  res.status(404).end();
+});
+
+
 function tryPhotoSources(mmsi, sources, res) {
   if (!sources.length) return res.status(404).end();
   const [src, ...rest] = sources;
@@ -257,11 +424,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.3.7',
+  uptime: Math.floor(process.uptime()), version:'0.3.8',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.3.7' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.3.8' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));
@@ -285,7 +452,7 @@ app.use(express.static(path.join(__dirname,'..','public'), {
 app.get('*', (req,res) => res.sendFile(path.join(__dirname,'..','public','index.html')));
 
 server.listen(PORT, () => {
-  console.log(`[Server] Elbe Radar v0.3.7 · Port ${PORT}`);
+  console.log(`[Server] Elbe Radar v0.3.8 · Port ${PORT}`);
   console.log(`[Server] AIS-Key:    ${process.env.AIS_API_KEY       ? 'gesetzt'           : 'NICHT gesetzt (Demo)'}`);
   console.log(`[Server] Reg-Code:   ${REG_CODE                      ? 'gesetzt'           : 'offen (jeder kann sich registrieren)'}`);
   console.log(`[Server] History:    ${process.env.RETAIN_DAYS||7} Tage · Intervall 5 min`);
