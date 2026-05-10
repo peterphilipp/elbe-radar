@@ -2,8 +2,17 @@
 <html lang="de" data-theme="dark">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#0c1828"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Elbe Radar"/>
+<meta name="description" content="AIS Schiffsradar für die Elbe bei Wedel"/>
 <title>Elbe Radar</title>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="apple-touch-icon" href="/icons/icon-192.png"/>
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png"/>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c1828'/%3E%3Cpath d='M16 4L23 13L21 27L11 27L9 13Z' fill='%234aa3f5'/%3E%3Crect x='13' y='22' width='6' height='5' rx='1' fill='%230c1828'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -328,6 +337,24 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 [data-theme="light"] .ship-label{color:#18253a!important;text-shadow:0 1px 3px rgba(255,255,255,.9)!important;}
 .leaflet-tooltip{background:var(--surf)!important;color:var(--txt)!important;border:1px solid var(--brd)!important;border-radius:7px!important;font-family:var(--font)!important;font-size:12px!important;padding:4px 9px!important;}
 .leaflet-control-zoom a{background:var(--surf)!important;color:var(--txt)!important;border-color:var(--brd)!important;}
+
+/* ── FABs (Floating Action Buttons) ─────────────────────────────────────── */
+#fab-group{position:absolute;bottom:60px;right:12px;z-index:500;display:flex;flex-direction:column;gap:10px;pointer-events:none;}
+.fab{width:44px;height:44px;border-radius:50%;border:none;box-shadow:0 3px 12px rgba(0,0,0,.35);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;pointer-events:all;transition:transform .15s,box-shadow .15s;background:var(--surf);color:var(--txt);border:1px solid var(--brd);}
+.fab:active{transform:scale(.92);box-shadow:0 1px 5px rgba(0,0,0,.3);}
+.fab.locating{animation:pulse 1s ease infinite;}
+.fab.loc-active{background:var(--blue);color:#fff;border-color:var(--blue);}
+@keyframes pulse{0%,100%{box-shadow:0 3px 12px rgba(0,0,0,.35);}50%{box-shadow:0 3px 20px rgba(74,163,245,.6);}}
+@media(max-width:700px){
+  #fab-group{bottom:calc(30vh + 18px);right:10px;}
+  #fab-group.detail-open{bottom:calc(60vh + 14px);}
+}
+/* safe-area für iPhone Notch */
+@supports(padding-bottom: env(safe-area-inset-bottom)){
+  #mobile-bottom{padding-bottom:env(safe-area-inset-bottom);}
+  #fab-group{bottom:calc(60px + env(safe-area-inset-bottom));}
+  @media(max-width:700px){#fab-group{bottom:calc(30vh + 18px + env(safe-area-inset-bottom));}}
+}
 </style>
 </head>
 <body>
@@ -365,7 +392,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.6</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.7</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="settingsBtn" title="Einstellungen">⚙️</button>
@@ -440,6 +467,10 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <div class="lr"><div style="width:18px;border-top:2px dashed #f0bc55"></div>Extrapolation</div>
     </div>
     <div id="buildinfo">–</div>
+    <div id="fab-group">
+      <button class="fab" id="fabHome" title="Zur Heimansicht">🏠</button>
+      <button class="fab" id="fabLoc"  title="Mein Standort">📍</button>
+    </div>
     <div id="detailBackdrop" onclick="closeDetail()"></div>
     <div id="detail">
       <div style="display:none" class="mob-drag-handle" id="detailHandle"><div style="width:36px;height:4px;background:var(--brd);border-radius:99px;margin:8px auto 4px;"></div></div>
@@ -610,7 +641,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.3.6</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.3.7</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -943,11 +974,11 @@ function drawTrack(mmsi){
 }
 
 function syncMarkers(){
-  for(const[mmsi,s]of ships){if(!s.lat||!s.lon)continue;const show=passes(s),mk=markers.get(mmsi);if(!show){if(mk){mk.unbindTooltip();map.removeLayer(mk);markers.delete(mmsi);labelShown.delete(mmsi);}continue;}const ic=makeIcon(s,selMmsi===mmsi,currentZoom);if(mk){mk.setLatLng([s.lat,s.lon]);mk.setIcon(ic);}else{const m2=L.marker([s.lat,s.lon],{icon:ic}).addTo(map);m2.bindTooltip(`<b>${s.name||'?'}</b> · ${kn(s.sog)} · ${dirLbl(s.cog)}`,{direction:'top',offset:[0,-8]});m2.on('click',e=>{L.DomEvent.stopPropagation(e);selectShip(mmsi);});markers.set(mmsi,m2);}}
+  for(const[mmsi,s]of ships){if(!s.lat||!s.lon)continue;const show=passes(s),mk=markers.get(mmsi);if(!show){if(mk){mk.unbindTooltip();map.removeLayer(mk);markers.delete(mmsi);labelShown.delete(mmsi);}continue;}const ic=makeIcon(s,selMmsi===mmsi,currentZoom);if(mk){mk.setLatLng([s.lat,s.lon]);mk.setIcon(ic);}else{const m2=L.marker([s.lat,s.lon],{icon:ic}).addTo(map);if(!isMobile())m2.bindTooltip(`<b>${s.name||'?'}</b> · ${kn(s.sog)} · ${dirLbl(s.cog)}`,{direction:'top',offset:[0,-8]});m2.on('click',e=>{L.DomEvent.stopPropagation(e);selectShip(mmsi);});markers.set(mmsi,m2);}}
   for(const[mmsi,mk]of markers){if(!ships.has(mmsi)||!passes(ships.get(mmsi))){mk.unbindTooltip();map.removeLayer(mk);markers.delete(mmsi);labelShown.delete(mmsi);}}
   updateAllLabels();
 }
-function updateAllLabels(){const show=currentZoom>=ZOOM_LABEL;for(const[mmsi,mk]of markers){const s=ships.get(mmsi);if(!s)continue;if(show&&!labelShown.has(mmsi)){mk.unbindTooltip();mk.bindTooltip(s.name||'?',{permanent:true,direction:'right',offset:[shipIconSize(s.len,s.wid,currentZoom).bw/2+4,0],className:'ship-label'});labelShown.add(mmsi);}else if(!show&&labelShown.has(mmsi)){mk.unbindTooltip();mk.bindTooltip(`<b>${s.name||'?'}</b> · ${kn(s.sog)} · ${dirLbl(s.cog)}`,{direction:'top',offset:[0,-8]});labelShown.delete(mmsi);}}}
+function updateAllLabels(){const show=currentZoom>=ZOOM_LABEL;for(const[mmsi,mk]of markers){const s=ships.get(mmsi);if(!s)continue;if(show&&!labelShown.has(mmsi)){mk.unbindTooltip();mk.bindTooltip(s.name||'?',{permanent:true,direction:'right',offset:[shipIconSize(s.len,s.wid,currentZoom).bw/2+4,0],className:'ship-label'});labelShown.add(mmsi);}else if(!show&&labelShown.has(mmsi)){mk.unbindTooltip();if(!isMobile())mk.bindTooltip(`<b>${s.name||'?'}</b> · ${kn(s.sog)} · ${dirLbl(s.cog)}`,{direction:'top',offset:[0,-8]});labelShown.delete(mmsi);}}}
 
 function checkSelectionValid(){if(selMmsi&&ships.has(selMmsi)&&!passes(ships.get(selMmsi))){selMmsi=null;$('detail').classList.remove('open');clearTrackLayers();}}
 
@@ -981,6 +1012,7 @@ function selectShip(mmsi){
     $('detailHandle').style.display='block';
     $('mobile-bottom').classList.add('collapsed');
   }
+  updateFabPos();
   if(s.lat&&s.lon)map.panTo([s.lat,s.lon],{animate:true,duration:.6});
   drawTrack(mmsi);redraw();
 }
@@ -1098,7 +1130,7 @@ $('typeChips').onclick=e=>{
 };
 $('lenSlider').oninput=e=>{lenF=+e.target.value;$('lenVal').textContent=lenF===0?'Alle':'≥ '+lenF+' m';checkSelectionValid();redraw();};
 $('dclose').onclick=()=>closeDetail();
-function closeDetail(){$('detail').classList.remove('open');$('detailBackdrop').classList.remove('on');$('mobile-bottom').classList.remove('collapsed');selMmsi=null;clearTrackLayers();redraw();}
+function closeDetail(){$('detail').classList.remove('open');$('detailBackdrop').classList.remove('on');$('mobile-bottom').classList.remove('collapsed');selMmsi=null;clearTrackLayers();redraw();updateFabPos();}
 // Show drag handle on mobile
 if(window.innerWidth<=700){$('detailHandle').style.display='block';}
 $('themeBtn').onclick=()=>{theme=theme==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',theme);$('themeBtn').textContent=theme==='dark'?'🌙':'☀️';};
@@ -1354,6 +1386,101 @@ function renderStats(summaryObj, passages, days) {
   }
 }
 
+
+
+/* ─── Helpers ───────────────────────────────────────────────────────────── */
+const isMobile = () => window.innerWidth <= 700;
+const HOME_VIEW = { lat: 53.570, lon: 9.730, zoom: 12 };
+
+/* ─── FAB: Home ─────────────────────────────────────────────────────────── */
+$('fabHome').onclick = () => {
+  map.flyTo([HOME_VIEW.lat, HOME_VIEW.lon], HOME_VIEW.zoom, { duration: 0.8 });
+};
+
+/* ─── FAB: Eigener Standort ─────────────────────────────────────────────── */
+let locMarker = null, locWatch = null, locActive = false;
+$('fabLoc').onclick = () => {
+  if (locActive) {
+    // Deaktivieren
+    if (locWatch !== null) { navigator.geolocation.clearWatch(locWatch); locWatch = null; }
+    if (locMarker) { map.removeLayer(locMarker); locMarker = null; }
+    $('fabLoc').classList.remove('loc-active', 'locating');
+    locActive = false;
+    return;
+  }
+  if (!navigator.geolocation) { alert('Geolocation wird von diesem Browser nicht unterstützt.'); return; }
+  $('fabLoc').classList.add('locating');
+  locActive = true;
+  locWatch = navigator.geolocation.watchPosition(
+    pos => {
+      $('fabLoc').classList.remove('locating');
+      $('fabLoc').classList.add('loc-active');
+      const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+      if (!locMarker) {
+        const icon = L.divIcon({ className: '', iconSize: [18, 18], iconAnchor: [9, 9],
+          html: `<div style="width:18px;height:18px;border-radius:50%;background:#4aa3f5;border:3px solid #fff;box-shadow:0 0 0 2px #4aa3f5,0 2px 8px rgba(0,0,0,.4)"></div>` });
+        locMarker = L.marker([lat, lng], { icon, zIndexOffset: 900 }).addTo(map);
+        if (accuracy < 500) {
+          L.circle([lat, lng], { radius: accuracy, color: '#4aa3f5', fillColor: '#4aa3f5',
+            fillOpacity: 0.12, weight: 1.5, dashArray: '4 4' }).addTo(map);
+        }
+        map.panTo([lat, lng], { animate: true, duration: 0.6 });
+      } else {
+        locMarker.setLatLng([lat, lng]);
+      }
+    },
+    err => {
+      $('fabLoc').classList.remove('locating', 'loc-active');
+      locActive = false; locWatch = null;
+      if (err.code === 1) alert('Standort-Zugriff verweigert. Bitte in den Browser-Einstellungen erlauben.');
+    },
+    { enableHighAccuracy: true, maximumAge: 10000 }
+  );
+};
+
+/* ─── Swipe-to-Dismiss für Detail Bottom Sheet ──────────────────────────── */
+(function() {
+  const detail = $('detail');
+  let startY = 0, startTime = 0;
+  detail.addEventListener('touchstart', e => {
+    startY = e.touches[0].clientY;
+    startTime = Date.now();
+    detail.style.transition = 'none';
+  }, { passive: true });
+  detail.addEventListener('touchmove', e => {
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 0) detail.style.transform = `translateY(${dy}px)`;
+  }, { passive: true });
+  detail.addEventListener('touchend', e => {
+    const dy = e.changedTouches[0].clientY - startY;
+    const dt = Date.now() - startTime;
+    detail.style.transition = '';
+    detail.style.transform = '';
+    // Schneller Swipe (>60px in <300ms) oder langsamer aber weit (>120px)
+    if ((dy > 60 && dt < 300) || dy > 120) {
+      closeDetail();
+    }
+  }, { passive: true });
+})();
+
+/* ─── FAB-Position wenn Detail offen ────────────────────────────────────── */
+const origSelectShip = window.selectShip;
+// Patch: FAB group moves up when detail is open on mobile
+function updateFabPos() {
+  if (isMobile()) {
+    const open = $('detail').classList.contains('open');
+    $('fab-group').classList.toggle('detail-open', open);
+  }
+}
+
+/* ─── Service Worker registrieren ───────────────────────────────────────── */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('[SW] Registriert:', reg.scope))
+      .catch(err => console.warn('[SW] Fehler:', err));
+  });
+}
 
 // Direkt aufrufen – Script läuft nach DOM-Parse, DOMContentLoaded bereits gefeuert
 checkAuth();
