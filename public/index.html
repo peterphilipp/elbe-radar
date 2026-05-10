@@ -29,26 +29,27 @@ a{color:var(--blue);}
 
 /* ── TOPBAR ──────────────────────────────────────────────────────────────── */
 #topbar{position:fixed;top:0;left:0;right:0;height:50px;background:var(--surf);
-  border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:10px;padding:0 14px;z-index:60;
-  box-shadow:0 1px 8px rgba(0,0,0,.12);}
+  border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:8px;
+  padding:0 14px;z-index:200;box-shadow:0 1px 8px rgba(0,0,0,.12);}
 .brand{font-weight:800;font-size:15px;letter-spacing:-.02em;display:flex;align-items:center;gap:7px;white-space:nowrap;}
-.brand-sub{font-weight:500;font-size:12px;color:var(--mut);margin-left:2px;}
+.brand-sub{font-weight:500;font-size:12px;color:var(--mut);}
 .topbar-r{display:flex;align-items:center;gap:6px;margin-left:auto;}
 .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border:1px solid var(--brd);
   border-radius:999px;font-size:11px;color:var(--mut);background:var(--surf2);white-space:nowrap;}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--fnt);flex-shrink:0;}
 .dot.on{background:var(--tel);animation:blink 2s infinite;}.dot.err{background:var(--red);}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
-.ibtn{width:32px;height:32px;border-radius:7px;border:1px solid var(--brd);background:var(--surf2);
-  display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--mut);transition:background .15s;}
+.ibtn{height:32px;min-width:32px;border-radius:7px;border:1px solid var(--brd);background:var(--surf2);
+  display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  font-size:13px;color:var(--mut);padding:0 8px;transition:background .15s,color .15s;}
 .ibtn:hover{background:var(--off);}
 .ibtn.active{background:var(--bhi);color:var(--blue);border-color:var(--blue);}
 
 /* ── LAYOUT ──────────────────────────────────────────────────────────────── */
 #content{position:fixed;top:50px;left:0;right:0;bottom:0;display:flex;overflow:hidden;}
-.panel{width:272px;min-width:272px;background:var(--surf);border-right:1px solid var(--brd);
+.panel{width:260px;min-width:260px;background:var(--surf);border-right:1px solid var(--brd);
   display:flex;flex-direction:column;overflow:hidden;}
-.panel.right{border-right:none;border-left:1px solid var(--brd);width:268px;min-width:268px;}
+.panel.right{border-right:none;border-left:1px solid var(--brd);width:265px;min-width:265px;}
 .ph{padding:11px 14px 9px;border-bottom:1px solid var(--div);flex-shrink:0;}
 .ph h2{font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;}
 .ph p{font-size:11px;color:var(--mut);margin-top:2px;}
@@ -72,29 +73,19 @@ a{color:var(--blue);}
 input[type=range]{flex:1;accent-color:var(--blue);}
 .slider-val{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--blue);min-width:52px;text-align:right;}
 
-/* ── SHIP LIST ───────────────────────────────────────────────────────────── */
-.slist{list-style:none;}
-.si{padding:9px 13px 9px 16px;border-bottom:1px solid var(--div);cursor:pointer;
-  position:relative;transition:background .12s;}
-.si::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:0 2px 2px 0;}
-.si:hover{background:var(--off);}.si.sel{background:var(--bhi);}
-.si[data-type="Container"]::before{background:#ff8c00;}
-.si[data-type="Cruise"]::before{background:#ff1493;}
-.si[data-type="Tanker"]::before{background:#c9aa00;}
-.si[data-type="Cargo"]::before{background:#00cc66;}
-.si-top{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
-.si-name{font-size:12px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0;}
-.bc{background:#ff8c0022;color:#ff8c00;border:1px solid #ff8c0066;}
-.bk{background:#ff149322;color:#ff1493;border:1px solid #ff149366;}
-.bt{background:#c9aa0022;color:#c9aa00;border:1px solid #c9aa0066;}
-.bf{background:#00cc6622;color:#00cc66;border:1px solid #00cc6666;}
-.si-meta{font-size:11px;color:var(--mut);display:flex;flex-wrap:wrap;gap:3px 9px;}
-.si-dir{font-weight:700;font-family:var(--mono);}
-.si-time{margin-left:auto;color:var(--fnt);}
-.empty{padding:36px 18px;text-align:center;color:var(--mut);font-size:12px;line-height:1.8;}
+/* ── STATS GRID (linkes Panel) ───────────────────────────────────────────── */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px 13px;border-bottom:1px solid var(--div);flex-shrink:0;}
+.sg-item{background:var(--surf2);border:1px solid var(--div);border-radius:8px;padding:8px 10px;text-align:center;
+  border-left-width:3px;}
+.sg-num{font-family:var(--mono);font-size:22px;font-weight:700;line-height:1;}
+.sg-lbl{font-size:10px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-top:3px;}
+.open-log-btn{margin:10px 13px;padding:8px 14px;border-radius:8px;background:var(--off);
+  border:1px solid var(--brd);font-size:12px;font-weight:700;color:var(--mut);
+  display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;flex-shrink:0;}
+.open-log-btn:hover{background:var(--bhi);color:var(--blue);border-color:var(--blue);}
 
 /* ── ETA LIST ────────────────────────────────────────────────────────────── */
+.slist{list-style:none;}
 .fi{padding:9px 13px 9px 16px;border-bottom:1px solid var(--div);cursor:pointer;
   position:relative;transition:background .12s;}
 .fi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:0 2px 2px 0;}
@@ -108,6 +99,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .fi-eta{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--blue);}
 .fi-cd{font-family:var(--mono);font-size:11px;color:var(--tel);font-weight:600;margin-bottom:2px;}
 .fi-meta{font-size:11px;color:var(--mut);display:flex;flex-wrap:wrap;gap:3px 8px;}
+.empty{padding:36px 18px;text-align:center;color:var(--mut);font-size:12px;line-height:1.8;}
 
 /* ── TABS ────────────────────────────────────────────────────────────────── */
 .tabs{display:flex;border-bottom:1px solid var(--div);flex-shrink:0;}
@@ -122,9 +114,9 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 #mapbar{padding:5px 12px;background:var(--surf2);border-bottom:1px solid var(--brd);
   display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;}
 .mbt{font-size:13px;font-weight:700;flex:1;}
-.stat{font-size:11px;color:var(--mut);padding:2px 7px;background:var(--off);
+.mstat{font-size:11px;color:var(--mut);padding:2px 7px;background:var(--off);
   border:1px solid var(--div);border-radius:5px;white-space:nowrap;}
-.stat b{font-family:var(--mono);font-weight:700;color:var(--txt);}
+.mstat b{font-family:var(--mono);font-weight:700;color:var(--txt);}
 #map{flex:1;min-height:0;width:100%;}
 .tile-group{display:flex;gap:3px;border:1px solid var(--brd);border-radius:7px;padding:2px;background:var(--off);}
 .tbt{font-size:13px;width:26px;height:26px;border-radius:5px;display:flex;align-items:center;
@@ -135,16 +127,14 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 #dbgwrap{overflow:hidden;max-height:0;transition:max-height .25s ease;flex-shrink:0;}
 #dbgwrap.open{max-height:22px;}
 #dbgbar{padding:2px 13px;background:var(--bg);border-top:1px solid var(--div);
-  font-size:10px;font-family:var(--mono);color:var(--mut);white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis;}
+  font-size:10px;font-family:var(--mono);color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 [data-theme="dark"] #dbgbar{background:#120800;color:#f0bc55;border-color:#3a1f00;}
 
 /* ── LEGENDE ─────────────────────────────────────────────────────────────── */
 #legend{position:absolute;bottom:44px;left:10px;z-index:500;background:var(--surf);
   border:1px solid var(--brd);border-radius:10px;padding:8px 12px;font-size:11px;
   color:var(--mut);pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2);}
-#legend h4{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
-  color:var(--txt);margin-bottom:5px;}
+#legend h4{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--txt);margin-bottom:5px;}
 .lr{display:flex;align-items:center;gap:6px;margin-bottom:2px;}
 .ld{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 
@@ -174,40 +164,77 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
 /* ── ALERT BUILDER ───────────────────────────────────────────────────────── */
 .abwrap{padding:12px 14px;border-bottom:1px solid var(--div);background:var(--surf2);flex-shrink:0;}
-.abwrap h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
-  color:var(--mut);margin-bottom:8px;display:flex;align-items:center;gap:5px;}
+.abwrap h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:8px;}
 .abform{display:grid;gap:7px;}
 .abfield{display:grid;gap:2px;}
-.ablbl{font-size:10px;font-weight:700;color:var(--mut);text-transform:uppercase;
-  letter-spacing:.06em;display:flex;align-items:center;gap:4px;}
+.ablbl{font-size:10px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:4px;}
 .abhlp{font-size:10px;color:var(--fnt);font-weight:400;text-transform:none;letter-spacing:0;}
 .abrow2{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
 .abinput{background:var(--off);border:1px solid var(--brd);border-radius:6px;color:var(--txt);
   font:inherit;font-size:11px;padding:5px 8px;width:100%;transition:border-color .15s;}
 .abinput:focus{outline:none;border-color:var(--blue);background:var(--surf);}
-.abbtn{padding:6px 14px;border-radius:7px;background:var(--blue);color:#fff;
-  font-size:11px;font-weight:700;margin-top:2px;transition:opacity .15s;}
+.abbtn{padding:6px 14px;border-radius:7px;background:var(--blue);color:#fff;font-size:11px;font-weight:700;margin-top:2px;transition:opacity .15s;}
 .abbtn:hover{opacity:.88;}
 .auth-row{display:flex;gap:6px;align-items:center;margin-bottom:5px;}
-.auth-row input{flex:1;}
-.alert-item{padding:9px 13px;border-bottom:1px solid var(--div);
-  display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:start;}
+.alert-item{padding:9px 13px;border-bottom:1px solid var(--div);display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:start;}
 .ai-name{font-size:12px;font-weight:700;}
 .ai-desc{font-size:10px;color:var(--mut);margin-top:2px;line-height:1.5;}
 .ai-del{color:var(--red);font-size:13px;padding:2px 5px;}
-.ai-tog{font-size:11px;padding:2px 7px;border:1px solid var(--brd);
-  border-radius:5px;background:var(--surf2);font-family:var(--mono);}
+.ai-tog{font-size:11px;padding:2px 7px;border:1px solid var(--brd);border-radius:5px;background:var(--surf2);font-family:var(--mono);}
 
 /* ── BUILD INFO ──────────────────────────────────────────────────────────── */
 #buildinfo{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:500;
   font-size:10px;font-family:var(--mono);color:var(--fnt);pointer-events:none;white-space:nowrap;
   background:var(--surf);border:1px solid var(--div);padding:1px 8px;border-radius:999px;opacity:.7;}
 
+/* ── LOG OVERLAY ─────────────────────────────────────────────────────────── */
+#logPage{position:fixed;top:50px;left:0;right:0;bottom:0;z-index:100;
+  background:var(--bg);display:none;flex-direction:column;animation:fadeIn .15s ease;}
+#logPage.open{display:flex;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+#logBar{padding:10px 14px;background:var(--surf);border-bottom:1px solid var(--brd);
+  display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap;
+  box-shadow:0 2px 8px rgba(0,0,0,.08);}
+#logBar h2{font-size:14px;font-weight:800;display:flex;align-items:center;gap:7px;white-space:nowrap;}
+.log-filters{display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex:1;}
+.log-search{background:var(--off);border:1px solid var(--brd);border-radius:8px;
+  color:var(--txt);font:inherit;font-size:12px;padding:5px 10px;width:180px;transition:border-color .15s;}
+.log-search:focus{outline:none;border-color:var(--blue);}
+#logBody{flex:1;overflow-y:auto;}
+#logBody::-webkit-scrollbar{width:4px;}
+#logBody::-webkit-scrollbar-thumb{background:var(--brd);border-radius:99px;}
+/* Log list items */
+.li{padding:10px 14px 10px 17px;border-bottom:1px solid var(--div);cursor:pointer;
+  position:relative;transition:background .12s;display:flex;align-items:center;gap:12px;}
+.li::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:0 2px 2px 0;}
+.li:hover{background:var(--off);}
+.li[data-type="Container"]::before{background:#ff8c00;}
+.li[data-type="Cruise"]::before{background:#ff1493;}
+.li[data-type="Tanker"]::before{background:#c9aa00;}
+.li[data-type="Cargo"]::before{background:#00cc66;}
+.li-left{flex:1;min-width:0;}
+.li-top{display:flex;align-items:center;gap:7px;margin-bottom:4px;}
+.li-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;}
+.badge{display:inline-flex;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0;}
+.bc{background:#ff8c0022;color:#ff8c00;border:1px solid #ff8c0066;}
+.bk{background:#ff149322;color:#ff1493;border:1px solid #ff149366;}
+.bt{background:#c9aa0022;color:#c9aa00;border:1px solid #c9aa0066;}
+.bf{background:#00cc6622;color:#00cc66;border:1px solid #00cc6666;}
+.li-dir{font-family:var(--mono);font-size:11px;font-weight:700;flex-shrink:0;}
+.li-meta{font-size:11px;color:var(--mut);display:flex;flex-wrap:wrap;gap:2px 10px;}
+.li-time{margin-left:auto;color:var(--fnt);}
+.li-eta{text-align:right;flex-shrink:0;min-width:90px;}
+.li-etat{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--blue);}
+.li-etacd{font-family:var(--mono);font-size:11px;color:var(--tel);font-weight:600;}
+.li-noeta{color:var(--fnt);font-size:11px;}
+
 /* ── MOBILE ──────────────────────────────────────────────────────────────── */
 @media(max-width:1100px){.panel.right{display:none;}}
 @media(max-width:700px){
   .panel{display:none;}
   #mobile-bottom{display:flex!important;}
+  #logBar{gap:6px;}
+  .log-search{width:140px;}
 }
 #mobile-bottom{display:none;position:fixed;bottom:0;left:0;right:0;z-index:70;
   background:var(--surf);border-top:1px solid var(--brd);max-height:45vh;overflow-y:auto;}
@@ -217,7 +244,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .mob-tab.on{color:var(--blue);border-color:var(--blue);}
 .mob-content{display:none;}.mob-content.on{display:block;}
 
-/* ── LEAFLET OVERRIDES ───────────────────────────────────────────────────── */
+/* ── LEAFLET ─────────────────────────────────────────────────────────────── */
 .leaflet-container{background:var(--map-bg)!important;}
 .ship-label{background:transparent!important;border:none!important;box-shadow:none!important;
   font-size:11px!important;font-weight:700!important;color:#fff!important;
@@ -228,8 +255,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .leaflet-tooltip{background:var(--surf)!important;color:var(--txt)!important;
   border:1px solid var(--brd)!important;border-radius:7px!important;
   font-family:var(--font)!important;font-size:12px!important;padding:4px 9px!important;}
-.leaflet-control-zoom a{background:var(--surf)!important;color:var(--txt)!important;
-  border-color:var(--brd)!important;}
+.leaflet-control-zoom a{background:var(--surf)!important;color:var(--txt)!important;border-color:var(--brd)!important;}
 </style>
 </head>
 <body>
@@ -238,22 +264,23 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span> Schiffe</div>
-    <div class="pill" id="buildPill" title="Build-Info" style="cursor:pointer">v2.3</div>
-    <button class="ibtn" id="dbgBtn" title="Debug-Log ein/ausblenden">🔧</button>
-    <button class="ibtn" id="themeBtn" title="Theme wechseln">🌙</button>
+    <div class="pill" id="buildPill" title="Build-Info" style="cursor:pointer">v2.4</div>
+    <button class="ibtn" id="logBtn" title="Schiffsliste öffnen">📋 Log</button>
+    <button class="ibtn" id="dbgBtn" title="Debug-Log">🔧</button>
+    <button class="ibtn" id="themeBtn" title="Theme">🌙</button>
   </div>
 </header>
 
 <div id="content">
-  <!-- LEFT PANEL -->
+  <!-- LEFT PANEL: Filter + Stats -->
   <aside class="panel">
     <div class="ph">
-      <h2>Passagen <span class="cnt" id="liveCnt">0</span></h2>
-      <p>Kartenausschnitt · ≥ <span id="lenHdr">50</span> m</p>
+      <h2>🗺️ Radar <span class="cnt" id="liveCnt">0</span></h2>
+      <p>Schiffe im Kartenausschnitt</p>
     </div>
     <div class="filters">
       <div>
-        <div class="flbl">Typ</div>
+        <div class="flbl">Typ filtern (Karte)</div>
         <div class="chips" id="typeChips">
           <button class="chip on" data-t="all">Alle</button>
           <button class="chip" data-t="Container">Container</button>
@@ -270,7 +297,27 @@ input[type=range]{flex:1;accent-color:var(--blue);}
         </div>
       </div>
     </div>
-    <div class="pscroll"><ul class="slist" id="liveList"></ul><div class="empty" id="liveEmpty">Keine Schiffe.</div></div>
+    <!-- Stats Grid -->
+    <div class="stat-grid">
+      <div class="sg-item" style="border-left-color:#ff8c00">
+        <div class="sg-num" style="color:#ff8c00" id="stC">0</div>
+        <div class="sg-lbl">Container</div>
+      </div>
+      <div class="sg-item" style="border-left-color:#ff1493">
+        <div class="sg-num" style="color:#ff1493" id="stK">0</div>
+        <div class="sg-lbl">Kreuzfahrt</div>
+      </div>
+      <div class="sg-item" style="border-left-color:#c9aa00">
+        <div class="sg-num" style="color:#c9aa00" id="stT">0</div>
+        <div class="sg-lbl">Tanker</div>
+      </div>
+      <div class="sg-item" style="border-left-color:#00cc66">
+        <div class="sg-num" style="color:#00cc66" id="stF">0</div>
+        <div class="sg-lbl">Frachter</div>
+      </div>
+    </div>
+    <button class="open-log-btn" id="openLogBtn">📋 Schiffsliste öffnen</button>
+    <div style="flex:1"></div>
     <div class="pfoot">Backend: <span id="backendStatus">–</span></div>
   </aside>
 
@@ -278,14 +325,11 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div id="mapwrap">
     <div id="mapbar">
       <span class="mbt">Elbe vor Wedel</span>
-      <div class="stat"><b id="sC" style="color:#ff8c00">0</b> Container</div>
-      <div class="stat"><b id="sK" style="color:#ff1493">0</b> Kreuzfahrt</div>
-      <div class="stat"><b id="sT" style="color:#c9aa00">0</b> Tanker</div>
-      <div class="stat">⏱ <b id="sP">0</b> ETA</div>
-      <div class="stat">🔍 <b id="zoomLbl">12</b></div>
-      <div class="tile-group" title="Kartenstil wechseln">
+      <div class="mstat">⏱ <b id="sP">0</b> ETA</div>
+      <div class="mstat">🔍 <b id="zoomLbl">12</b></div>
+      <div class="tile-group" title="Kartenstil">
         <button class="tbt on"  data-tile="dark"    title="Dunkel">🌙</button>
-        <button class="tbt"     data-tile="voyager" title="Nautisch (empfohlen)">🌊</button>
+        <button class="tbt"     data-tile="voyager" title="Nautisch">🌊</button>
         <button class="tbt"     data-tile="light"   title="Hell">☀️</button>
       </div>
     </div>
@@ -297,7 +341,12 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <div class="lr"><div class="ld" style="background:#ff1493"></div>Kreuzfahrt</div>
       <div class="lr"><div class="ld" style="background:#c9aa00"></div>Tanker</div>
       <div class="lr"><div class="ld" style="background:#00cc66"></div>Frachter</div>
-      <div class="lr" style="margin-top:5px"><div style="width:18px;border-top:2px dashed #f0bc55;flex-shrink:0"></div>Willkomm-Höft</div>
+      <div class="lr" style="margin-top:5px">
+        <div style="width:18px;border-top:2px dashed #4aa3f5;flex-shrink:0"></div>Track (hist.)
+      </div>
+      <div class="lr">
+        <div style="width:18px;border-top:2px dashed #f0bc55;flex-shrink:0"></div>Extrapolation
+      </div>
     </div>
     <div id="buildinfo">–</div>
     <!-- DETAIL PANEL -->
@@ -309,7 +358,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
         <div class="dgrid" id="dgrid"></div>
         <div class="dsec">🛤 Track (letzte 24 h)</div>
         <div class="dtrack" id="dtrack">–</div>
-        <div class="dsec">📍 Extrapolation +2 h</div>
+        <div class="dsec">📍 Extrapolation +2 h (ab aktueller Position)</div>
         <div class="dtrack" id="dextrap">–</div>
         <div class="dfoot"><span id="dtime"></span><a id="dlink" href="#" target="_blank">MarineTraffic ↗</a></div>
       </div>
@@ -331,38 +380,27 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     <div class="tabcontent" id="tab-alerts">
       <div class="abwrap">
         <h3>🔔 Neuer Alert</h3>
-        <!-- Auth-Key (nur sichtbar wenn authRequired) -->
         <div id="authRow" class="auth-row" style="display:none">
           <input class="abinput" id="aApiKey" type="password" placeholder="API-Schlüssel"/>
         </div>
         <div class="abform">
-          <div class="abfield">
-            <label class="ablbl">Name</label>
-            <input class="abinput" id="aName" placeholder="z.B. Große Container"/>
-          </div>
+          <div class="abfield"><label class="ablbl">Name</label>
+            <input class="abinput" id="aName" placeholder="z.B. Große Container"/></div>
           <div class="abrow2">
-            <div class="abfield">
-              <label class="ablbl">Schiffstyp</label>
-              <select class="abinput" id="aType">
-                <option value="">Alle</option>
+            <div class="abfield"><label class="ablbl">Typ</label>
+              <select class="abinput" id="aType"><option value="">Alle</option>
                 <option>Container</option><option>Cruise</option>
-                <option>Tanker</option><option>Cargo</option>
-              </select>
-            </div>
-            <div class="abfield">
-              <label class="ablbl">Namensteil</label>
-              <input class="abinput" id="aNameF" placeholder="z.B. MSC"/>
-            </div>
+                <option>Tanker</option><option>Cargo</option></select></div>
+            <div class="abfield"><label class="ablbl">Namensteil</label>
+              <input class="abinput" id="aNameF" placeholder="z.B. MSC"/></div>
           </div>
           <div class="abrow2">
             <div class="abfield">
-              <label class="ablbl">Mindestlänge <span class="abhlp">(Schiff ≥ x m)</span></label>
-              <input class="abinput" id="aLenAlert" type="number" min="0" value="150" placeholder="150"/>
-            </div>
+              <label class="ablbl">Mindestlänge <span class="abhlp">(≥ x m)</span></label>
+              <input class="abinput" id="aLenAlert" type="number" min="0" value="150"/></div>
             <div class="abfield">
-              <label class="ablbl">ETA ≤ Min. <span class="abhlp">(Vorlaufzeit)</span></label>
-              <input class="abinput" id="aEta" type="number" min="5" max="720" value="30"/>
-            </div>
+              <label class="ablbl">ETA ≤ Min. <span class="abhlp">(Vorlauf)</span></label>
+              <input class="abinput" id="aEta" type="number" min="5" max="720" value="30"/></div>
           </div>
           <button class="abbtn" id="aSave">✚ Alert anlegen</button>
         </div>
@@ -376,7 +414,39 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   </aside>
 </div>
 
-<!-- MOBILE BOTTOM BAR -->
+<!-- LOG PAGE OVERLAY -->
+<div id="logPage">
+  <div id="logBar">
+    <h2>📋 Schiffsliste <span class="cnt" id="logCnt">0</span></h2>
+    <div class="log-filters">
+      <input type="search" class="log-search" id="logSearch" placeholder="🔍 Name suchen…"/>
+      <div class="chips" id="logTypeChips">
+        <button class="chip on" data-t="all">Alle</button>
+        <button class="chip" data-t="Container">Container</button>
+        <button class="chip" data-t="Cruise">Kreuzfahrt</button>
+        <button class="chip" data-t="Tanker">Tanker</button>
+        <button class="chip" data-t="Cargo">Frachter</button>
+      </div>
+      <div class="slider-row" style="flex-shrink:0;gap:6px">
+        <span style="font-size:11px;color:var(--mut)">≥</span>
+        <input type="range" id="logLenSlider" min="0" max="400" step="25" value="0" style="width:80px;accent-color:var(--blue)"/>
+        <span class="slider-val" id="logLenVal">Alle</span>
+      </div>
+      <div class="chips" id="logDirChips">
+        <button class="chip on" data-d="all">↔ Alle</button>
+        <button class="chip" data-d="hh">▶ Hamburg</button>
+        <button class="chip" data-d="ns">◀ Nordsee</button>
+      </div>
+    </div>
+    <button id="logClose" class="ibtn" style="flex-shrink:0">✕ Schließen</button>
+  </div>
+  <div id="logBody">
+    <ul id="logList" class="slist"></ul>
+    <div class="empty" id="logEmpty" style="display:none">Keine Schiffe gefunden.</div>
+  </div>
+</div>
+
+<!-- MOBILE BOTTOM -->
 <div id="mobile-bottom">
   <div class="mob-tabs">
     <button class="mob-tab on" data-mob="mob-eta">ETA <span class="cnt" id="mobFutureCnt">0</span></button>
@@ -426,6 +496,7 @@ const TILES  = {
   light:   'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
 };
 const MAP_BG = { dark:'#0a1520', voyager:'#c8d9e6', light:'#e8eef5' };
+const JUMP_THRESHOLD = 0.3; // Grad – darüber gilt eine Position als Sprung (Teleport/Wende)
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 const $    = id => document.getElementById(id);
@@ -433,6 +504,7 @@ const dbg  = m  => { $('dbgbar').textContent = m; };
 const col  = t  => COLORS[t]||'#8aabb8';
 const bcls = t  => ({Cruise:'bk',Container:'bc',Tanker:'bt',Cargo:'bf'})[t]||'bf';
 const dirLbl = c => c==null?'–':(+c>=30&&+c<=200)?'▶ HH':'◀ NS';
+const isToHamburg = c => c!=null&&+c>=30&&+c<=200;
 const kn   = v  => v==null?'–':(+v/10).toFixed(1)+' kn';
 const mt   = v  => v?v+' m':'–';
 const drf  = v  => v?(+v/10).toFixed(1)+' m':'–';
@@ -452,9 +524,9 @@ function shipIconSize(len,wid,zoom){
 function makeIcon(s,sel=false,zoom=12){
   const c=col(s.type), rot=+(s.heading??s.cog??0);
   const {h,bw}=shipIconSize(s.len,s.wid,zoom);
-  const w=bw, mid=w*0.5, heck=w*0.42, bugY=1, midY=h*0.3, heckY=h-1;
-  const path=[`M${w/2} ${bugY}`,`L${w/2+mid} ${midY}`,`L${w/2+heck} ${heckY}`,`L${w/2-heck} ${heckY}`,`L${w/2-mid} ${midY}`,'Z'].join(' ');
-  const glow = sel ? `drop-shadow(0 0 6px ${c}) drop-shadow(0 0 2px #fff)` : `drop-shadow(0 1px 3px rgba(0,0,0,.8))`;
+  const w=bw, mid=w*0.5, heck=w*0.42;
+  const path=[`M${w/2} 1`,`L${w/2+mid} ${h*0.3}`,`L${w/2+heck} ${h-1}`,`L${w/2-heck} ${h-1}`,`L${w/2-mid} ${h*0.3}`,'Z'].join(' ');
+  const glow=sel?`drop-shadow(0 0 6px ${c}) drop-shadow(0 0 2px #fff)`:`drop-shadow(0 1px 3px rgba(0,0,0,.8))`;
   return L.divIcon({className:'',iconSize:[w,h],iconAnchor:[w/2,h*0.3],
     html:`<div style="transform:rotate(${rot}deg);filter:${glow}"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none"><path d="${path}" fill="${c}" stroke="rgba(0,0,0,.55)" stroke-width="0.8" stroke-linejoin="round"/></svg></div>`});
 }
@@ -464,21 +536,22 @@ let ships=new Map(), markers=new Map(), labelShown=new Set(), trackLayer=null, e
 let map, tileLayer, ws;
 let selMmsi=null, typeF='all', lenF=50, theme='dark', currentZoom=12;
 let authRequired=false, apiKey='';
+let logOpen=false, logTypeF='all', logLenF=0, logDirF='all';
 const passes = s => (typeF==='all'||s.type===typeF) && (s.len||0)>=lenF;
 
-/* ─── Debug Toggle (Topbar-Button) ───────────────────────────────────────── */
+/* ─── Debug Toggle ───────────────────────────────────────────────────────── */
 $('dbgBtn').onclick = () => {
-  const wrap = $('dbgwrap');
-  const open = wrap.classList.toggle('open');
+  const open = $('dbgwrap').classList.toggle('open');
   $('dbgBtn').classList.toggle('active', open);
 };
 
 /* ─── Karte ──────────────────────────────────────────────────────────────── */
 function initMap(){
   map = L.map('map',{zoomControl:true}).setView([53.570,9.730],12);
-  setTile('dark');
-  L.polyline([[53.490,9.6981],[53.620,9.6981]],{color:'#f0bc55',weight:1.5,dashArray:'5 7',opacity:.7}).addTo(map)
-   .bindTooltip('Willkomm-Höft',{sticky:true});
+  // Kartenstil aus DB laden
+  fetch('/api/settings/tile').then(r=>r.json()).then(d=>setTile(d.value||'dark')).catch(()=>setTile('dark'));
+  L.polyline([[53.490,9.6981],[53.620,9.6981]],{color:'#f0bc55',weight:1.5,dashArray:'5 7',opacity:.7})
+   .addTo(map).bindTooltip('Willkomm-Höft',{sticky:true});
   L.marker([53.5688,9.6981],{icon:L.divIcon({className:'',
     html:'<div style="width:11px;height:11px;border-radius:50%;background:#f0bc55;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)"></div>',
     iconSize:[11,11],iconAnchor:[5,5]})}).addTo(map).bindTooltip('Willkomm-Höft',{direction:'top'});
@@ -488,15 +561,18 @@ function initMap(){
 
 function setTile(name){
   if(tileLayer) map.removeLayer(tileLayer);
-  tileLayer = L.tileLayer(TILES[name],{maxZoom:19,attribution:'© OSM · CartoDB'}).addTo(map);
-  document.querySelector('.leaflet-container').style.background = MAP_BG[name]||'#0a1520';
-  document.querySelectorAll('.tbt').forEach(b => b.classList.toggle('on', b.dataset.tile===name));
-  // Schiffsname-Farbe an Hintergrund anpassen
-  document.documentElement.setAttribute('data-theme', name==='light'?'light':theme);
+  tileLayer = L.tileLayer(TILES[name]||TILES.dark,{maxZoom:19,attribution:'© OSM · CartoDB'}).addTo(map);
+  const lc = document.querySelector('.leaflet-container');
+  if(lc) lc.style.background = MAP_BG[name]||MAP_BG.dark;
+  document.querySelectorAll('.tbt').forEach(b=>b.classList.toggle('on',b.dataset.tile===name));
 }
+
 document.querySelector('.tile-group').onclick = e => {
   const btn = e.target.closest('.tbt');
-  if(btn) setTile(btn.dataset.tile);
+  if(!btn) return;
+  setTile(btn.dataset.tile);
+  // In DB speichern
+  fetch('/api/settings/tile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:btn.dataset.tile})}).catch(()=>{});
 };
 
 function sendBoxUpdate(){
@@ -505,11 +581,31 @@ function sendBoxUpdate(){
   ws.send(JSON.stringify({type:'setBox',box:{n:+b.getNorth().toFixed(4),s:+b.getSouth().toFixed(4),w:+b.getWest().toFixed(4),e:+b.getEast().toFixed(4)}}));
 }
 
+/* ─── Track: Segmente bei Positionssprüngen aufteilen ────────────────────── */
+function buildTrackSegments(pts){
+  const segs=[];
+  let cur=[];
+  for(let i=0;i<pts.length;i++){
+    if(cur.length===0){ cur.push([pts[i].lat,pts[i].lon]); continue; }
+    const dlat=Math.abs(pts[i].lat-pts[i-1].lat);
+    const dlon=Math.abs(pts[i].lon-pts[i-1].lon);
+    if(dlat>JUMP_THRESHOLD||dlon>JUMP_THRESHOLD){
+      if(cur.length>=2) segs.push([...cur]);
+      cur=[[pts[i].lat,pts[i].lon]];
+    } else {
+      cur.push([pts[i].lat,pts[i].lon]);
+    }
+  }
+  if(cur.length>=2) segs.push(cur);
+  return segs;
+}
+
 /* ─── Track + Extrapolation ──────────────────────────────────────────────── */
 function clearTrackLayers(){
   if(trackLayer){map.removeLayer(trackLayer);trackLayer=null;}
   if(extrapLayer){map.removeLayer(extrapLayer);extrapLayer=null;}
 }
+
 function movePoint(lat,lon,cogDeg,distNm){
   const R=3440.065,d=distNm/R,cog=cogDeg*Math.PI/180;
   const lat1=lat*Math.PI/180,lon1=lon*Math.PI/180;
@@ -517,27 +613,45 @@ function movePoint(lat,lon,cogDeg,distNm){
   const lon2=lon1+Math.atan2(Math.sin(cog)*Math.sin(d)*Math.cos(lat1),Math.cos(d)-Math.sin(lat1)*Math.sin(lat2));
   return[lat2*180/Math.PI, lon2*180/Math.PI];
 }
+
 function drawTrack(mmsi){
   clearTrackLayers();
   fetch(`/api/ship/${mmsi}/track?hours=24`).then(r=>r.json()).then(pts=>{
-    if(!pts.length) return;
-    const latlngs=pts.map(p=>[p.lat,p.lon]);
-    const c=col((ships.get(mmsi)||{}).type);
-    trackLayer=L.polyline(latlngs,{color:c,weight:2,opacity:.7,dashArray:'4 4'}).addTo(map);
-    const last=pts[pts.length-1];
-    const sog=(last.sog||0)/10;
-    if(sog>0.5&&last.cog!=null){
-      const future=movePoint(last.lat,last.lon,last.cog,sog*2);
-      extrapLayer=L.polyline([[last.lat,last.lon],future],{color:'#f0bc55',weight:1.5,opacity:.6,dashArray:'2 6'}).addTo(map);
-      L.circleMarker(future,{radius:5,color:'#f0bc55',fillColor:'#f0bc55',fillOpacity:.5,weight:1}).addTo(extrapLayer);
+    const current = ships.get(mmsi);
+
+    // Aktuelle Position anhängen → schließt den Gap zwischen letztem DB-Eintrag und Ist-Position
+    if(current&&current.lat&&current.lon){
+      pts.push({ lat:current.lat, lon:current.lon, sog:current.sog, cog:current.cog, ts:current.seen||Date.now() });
     }
+    if(!pts.length) return;
+
+    const c = col((current||{}).type);
+
+    // Track-Polyline – bei Teleport-Sprüngen aufteilen
+    const segs = buildTrackSegments(pts);
+    trackLayer = L.featureGroup().addTo(map);
+    segs.forEach(seg => L.polyline(seg,{color:c,weight:2,opacity:.75,dashArray:'4 4'}).addTo(trackLayer));
+
+    // ─── Extrapolation ab AKTUELLER Schiffsposition ───────────────────────
+    // Nicht ab dem letzten History-Punkt, sondern ab der Echtzeit-Position
+    const base = current || pts[pts.length-1];
+    const sogKn = (base.sog||0)/10;
+
+    if(sogKn>0.5&&base.cog!=null){
+      const future = movePoint(base.lat, base.lon, base.cog, sogKn*2);
+      extrapLayer = L.featureGroup().addTo(map);
+      L.polyline([[base.lat,base.lon],future],{color:'#f0bc55',weight:1.5,opacity:.7,dashArray:'3 6'}).addTo(extrapLayer);
+      L.circleMarker(future,{radius:5,color:'#f0bc55',fillColor:'#f0bc55',fillOpacity:.5,weight:1.5}).addTo(extrapLayer);
+    }
+
+    // Info-Text im Detail-Panel
     const first=pts[0];
     $('dtrack').textContent=`${pts.length} Punkte · ab ${hm(first.ts)} · ${latFmt(first.lat)} ${lonFmt(first.lon)}`;
-    if(sog>0.5&&last.cog!=null){
-      const future=movePoint(last.lat,last.lon,last.cog,sog*2);
-      $('dextrap').textContent=`+2 h bei ${sog.toFixed(1)} kn → ${latFmt(future[0])} ${lonFmt(future[1])}`;
+    if(sogKn>0.5&&base.cog!=null){
+      const future=movePoint(base.lat,base.lon,base.cog,sogKn*2);
+      $('dextrap').textContent=`ab ${latFmt(base.lat)} ${lonFmt(base.lon)} · +2 h bei ${sogKn.toFixed(1)} kn → ${latFmt(future[0])} ${lonFmt(future[1])}`;
     } else {
-      $('dextrap').textContent='Schiff liegt (Geschw. < 0.5 kn)';
+      $('dextrap').textContent='Schiff liegt (< 0.5 kn)';
     }
   }).catch(()=>{ $('dtrack').textContent='Keine History verfügbar'; $('dextrap').textContent='–'; });
 }
@@ -607,68 +721,13 @@ function selectShip(mmsi){
   redraw();
 }
 
-/* ─── Smart-Render Schiffsliste (kein Flackern) ──────────────────────────── */
-function buildSiHtml(s){
-  return `<div class="si-top">
-    <div class="si-name">${s.name||'?'}</div>
-    <span class="badge ${bcls(s.type)}">${s.type}</span>
-  </div>
-  <div class="si-meta">
-    <span class="si-dir">${dirLbl(s.cog)}</span>
-    <span>${kn(s.sog)}</span>
-    <span>${mt(s.len)}</span>
-    ${s.dest?`<span>→ ${s.dest}</span>`:''}
-    <span class="si-time">${hm(s.seen)}</span>
-  </div>`;
-}
-
-function smartRenderList(ulId, list, buildHtml, onClickFn){
-  const ul = $(ulId); if(!ul) return;
-  const existing = new Map([...ul.querySelectorAll('li[data-mmsi]')].map(el=>[el.dataset.mmsi,el]));
-  const newSet   = new Set(list.map(s=>s.mmsi));
-  // Veraltete entfernen
-  for(const[mmsi,el]of existing) if(!newSet.has(mmsi)) el.remove();
-  // Upsert + Reihenfolge
-  list.forEach((s,i)=>{
-    const h = hashS(s);
-    let el = existing.get(s.mmsi);
-    if(el){
-      if(el.dataset.hash!==h){ el.innerHTML=buildHtml(s); el.dataset.hash=h; }
-      el.className='si'+(selMmsi===s.mmsi?' sel':'');
-      el.dataset.type=s.type;
-      if(ul.children[i]!==el) ul.insertBefore(el, ul.children[i]||null);
-    } else {
-      el=document.createElement('li');
-      el.className='si'+(selMmsi===s.mmsi?' sel':'');
-      el.dataset.mmsi=s.mmsi; el.dataset.hash=h; el.dataset.type=s.type;
-      el.innerHTML=buildHtml(s);
-      el.onclick=()=>onClickFn(s.mmsi);
-      ul.insertBefore(el, ul.children[i]||null);
-    }
-  });
-}
-
+/* ─── ETA Smart Render ───────────────────────────────────────────────────── */
 function buildFiHtml(s){
-  return `<div class="fi-top">
-    <div class="fi-name">${s.name}</div>
-    <span class="badge ${bcls(s.type)}">${s.type}</span>
-  </div>
+  return `<div class="fi-top"><div class="fi-name">${s.name}</div><span class="badge ${bcls(s.type)}">${s.type}</span></div>
   <div class="fi-eta">${etaSt(s.eta_ts)}</div>
   <div class="fi-cd">${cdown(s.eta_ts)}</div>
-  <div class="fi-meta">
-    <span>${mt(s.len)}</span><span>${kn(s.sog)}</span>
-    ${s.eta_dir?`<span>${s.eta_dir}</span>`:''}
-  </div>`;
+  <div class="fi-meta"><span>${mt(s.len)}</span><span>${kn(s.sog)}</span>${s.eta_dir?`<span>${s.eta_dir}</span>`:''}</div>`;
 }
-
-function renderLive(){
-  const list=[...ships.values()].filter(passes).sort((a,b)=>(b.seen||0)-(a.seen||0));
-  $('liveCnt').textContent=list.length;
-  $('shipNum').textContent=ships.size;
-  $('liveEmpty').style.display=list.length?'none':'block';
-  smartRenderList('liveList', list, buildSiHtml, selectShip);
-}
-
 function renderFuture(){
   const preds=[...ships.values()].filter(s=>s.eta_ts&&passes(s)).sort((a,b)=>a.eta_ts-b.eta_ts);
   $('futureCnt').textContent=preds.length;
@@ -676,10 +735,8 @@ function renderFuture(){
   $('sP').textContent=preds.length;
   $('futureEmpty')&&($('futureEmpty').style.display=preds.length?'none':'block');
   $('mobFutureEmpty')&&($('mobFutureEmpty').style.display=preds.length?'none':'block');
-
-  // Für ETA-Liste brauchen wir li.fi statt li.si – eigene smart-render Variante
   ['futureList','mobFutureList'].forEach(id=>{
-    const ul=$(id); if(!ul) return;
+    const ul=$(id);if(!ul)return;
     const existing=new Map([...ul.querySelectorAll('li[data-mmsi]')].map(el=>[el.dataset.mmsi,el]));
     const newSet=new Set(preds.map(s=>s.mmsi));
     for(const[mmsi,el]of existing) if(!newSet.has(mmsi)) el.remove();
@@ -687,27 +744,122 @@ function renderFuture(){
       const h=hashS(s)+s.eta_ts;
       let el=existing.get(s.mmsi);
       if(el){
-        if(el.dataset.hash!==h){ el.innerHTML=buildFiHtml(s); el.dataset.hash=h; }
+        if(el.dataset.hash!==h){el.innerHTML=buildFiHtml(s);el.dataset.hash=h;}
         el.dataset.type=s.type;
-        if(ul.children[i]!==el) ul.insertBefore(el, ul.children[i]||null);
+        if(ul.children[i]!==el) ul.insertBefore(el,ul.children[i]||null);
       } else {
-        el=document.createElement('li'); el.className='fi';
-        el.dataset.mmsi=s.mmsi; el.dataset.hash=h; el.dataset.type=s.type;
+        el=document.createElement('li');el.className='fi';
+        el.dataset.mmsi=s.mmsi;el.dataset.hash=h;el.dataset.type=s.type;
         el.innerHTML=buildFiHtml(s);
         el.onclick=()=>selectShip(s.mmsi);
-        ul.insertBefore(el, ul.children[i]||null);
+        ul.insertBefore(el,ul.children[i]||null);
       }
     });
   });
 }
 
+/* ─── Stats + Karte ──────────────────────────────────────────────────────── */
 function updateStats(){
   const a=[...ships.values()].filter(passes);
-  $('sC').textContent=a.filter(s=>s.type==='Container').length;
-  $('sK').textContent=a.filter(s=>s.type==='Cruise').length;
-  $('sT').textContent=a.filter(s=>s.type==='Tanker').length;
+  $('liveCnt').textContent=a.length;
+  $('shipNum').textContent=ships.size;
+  $('stC').textContent=a.filter(s=>s.type==='Container').length;
+  $('stK').textContent=a.filter(s=>s.type==='Cruise').length;
+  $('stT').textContent=a.filter(s=>s.type==='Tanker').length;
+  $('stF').textContent=a.filter(s=>s.type==='Cargo').length;
 }
-function redraw(){ syncMarkers(); renderLive(); renderFuture(); updateStats(); }
+function redraw(){ syncMarkers(); renderFuture(); updateStats(); if(logOpen) renderLog(); }
+
+/* ─── LOG PAGE ───────────────────────────────────────────────────────────── */
+function buildLogItemHtml(s){
+  const etaHtml = s.eta_ts
+    ? `<div class="li-eta"><div class="li-etat">${etaSt(s.eta_ts)}</div><div class="li-etacd">${cdown(s.eta_ts)}</div></div>`
+    : `<div class="li-eta li-noeta">–</div>`;
+  return `<div class="li-left">
+    <div class="li-top">
+      <span class="li-name">${s.name||'?'}</span>
+      <span class="badge ${bcls(s.type)}">${s.type}</span>
+      <span class="li-dir">${dirLbl(s.cog)}</span>
+    </div>
+    <div class="li-meta">
+      <span>⚡ ${kn(s.sog)}</span>
+      ${s.len?`<span>📏 ${s.len} m</span>`:''}
+      ${s.dest?`<span>→ ${s.dest}</span>`:''}
+      <span class="li-time">${hm(s.seen)}</span>
+    </div>
+  </div>${etaHtml}`;
+}
+
+function renderLog(){
+  const query=(($('logSearch')||{}).value||'').toLowerCase();
+  const list=[...ships.values()].filter(s=>{
+    if(logTypeF!=='all'&&s.type!==logTypeF) return false;
+    if((s.len||0)<logLenF) return false;
+    if(logDirF==='hh'&&!isToHamburg(s.cog)) return false;
+    if(logDirF==='ns'&&isToHamburg(s.cog)) return false;
+    if(query&&!(s.name||'').toLowerCase().includes(query)) return false;
+    return true;
+  }).sort((a,b)=>(b.seen||0)-(a.seen||0));
+
+  $('logCnt').textContent=list.length;
+  $('logEmpty').style.display=list.length?'none':'block';
+
+  const ul=$('logList');
+  const existing=new Map([...ul.querySelectorAll('li[data-mmsi]')].map(el=>[el.dataset.mmsi,el]));
+  const newSet=new Set(list.map(s=>s.mmsi));
+  for(const[mmsi,el]of existing) if(!newSet.has(mmsi)) el.remove();
+  list.forEach((s,i)=>{
+    const h=hashS(s)+(s.eta_ts||'');
+    let el=existing.get(s.mmsi);
+    if(el){
+      if(el.dataset.hash!==h){el.innerHTML=buildLogItemHtml(s);el.dataset.hash=h;}
+      el.dataset.type=s.type;
+      if(ul.children[i]!==el) ul.insertBefore(el,ul.children[i]||null);
+    } else {
+      el=document.createElement('li');el.className='li';
+      el.dataset.mmsi=s.mmsi;el.dataset.hash=h;el.dataset.type=s.type;
+      el.innerHTML=buildLogItemHtml(s);
+      el.onclick=()=>{ closeLog(); selectShip(s.mmsi); };
+      ul.insertBefore(el,ul.children[i]||null);
+    }
+  });
+}
+
+function openLog(){
+  logOpen=true;
+  $('logPage').classList.add('open');
+  $('logBtn').classList.add('active');
+  $('openLogBtn').classList.add('active');
+  renderLog();
+}
+function closeLog(){
+  logOpen=false;
+  $('logPage').classList.remove('open');
+  $('logBtn').classList.remove('active');
+  $('openLogBtn').classList.remove('active');
+}
+
+$('logBtn').onclick    = () => logOpen ? closeLog() : openLog();
+$('openLogBtn').onclick= () => openLog();
+$('logClose').onclick  = () => closeLog();
+
+// Log-Filter
+document.getElementById('logTypeChips').onclick=e=>{
+  const c=e.target.closest('.chip');if(!c)return;
+  document.querySelectorAll('#logTypeChips .chip').forEach(x=>x.classList.remove('on'));
+  c.classList.add('on');logTypeF=c.dataset.t;renderLog();
+};
+document.getElementById('logDirChips').onclick=e=>{
+  const c=e.target.closest('.chip');if(!c)return;
+  document.querySelectorAll('#logDirChips .chip').forEach(x=>x.classList.remove('on'));
+  c.classList.add('on');logDirF=c.dataset.d;renderLog();
+};
+$('logLenSlider').oninput=e=>{
+  logLenF=+e.target.value;
+  $('logLenVal').textContent=logLenF===0?'Alle':'≥ '+logLenF+' m';
+  renderLog();
+};
+$('logSearch').oninput=()=>renderLog();
 
 /* ─── Build-Info ─────────────────────────────────────────────────────────── */
 function loadBuildInfo(){
@@ -722,9 +874,7 @@ function loadBuildInfo(){
 }
 
 /* ─── Alerts ─────────────────────────────────────────────────────────────── */
-function authHeaders(){
-  return apiKey ? {'Content-Type':'application/json','x-api-key':apiKey} : {'Content-Type':'application/json'};
-}
+function authHeaders(){ return apiKey?{'Content-Type':'application/json','x-api-key':apiKey}:{'Content-Type':'application/json'}; }
 function loadAlerts(){
   fetch('/api/alerts').then(r=>r.json()).then(rows=>{
     ['alertList','mobAlertList'].forEach(id=>{
@@ -735,114 +885,87 @@ function loadAlerts(){
       rows.forEach(a=>{
         const li=document.createElement('li');li.className='alert-item';
         const parts=[];
-        if(a.ship_type)   parts.push(a.ship_type);
-        if(a.name_filter) parts.push(`"${a.name_filter}"`);
-        if(a.min_length_alert>0) parts.push(`≥ ${a.min_length_alert} m`);
+        if(a.ship_type)parts.push(a.ship_type);
+        if(a.name_filter)parts.push(`"${a.name_filter}"`);
+        if(a.min_length_alert>0)parts.push(`≥ ${a.min_length_alert} m`);
         parts.push(`ETA ≤ ${a.max_eta_min} Min`);
         li.innerHTML=`<div><div class="ai-name">${a.name}</div><div class="ai-desc">${parts.join(' · ')}</div></div>
-          <button class="ai-tog">${a.active?'✅':'⏸'}</button>
-          <button class="ai-del" title="Löschen">🗑</button>`;
-        li.querySelector('.ai-tog').onclick=()=>
-          fetch(`/api/alerts/${a.id}`,{method:'PATCH',headers:authHeaders(),body:JSON.stringify({active:!a.active})})
-            .then(r=>r.ok?loadAlerts():handleAuthError(r));
-        li.querySelector('.ai-del').onclick=()=>{
-          if(confirm(`"${a.name}" löschen?`))
-            fetch(`/api/alerts/${a.id}`,{method:'DELETE',headers:authHeaders()})
-              .then(r=>r.ok?loadAlerts():handleAuthError(r));
-        };
+          <button class="ai-tog">${a.active?'✅':'⏸'}</button><button class="ai-del">🗑</button>`;
+        li.querySelector('.ai-tog').onclick=()=>fetch(`/api/alerts/${a.id}`,{method:'PATCH',headers:authHeaders(),body:JSON.stringify({active:!a.active})}).then(r=>r.ok?loadAlerts():handleAuthError(r));
+        li.querySelector('.ai-del').onclick=()=>{if(confirm(`"${a.name}" löschen?`))fetch(`/api/alerts/${a.id}`,{method:'DELETE',headers:authHeaders()}).then(r=>r.ok?loadAlerts():handleAuthError(r));};
         ul.appendChild(li);
       });
     });
   });
 }
-function handleAuthError(r){
-  if(r.status===401){
-    apiKey='';
-    alert('Nicht autorisiert. Bitte API-Schlüssel prüfen.');
-  }
-}
+function handleAuthError(r){ if(r.status===401){apiKey='';alert('Nicht autorisiert – API-Schlüssel prüfen.');} }
 function saveAlert(name,type,nameF,lenAlert,eta){
-  if(!name) return;
-  fetch('/api/alerts',{method:'POST',headers:authHeaders(),
-    body:JSON.stringify({name,ship_type:type||null,name_filter:nameF||null,
-      max_eta_min:+eta||30,min_length_alert:+lenAlert||150,active:1})
-  }).then(r=>{if(r.ok)loadAlerts();else handleAuthError(r);});
+  if(!name)return;
+  fetch('/api/alerts',{method:'POST',headers:authHeaders(),body:JSON.stringify({name,ship_type:type||null,name_filter:nameF||null,max_eta_min:+eta||30,min_length_alert:+lenAlert||150,active:1})})
+    .then(r=>{if(r.ok)loadAlerts();else handleAuthError(r);});
 }
+$('aSave').onclick=()=>{ apiKey=$('aApiKey').value||apiKey; saveAlert($('aName').value.trim(),$('aType').value,$('aNameF').value.trim(),$('aLenAlert').value,$('aEta').value); $('aName').value='';$('aNameF').value=''; };
+$('mASave').onclick=()=>{ apiKey=$('mAApiKey').value||apiKey; saveAlert($('mAName').value.trim(),$('mAType').value,$('mANameF').value.trim(),$('mALenAlert').value,$('mAEta').value); $('mAName').value=''; };
 
-$('aSave').onclick=()=>{
-  apiKey=$('aApiKey').value||apiKey;
-  saveAlert($('aName').value.trim(),$('aType').value,$('aNameF').value.trim(),$('aLenAlert').value,$('aEta').value);
-  $('aName').value='';$('aNameF').value='';
-};
-$('mASave').onclick=()=>{
-  apiKey=$('mAApiKey').value||apiKey;
-  saveAlert($('mAName').value.trim(),$('mAType').value,$('mANameF').value.trim(),$('mALenAlert').value,$('mAEta').value);
-  $('mAName').value='';
-};
-
-/* ─── Tabs Desktop ───────────────────────────────────────────────────────── */
+/* ─── Tabs ───────────────────────────────────────────────────────────────── */
 document.querySelectorAll('.tab').forEach(btn=>btn.onclick=()=>{
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   document.querySelectorAll('.tabcontent').forEach(t=>t.classList.remove('on'));
-  btn.classList.add('on'); $('tab-'+btn.dataset.tab).classList.add('on');
+  btn.classList.add('on');$('tab-'+btn.dataset.tab).classList.add('on');
   if(btn.dataset.tab==='alerts') loadAlerts();
 });
 document.querySelectorAll('.mob-tab').forEach(btn=>btn.onclick=()=>{
   document.querySelectorAll('.mob-tab').forEach(t=>t.classList.remove('on'));
   document.querySelectorAll('.mob-content').forEach(t=>t.classList.remove('on'));
-  btn.classList.add('on'); $(btn.dataset.mob).classList.add('on');
+  btn.classList.add('on');$(btn.dataset.mob).classList.add('on');
   if(btn.dataset.mob==='mob-alerts') loadAlerts();
 });
 
-/* ─── Filter ─────────────────────────────────────────────────────────────── */
+/* ─── Hauptfilter (Karte) ────────────────────────────────────────────────── */
 $('typeChips').onclick=e=>{
   const c=e.target.closest('.chip');if(!c)return;
   document.querySelectorAll('#typeChips .chip').forEach(x=>x.classList.remove('on'));
-  c.classList.add('on'); typeF=c.dataset.t; redraw();
+  c.classList.add('on');typeF=c.dataset.t;redraw();
 };
 $('lenSlider').oninput=e=>{
   lenF=+e.target.value;
   $('lenVal').textContent=lenF===0?'Alle':'≥ '+lenF+' m';
-  $('lenHdr').textContent=lenF||0;
   redraw();
 };
-$('dclose').onclick=()=>{ $('detail').classList.remove('open'); selMmsi=null; clearTrackLayers(); redraw(); };
+$('dclose').onclick=()=>{ $('detail').classList.remove('open');selMmsi=null;clearTrackLayers();redraw(); };
 $('themeBtn').onclick=()=>{
   theme=theme==='dark'?'light':'dark';
   document.documentElement.setAttribute('data-theme',theme);
   $('themeBtn').textContent=theme==='dark'?'🌙':'☀️';
 };
-$('showBuild').onclick=e=>{ e.preventDefault(); alert($('buildinfo').textContent); };
+$('showBuild').onclick=e=>{e.preventDefault();alert($('buildinfo').textContent);};
 $('buildPill').onclick=()=>alert($('buildinfo').textContent);
 
 /* ─── WebSocket ──────────────────────────────────────────────────────────── */
 function connectBackend(){
   const proto=location.protocol==='https:'?'wss':'ws';
   ws=new WebSocket(`${proto}://${location.host}`);
-  ws.onopen=()=>{ setConn('on','Live'); dbg('Verbunden'); sendBoxUpdate(); };
+  ws.onopen=()=>{ setConn('on','Live');dbg('Verbunden');sendBoxUpdate(); };
   ws.onmessage=ev=>{
     try{
       const d=JSON.parse(ev.data);
       if(d.type==='ships'){
-        ships.clear(); d.data.forEach(s=>ships.set(s.mmsi,s)); redraw();
+        ships.clear();d.data.forEach(s=>ships.set(s.mmsi,s));redraw();
         dbg(`${ships.size} Schiffe · ${new Date(d.ts).toLocaleTimeString('de-DE')}`);
       }
-    }catch(e){ dbg('Parse-Fehler: '+e.message); }
+    }catch(e){dbg('Fehler: '+e.message);}
   };
   ws.onerror=()=>setConn('err','Fehler');
-  ws.onclose=()=>{ setConn('err','Getrennt'); setTimeout(connectBackend,5000); };
+  ws.onclose=()=>{setConn('err','Getrennt');setTimeout(connectBackend,5000);};
 }
 function setConn(cls,lbl){$('dot').className='dot'+(cls?' '+cls:'');$('connLbl').textContent=lbl;}
 
 /* ─── Init ───────────────────────────────────────────────────────────────── */
 fetch('/api/status').then(r=>r.json()).then(s=>{
-  $('backendStatus').textContent=s.demo?'⚠ Demo-Modus':'✓ Live · aisstream.io';
+  $('backendStatus').textContent=s.demo?'⚠ Demo-Modus':'✓ Live';
   $('histInfo').textContent=s.retainDays+' Tage';
   authRequired=s.authRequired||false;
-  if(authRequired){
-    $('authRow')?.style&&($('authRow').style.display='flex');
-    $('mAuthRow')?.style&&($('mAuthRow').style.display='flex');
-  }
+  if(authRequired){ $('authRow').style.display='flex'; $('mAuthRow').style.display='flex'; }
 }).catch(()=>{});
 
 window.addEventListener('DOMContentLoaded',()=>{

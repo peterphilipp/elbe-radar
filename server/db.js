@@ -43,6 +43,10 @@ db.exec(`
     key  TEXT PRIMARY KEY,
     ts   INTEGER NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL DEFAULT ''
+  );
 `);
 
 // ── Migrations ────────────────────────────────────────────────────────────────
@@ -71,7 +75,11 @@ const insertHistory  = db.prepare(`INSERT INTO history (mmsi,name,type,len,lat,l
 const lastHistoryTs  = db.prepare(`SELECT MAX(ts) as ts FROM history WHERE mmsi=?`);
 const getAlertedStmt = db.prepare(`SELECT ts FROM alerted WHERE key=?`);
 const setAlertedStmt = db.prepare(`INSERT OR REPLACE INTO alerted (key,ts) VALUES (?,?)`);
-const HISTORY_INTERVAL = 30 * 60 * 1000;
+const getSettingStmt = db.prepare(`SELECT value FROM settings WHERE key=?`);
+const setSettingStmt = db.prepare(`INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)`);
+
+// 5 Minuten – präzisere Tracks
+const HISTORY_INTERVAL = 5 * 60 * 1000;
 
 function saveShip(ship) {
   const eta = ship.eta || {};
@@ -112,8 +120,10 @@ module.exports = {
   insertAlert: a => db.prepare(`INSERT INTO alerts (name,ship_type,name_filter,min_len,max_eta_min,min_length_alert,active) VALUES (@name,@ship_type,@name_filter,@min_len,@max_eta_min,@min_length_alert,@active)`).run(a),
   deleteAlert: id => db.prepare(`DELETE FROM alerts WHERE id=?`).run(id),
   toggleAlert: (id,v) => db.prepare(`UPDATE alerts SET active=? WHERE id=?`).run(v,id),
-  // Telegram-Alert-Dedup: persistent, überlebt Neustarts
   isAlerted:   (key, cooldownMs=6*3600*1000) => { const r=getAlertedStmt.get(key); return !!(r&&(Date.now()-r.ts)<cooldownMs); },
   markAlerted: key => setAlertedStmt.run(key, Date.now()),
+  // Einstellungen (z.B. Kartenstil)
+  getSetting:  key => { const r=getSettingStmt.get(key); return r?r.value:null; },
+  setSetting:  (key,value) => setSettingStmt.run(key, value),
   db,
 };

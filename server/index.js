@@ -17,11 +17,10 @@ app.use(express.json());
 const BUILD_SHA  = process.env.BUILD_SHA  || 'dev';
 const BUILD_TIME = process.env.BUILD_TIME || new Date().toISOString();
 
-// ── Optionaler API-Schlüssel für Alert-Verwaltung ─────────────────────────────
 function requireAuth(req, res, next) {
   if (!API_SECRET) return next();
   const token = req.headers['x-api-key'] || req.query.apikey;
-  if (token !== API_SECRET) return res.status(401).json({ error: 'Unauthorized – x-api-key fehlt oder falsch' });
+  if (token !== API_SECRET) return res.status(401).json({ error: 'Unauthorized' });
   next();
 }
 
@@ -51,14 +50,26 @@ app.get('/api/history',          (req,res) => res.json(db.getHistory(+(req.query
 app.get('/api/ship/:mmsi/track', (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status',           (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'2.3.0',
+  uptime: Math.floor(process.uptime()), version:'2.4.0',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
   authRequired: !!API_SECRET,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'2.3.0' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'2.4.0' }));
 
-// ── Alert CRUD (mit optionalem Auth-Schutz) ───────────────────────────────────
+// ── Einstellungen (Kartenstil, etc.) ──────────────────────────────────────────
+app.get('/api/settings/:key', (req,res) => {
+  const value = db.getSetting(req.params.key);
+  res.json({ key: req.params.key, value: value || null });
+});
+app.post('/api/settings/:key', (req,res) => {
+  const { value } = req.body;
+  if (value === undefined) return res.status(400).json({ error: 'value required' });
+  db.setSetting(req.params.key, String(value));
+  res.json({ ok: true });
+});
+
+// ── Alert CRUD ────────────────────────────────────────────────────────────────
 app.get   ('/api/alerts',        (req,res) => res.json(db.getAlerts()));
 app.post  ('/api/alerts', requireAuth, (req,res) => {
   const { name, ship_type, name_filter, min_length_alert, max_eta_min } = req.body;
@@ -80,10 +91,10 @@ app.use(express.static(path.join(__dirname,'..','public')));
 app.get('*',(req,res) => res.sendFile(path.join(__dirname,'..','public','index.html')));
 
 server.listen(PORT, () => {
-  console.log(`[Server] Elbe Radar v2.3 · Port ${PORT}`);
-  console.log(`[Server] AIS-Key:    ${process.env.AIS_API_KEY      ? 'gesetzt'          : 'NICHT gesetzt (Demo)'}`);
-  console.log(`[Server] Telegram:   ${process.env.TELEGRAM_BOT_TOKEN ? 'aktiv'           : 'nicht konfiguriert'}`);
-  console.log(`[Server] Auth:       ${API_SECRET                    ? 'aktiv (API_SECRET)': 'deaktiviert'}`);
-  console.log(`[Server] History:    ${process.env.RETAIN_DAYS||7} Tage`);
+  console.log(`[Server] Elbe Radar v2.4 · Port ${PORT}`);
+  console.log(`[Server] AIS-Key:    ${process.env.AIS_API_KEY       ? 'gesetzt'           : 'NICHT gesetzt (Demo)'}`);
+  console.log(`[Server] Telegram:   ${process.env.TELEGRAM_BOT_TOKEN ? 'aktiv'            : 'nicht konfiguriert'}`);
+  console.log(`[Server] Auth:       ${API_SECRET                     ? 'aktiv (API_SECRET)': 'deaktiviert'}`);
+  console.log(`[Server] History:    ${process.env.RETAIN_DAYS||7} Tage · Intervall 5 min`);
   console.log(`[Server] Build:      ${BUILD_SHA} @ ${BUILD_TIME}`);
 });
