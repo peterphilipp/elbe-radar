@@ -166,20 +166,74 @@ app.patch('/api/alerts/:id', authMiddleware, (req, res) => {
   db.toggleAlert(+req.params.id, req.body.active ? 1 : 0); res.json({ok:true});
 });
 
+// ── STATISTICS ────────────────────────────────────────────────────────────────
+app.get('/api/stats/passages', authMiddleware, (req, res) => {
+  const days = +(req.query.days||30);
+  res.json(db.getPassages(days));
+});
+app.get('/api/stats/passages/summary', authMiddleware, (req, res) => {
+  const days = +(req.query.days||30);
+  res.json(db.getPassageStats(days));
+});
+
+// ── SHIP TYPE via API ─────────────────────────────────────────────────────────
+// Liefert den aus AIS-Typcode + Name abgeleiteten Typ – gleiche Logik wie aisConnector
+app.get('/api/ship/:mmsi/type', authMiddleware, (req, res) => {
+  const ship = db.getActiveShips().find(s => s.mmsi === req.params.mmsi);
+  if (!ship) return res.status(404).json({ error: 'not found' });
+  res.json({ mmsi: ship.mmsi, name: ship.name, type: ship.type });
+});
+
 // ── SHIP PHOTO PROXY (umgeht CORS & Referer-Check) ────────────────────────────
+// Photo-Quellen der Reihe nach ausprobieren
+function tryPhotoSources(mmsi, sources, res) {
+  if (!sources.length) return res.status(404).end();
+  const [src, ...rest] = sources;
+  const req2 = https.get(src, imgRes => {
+    // Redirect folgen
+    if (imgRes.statusCode === 301 || imgRes.statusCode === 302) {
+      imgRes.resume();
+      const loc = imgRes.headers['location'];
+      if (loc && rest.length === 0) {
+        // Follow redirect once
+        https.get(loc, r2 => {
+          if (r2.statusCode !== 200) { r2.resume(); return tryPhotoSources(mmsi, rest, res); }
+          res.setHeader('Content-Type', r2.headers['content-type'] || 'image/jpeg');
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          r2.pipe(res);
+        }).on('error', () => tryPhotoSources(mmsi, rest, res));
+      } else {
+        tryPhotoSources(mmsi, rest, res);
+      }
+      return;
+    }
+    if (imgRes.statusCode !== 200) { imgRes.resume(); return tryPhotoSources(mmsi, rest, res); }
+    // Prüfen ob Content-Type wirklich ein Bild ist (MarineTraffic liefert manchmal HTML 200)
+    const ct = imgRes.headers['content-type'] || '';
+    if (!ct.startsWith('image/')) { imgRes.resume(); return tryPhotoSources(mmsi, rest, res); }
+    res.setHeader('Content-Type', ct);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    imgRes.pipe(res);
+  });
+  req2.on('error', () => tryPhotoSources(mmsi, rest, res));
+  req2.setTimeout(5000, () => { req2.destroy(); tryPhotoSources(mmsi, rest, res); });
+}
+
 app.get('/api/ship/:mmsi/photo', (req, res) => {
   const mmsi = req.params.mmsi.replace(/\D/g, '');
   if (!mmsi) return res.status(400).end();
-  https.get({
-    hostname: 'photos.marinetraffic.com',
-    path:     `/ais/showphoto.aspx?mmsi=${mmsi}&size=thumb800`,
-    headers:  { 'Referer':'https://www.marinetraffic.com/', 'User-Agent':'Mozilla/5.0 (compatible; ElbeRadar/0.3)' },
-  }, imgRes => {
-    if (imgRes.statusCode !== 200) { imgRes.resume(); return res.status(404).end(); }
-    res.setHeader('Content-Type',  imgRes.headers['content-type'] || 'image/jpeg');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    imgRes.pipe(res);
-  }).on('error', () => res.status(404).end());
+  const ua = 'Mozilla/5.0 (compatible; ElbeRadar/0.3)';
+  tryPhotoSources(mmsi, [
+    // Quelle 1: MarineTraffic Thumbnail
+    { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=${mmsi}&size=thumb800`,
+      headers:{ 'Referer':'https://www.marinetraffic.com/', 'User-Agent':ua } },
+    // Quelle 2: MarineTraffic large
+    { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=${mmsi}`,
+      headers:{ 'Referer':'https://www.marinetraffic.com/', 'User-Agent':ua } },
+    // Quelle 3: VesselFinder
+    { hostname:'photos.vesseltracker.com', path:`/photos/vessels/thumb_${mmsi}.jpg`,
+      headers:{ 'Referer':'https://www.vesseltracker.com/', 'User-Agent':ua } },
+  ], res);
 });
 
 // ── AIS STATUS ────────────────────────────────────────────────────────────────
@@ -188,11 +242,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.3.4',
+  uptime: Math.floor(process.uptime()), version:'0.3.5',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.3.4' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.3.5' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));
@@ -205,7 +259,7 @@ app.use(express.static(path.join(__dirname,'..','public')));
 app.get('*', (req,res) => res.sendFile(path.join(__dirname,'..','public','index.html')));
 
 server.listen(PORT, () => {
-  console.log(`[Server] Elbe Radar v0.3.4 · Port ${PORT}`);
+  console.log(`[Server] Elbe Radar v0.3.5 · Port ${PORT}`);
   console.log(`[Server] AIS-Key:    ${process.env.AIS_API_KEY       ? 'gesetzt'           : 'NICHT gesetzt (Demo)'}`);
   console.log(`[Server] Reg-Code:   ${REG_CODE                      ? 'gesetzt'           : 'offen (jeder kann sich registrieren)'}`);
   console.log(`[Server] History:    ${process.env.RETAIN_DAYS||7} Tage · Intervall 5 min`);

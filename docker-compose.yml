@@ -6,6 +6,9 @@ services:
     container_name: elbe-radar
     restart: unless-stopped
     env_file: .env
+    volumes:
+      # Datenbank bleibt bei Updates erhalten!
+      - elbe-radar-data:/app/data
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.elbe-radar.rule=Host(`${DOMAIN}`)"
@@ -14,6 +17,10 @@ services:
       - "traefik.http.services.elbe-radar.loadbalancer.server.port=3000"
     networks:
       - traefik
+
+volumes:
+  elbe-radar-data:
+    name: elbe-radar-data   # fester Name → überlebt docker-compose down/up
 
 networks:
   traefik:

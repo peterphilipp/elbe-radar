@@ -2,7 +2,7 @@
 const WebSocket      = require('ws');
 const { calcETA, DEFAULT_REF } = require('./etaCalculator');
 const { checkAlerts }= require('./telegramBot');
-const { saveShip, getSetting } = require('./db');
+const { saveShip, getSetting, recordPassage } = require('./db');
 
 function shipType(code, name='') {
   const n = (name||'').toLowerCase();
@@ -20,7 +20,7 @@ class AISConnector {
     this.ships       = new Map();
     this.ws          = null;
     this.apiKey      = process.env.AIS_API_KEY || '';
-    this.currentBox  = { n:53.640, s:53.470, w:8.900, e:10.200 };
+    this.currentBox  = { n:53.900, s:53.400, w:7.800, e:10.200 };
     // Referenzpunkt-Cache (30 s TTL – vermeidet DB-Reads bei jedem Schiff-Update)
     this._refCache   = null;
     this._refCacheTs = 0;
@@ -102,7 +102,7 @@ class AISConnector {
   _upsert(p) {
     const merged = { ...(this.ships.get(p.mmsi)||{}), ...p, seen: Date.now() };
     const eta = calcETA(merged, this._getRefPoint());
-    if (eta) { merged.eta = eta; checkAlerts(merged, eta); }
+    if (eta) { merged.eta = eta; checkAlerts(merged, eta); recordPassage(merged, eta.direction); }
     this.ships.set(p.mmsi, merged);
     saveShip(merged);
     this.onUpdate(this.ships);

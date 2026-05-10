@@ -150,7 +150,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 #buildinfo{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:500;font-size:10px;font-family:var(--mono);color:var(--fnt);pointer-events:none;white-space:nowrap;background:var(--surf);border:1px solid var(--div);padding:1px 8px;border-radius:999px;opacity:.7;}
 
 /* ── DETAIL PANEL ────────────────────────────────────────────────────────── */
-#detail{position:absolute;bottom:50px;right:10px;z-index:500;width:min(310px,calc(100vw - 20px));background:var(--surf);border:1px solid var(--brd);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.25);display:none;overflow:hidden;max-height:calc(100vh - 120px);overflow-y:auto;}
+#detail{position:absolute;bottom:50px;right:10px;z-index:500;width:min(310px,calc(100vw - 20px));background:var(--surf);border:1px solid var(--brd);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.25);display:none;overflow:hidden;max-height:calc(100vh - 120px);overflow-y:auto;-webkit-overflow-scrolling:touch;}
 #detail.open{display:block;animation:slideup .18s ease both;}
 @keyframes slideup{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .dimg{width:100%;height:120px;object-fit:cover;background:var(--off);display:block;}
@@ -183,6 +183,26 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .ai-del{color:var(--red);font-size:13px;padding:2px 5px;}
 .ai-tog{font-size:11px;padding:2px 7px;border:1px solid var(--brd);border-radius:5px;background:var(--surf2);}
 
+
+/* ── STATS PAGE ──────────────────────────────────────────────────────────── */
+#statsPage{position:fixed;top:50px;left:0;right:0;bottom:0;z-index:100;background:var(--bg);display:none;flex-direction:column;}
+#statsPage.open{display:flex;animation:fadeIn .15s ease;}
+#statsBar{padding:10px 14px;background:var(--surf);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap;}
+#statsBar h2{font-size:14px;font-weight:800;}
+#statsBody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;display:grid;gap:16px;}
+.stats-section{background:var(--surf);border:1px solid var(--brd);border-radius:10px;overflow:hidden;}
+.stats-section h3{padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);border-bottom:1px solid var(--div);}
+.stats-tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.stats-tbl th{padding:7px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);border-bottom:1px solid var(--div);background:var(--surf2);}
+.stats-tbl td{padding:7px 12px;border-bottom:1px solid var(--div);font-family:var(--mono);}
+.stats-tbl tr:last-child td{border-bottom:none;}
+.stats-tbl tr:hover td{background:var(--off);}
+.stats-bar-wrap{padding:12px 14px;display:grid;gap:6px;}
+.stats-bar-row{display:grid;grid-template-columns:90px 1fr 50px;align-items:center;gap:8px;font-size:11px;}
+.stats-bar-bg{height:8px;background:var(--off);border-radius:99px;overflow:hidden;}
+.stats-bar-fill{height:100%;border-radius:99px;transition:width .4s ease;}
+.stats-bar-lbl{font-family:var(--mono);font-size:11px;color:var(--mut);}
+
 /* ── LOG PAGE ────────────────────────────────────────────────────────────── */
 #logPage{position:fixed;top:50px;left:0;right:0;bottom:0;z-index:100;background:var(--bg);display:none;flex-direction:column;}
 #logPage.open{display:flex;animation:fadeIn .15s ease;}
@@ -192,7 +212,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .log-filters{display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex:1;}
 .log-search{background:var(--off);border:1px solid var(--brd);border-radius:8px;color:var(--txt);font:inherit;font-size:12px;padding:5px 10px;width:180px;transition:border-color .15s;}
 .log-search:focus{outline:none;border-color:var(--blue);}
-#logBody{flex:1;overflow-y:auto;}
+#logBody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 #logBody::-webkit-scrollbar{width:4px;}
 #logBody::-webkit-scrollbar-thumb{background:var(--brd);border-radius:99px;}
 .li{padding:10px 14px 10px 17px;border-bottom:1px solid var(--div);cursor:pointer;position:relative;transition:background .12s;display:flex;align-items:center;gap:12px;}
@@ -276,11 +296,14 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 #detailBackdrop{display:none;position:fixed;inset:0;z-index:590;background:rgba(0,0,0,.4);}
 #detailBackdrop.on{display:block;}
 
-#mobile-bottom{display:none;position:fixed;bottom:0;left:0;right:0;z-index:70;background:var(--surf);border-top:1px solid var(--brd);max-height:30vh;overflow-y:auto;}
-.mob-tabs{display:flex;border-bottom:1px solid var(--div);}
+#mobile-bottom{display:none;position:fixed;bottom:0;left:0;right:0;z-index:70;background:var(--surf);border-top:1px solid var(--brd);max-height:30vh;overflow-y:auto;transition:max-height .25s ease;}
+#mobile-bottom.collapsed{max-height:36px!important;overflow:hidden;}
+.mob-tabs{display:flex;border-bottom:1px solid var(--div);flex-shrink:0;}
 .mob-tab{flex:1;padding:7px 4px;font-size:11px;font-weight:700;color:var(--mut);border-bottom:2px solid transparent;text-align:center;}
 .mob-tab.on{color:var(--blue);border-color:var(--blue);}
-.mob-content{display:none;}.mob-content.on{display:block;}
+.mob-collapse-btn{flex:none;width:36px;padding:7px 4px;font-size:10px;color:var(--mut);}
+#mobile-bottom.collapsed .mob-collapse-btn{transform:rotate(180deg);}
+.mob-content{display:none;overflow-y:auto;-webkit-overflow-scrolling:touch;}.mob-content.on{display:block;}
 /* Mobil: kompaktere Alert-Liste */
 @media(max-width:700px){
   .abwrap{padding:8px 10px;}
@@ -337,8 +360,9 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.4</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.3.5</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
+    <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="settingsBtn" title="Einstellungen">⚙️</button>
     <button class="ibtn" id="themeBtn" title="Theme">🌙</button>
     <button class="ibtn user-pill" id="userBtn" title="Abmelden">👤 <span id="userLabel">–</span></button>
@@ -367,6 +391,13 @@ input[type=range]{flex:1;accent-color:var(--blue);}
         <div class="slider-row">
           <input type="range" id="lenSlider" min="0" max="400" step="25" value="50"/>
           <span class="slider-val" id="lenVal">≥ 50 m</span>
+      <div>
+        <div class="flbl">ETA-Fenster</div>
+        <div class="chips" id="etaChips">
+          <button class="chip" data-eta="30">≤ 30 Min</button>
+          <button class="chip on" data-eta="60">≤ 60 Min</button>
+          <button class="chip" data-eta="120">≤ 2 Std</button>
+          <button class="chip" data-eta="9999">Alle</button>
         </div>
       </div>
     </div>
@@ -574,7 +605,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.3.4</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.3.5</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -584,10 +615,42 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="mob-tabs">
     <button class="mob-tab on" data-mob="mob-eta">ETA <span class="cnt" id="mobFutureCnt">0</span></button>
     <button class="mob-tab" data-mob="mob-alerts">🔔 Alerts</button>
+    <button class="mob-tab" data-mob="mob-filter">⚙️ Filter</button>
+    <button class="mob-tab mob-collapse-btn" id="mobCollapseBtn" title="Einklappen">▼</button>
   </div>
   <div class="mob-content on" id="mob-eta">
     <ul class="slist" id="mobFutureList"></ul>
     <div class="empty" id="mobFutureEmpty">Noch keine Prognosen.</div>
+  </div>
+  <div class="mob-content" id="mob-filter">
+    <div style="padding:10px 12px;display:grid;gap:10px;">
+      <div>
+        <div class="flbl">Schiffstyp</div>
+        <div class="chips" id="mTypeChips">
+          <button class="chip on" data-t="all">Alle</button>
+          <button class="chip" data-t="Container">Container</button>
+          <button class="chip" data-t="Cruise">Kreuzfahrt</button>
+          <button class="chip" data-t="Tanker">Tanker</button>
+          <button class="chip" data-t="Cargo">Frachter</button>
+        </div>
+      </div>
+      <div>
+        <div class="flbl">ETA-Fenster</div>
+        <div class="chips" id="mEtaChips">
+          <button class="chip" data-eta="30">≤ 30 Min</button>
+          <button class="chip on" data-eta="60">≤ 60 Min</button>
+          <button class="chip" data-eta="120">≤ 2 Std</button>
+          <button class="chip" data-eta="9999">Alle</button>
+        </div>
+      </div>
+      <div>
+        <div class="flbl">Mindestlänge</div>
+        <div class="slider-row">
+          <input type="range" id="mLenSlider" min="0" max="400" step="25" value="50"/>
+          <span class="slider-val" id="mLenVal">≥ 50 m</span>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="mob-content" id="mob-alerts">
     <div class="abwrap" style="background:var(--surf)">
@@ -781,10 +844,22 @@ function calcETA(ship, ref) {
 
 let ships=new Map(),markers=new Map(),labelShown=new Set(),trackLayer=null,extrapLayer=null;
 let map,tileLayer,ws,refPointLayer=null;
-let selMmsi=null,typeF='all',lenF=50,theme='dark',currentZoom=12;
+let selMmsi=null,typeF='all',lenF=50,etaF=60,theme='dark',currentZoom=12;
 let logOpen=false,logTypeF='all',logLenF=0,logDirF='all';
 let currentRefPoint={...DEFAULT_REF};
-const passes=s=>(typeF==='all'||s.type===typeF)&&(s.len||0)>=lenF;
+const passes=s=>{
+  if((typeF!=='all')&&s.type!==typeF) return false;
+  if((s.len||0)<lenF) return false;
+  return true;
+};
+const passesEta=s=>{
+  if(!passes(s)) return false;
+  const e=calcETA(s,currentRefPoint);
+  const ts=e?new Date(e.eta).getTime():s.eta_ts;
+  if(!ts) return false;
+  const minLeft=Math.round((ts-Date.now())/60000);
+  return minLeft>=0 && minLeft<=etaF;
+};
 
 const ZOOM_LABEL=13;
 function shipIconSize(len,wid,zoom){const scale=Math.pow(2,zoom-12)*0.07;return{h:Math.max(Math.round((len||80)*scale),8),bw:Math.max(Math.round((wid||Math.max(len||80,40)*0.14)*scale*3),4)};}
@@ -908,7 +983,7 @@ function buildFiHtml(s){
   ${etaTs?`<div class="fi-eta">${etaSt(etaTs)}</div><div class="fi-cd">${cdown(etaTs)}</div>`:''}<div class="fi-meta"><span>${mt(s.len)}</span><span>${kn(s.sog)}</span></div>`;
 }
 function renderFuture(){
-  const preds=[...ships.values()].filter(s=>{const e=calcETA(s,currentRefPoint);return (e||s.eta_ts)&&passes(s);}).sort((a,b)=>{const ea=calcETA(a,currentRefPoint);const eb=calcETA(b,currentRefPoint);const ta=ea?new Date(ea.eta).getTime():a.eta_ts;const tb=eb?new Date(eb.eta).getTime():b.eta_ts;return ta-tb;});
+  const preds=[...ships.values()].filter(passesEta).sort((a,b)=>{const ea=calcETA(a,currentRefPoint);const eb=calcETA(b,currentRefPoint);const ta=ea?new Date(ea.eta).getTime():a.eta_ts;const tb=eb?new Date(eb.eta).getTime():b.eta_ts;return ta-tb;});
   $('futureCnt').textContent=preds.length;$('mobFutureCnt')&&($('mobFutureCnt').textContent=preds.length);$('sP').textContent=preds.length;
   $('futureEmpty')&&($('futureEmpty').style.display=preds.length?'none':'block');
   $('mobFutureEmpty')&&($('mobFutureEmpty').style.display=preds.length?'none':'block');
@@ -1027,8 +1102,205 @@ function startApp(){
 }
 
 window.addEventListener('resize',()=>{if(map)map.invalidateSize();});
+
+/* ─── ETA Chip filter (desktop) ─────────────────────────────────────────── */
+document.querySelectorAll('#etaChips .chip').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('#etaChips .chip').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    etaF = +btn.dataset.eta;
+    // Sync mobile chips
+    document.querySelectorAll('#mEtaChips .chip').forEach(b => {
+      b.classList.toggle('on', +b.dataset.eta === etaF);
+    });
+    redraw(); renderETA();
+  };
+});
+
+/* ─── Mobile Filter Chips ────────────────────────────────────────────────── */
+document.querySelectorAll('#mTypeChips .chip').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('#mTypeChips .chip, #typeChips .chip').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    document.querySelectorAll('#typeChips .chip').forEach(b => {
+      if (b.dataset.t === btn.dataset.t) b.classList.add('on');
+    });
+    typeF = btn.dataset.t;
+    redraw(); renderETA(); updateStats();
+  };
+});
+document.querySelectorAll('#mEtaChips .chip').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('#mEtaChips .chip, #etaChips .chip').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    document.querySelectorAll('#etaChips .chip').forEach(b => {
+      if (+b.dataset.eta === +btn.dataset.eta) b.classList.add('on');
+    });
+    etaF = +btn.dataset.eta;
+    redraw(); renderETA();
+  };
+});
+const mLenSlider = $('mLenSlider');
+if (mLenSlider) {
+  mLenSlider.oninput = () => {
+    lenF = +mLenSlider.value;
+    $('mLenVal').textContent = `≥ ${lenF} m`;
+    $('lenSlider').value = lenF;
+    $('lenVal').textContent = `≥ ${lenF} m`;
+    redraw(); renderETA(); updateStats();
+  };
+}
+
+/* ─── Mobile collapse button ─────────────────────────────────────────────── */
+const mobCollapseBtn = $('mobCollapseBtn');
+if (mobCollapseBtn) {
+  mobCollapseBtn.onclick = (e) => {
+    e.stopPropagation();
+    $('mobile-bottom').classList.toggle('collapsed');
+  };
+}
+
+/* ─── Stats Page ─────────────────────────────────────────────────────────── */
+let statsOpen = false;
+
+function openStats() {
+  statsOpen = true;
+  $('statsPage').classList.add('open');
+  $('statsBtn').classList.add('active');
+  loadStats();
+}
+function closeStats() {
+  statsOpen = false;
+  $('statsPage').classList.remove('open');
+  $('statsBtn').classList.remove('active');
+}
+$('statsBtn').onclick = () => statsOpen ? closeStats() : openStats();
+$('statsDays').onchange = () => { if (statsOpen) loadStats(); };
+
+async function loadStats() {
+  $('statsLoading').style.display = 'block';
+  $('statsChart').innerHTML = '';
+  const days = $('statsDays').value;
+  try {
+    const [summary, passages] = await Promise.all([
+      apiFetch(`/api/stats/passages/summary?days=${days}`).then(r=>r.json()),
+      apiFetch(`/api/stats/passages?days=${days}`).then(r=>r.json()),
+    ]);
+    $('statsLoading').style.display = 'none';
+    renderStats(summary, passages, +days);
+  } catch(e) {
+    $('statsLoading').textContent = 'Fehler beim Laden';
+  }
+}
+
+function renderStats(summary, passages, days) {
+  const chart = $('statsChart');
+  chart.innerHTML = '';
+
+  // ── Pro-Tag Balkendiagramm ────────────────────────────────────────────────
+  const byDate = {};
+  for (const row of summary) {
+    if (!byDate[row.date_de]) byDate[row.date_de] = { Hamburg:0, Nordsee:0 };
+    byDate[row.date_de][row.direction] = (byDate[row.date_de][row.direction]||0) + row.cnt;
+  }
+  const dates = Object.keys(byDate).sort().reverse().slice(0, 30);
+  const maxDay = Math.max(1, ...dates.map(d => (byDate[d].Hamburg||0) + (byDate[d].Nordsee||0)));
+
+  const sec1 = document.createElement('div');
+  sec1.className = 'stats-section';
+  sec1.innerHTML = `<h3>📅 Passagen pro Tag (letzte ${days} Tage)</h3>`;
+  const wrap1 = document.createElement('div');
+  wrap1.className = 'stats-bar-wrap';
+  for (const d of dates) {
+    const hh = byDate[d].Hamburg||0, ns = byDate[d].Nordsee||0, tot = hh+ns;
+    const pHH = Math.round(hh/maxDay*100), pNS = Math.round(ns/maxDay*100);
+    const row = document.createElement('div');
+    row.className = 'stats-bar-row';
+    row.innerHTML = `
+      <span style="color:var(--mut);font-family:var(--mono)">${d.slice(5)}</span>
+      <div>
+        <div class="stats-bar-bg" title="Hamburg: ${hh} | Nordsee: ${ns}">
+          <div style="width:${pHH+pNS}%;background:var(--blue);height:100%;border-radius:99px;display:flex;overflow:hidden">
+            <div style="width:${tot?Math.round(hh/tot*100):0}%;background:#00cc99;height:100%"></div>
+            <div style="flex:1;background:#f0bc55;height:100%"></div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--mut);margin-top:2px"><span style="color:#00cc99">▶ HH ${hh}</span> · <span style="color:#f0bc55">◀ NS ${ns}</span></div>
+      </div>
+      <span class="stats-bar-lbl">${tot}</span>`;
+    wrap1.appendChild(row);
+  }
+  sec1.appendChild(wrap1);
+  chart.appendChild(sec1);
+
+  // ── Tabelle: letzte Passagen ──────────────────────────────────────────────
+  const sec2 = document.createElement('div');
+  sec2.className = 'stats-section';
+  sec2.innerHTML = `<h3>🚢 Letzte Passagen</h3>
+    <table class="stats-tbl">
+      <thead><tr>
+        <th>Zeit</th><th>Name</th><th>Typ</th><th>Länge</th><th>Richtung</th>
+      </tr></thead>
+      <tbody id="passagesTbody"></tbody>
+    </table>`;
+  chart.appendChild(sec2);
+  const tbody = sec2.querySelector('#passagesTbody');
+  for (const p of passages.slice(0,100)) {
+    const tr = document.createElement('tr');
+    const dt = new Date(p.ts).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const dir = p.direction === 'Hamburg' ? '<span style="color:#00cc99">▶ Hamburg</span>' : '<span style="color:#f0bc55">◀ Nordsee</span>';
+    tr.innerHTML = `<td>${dt}</td><td><b>${p.name||'?'}</b></td><td>${p.type||'–'}</td><td>${p.len?p.len+' m':'–'}</td><td>${dir}</td>`;
+    tbody.appendChild(tr);
+  }
+
+  // ── Typ-Verteilung ────────────────────────────────────────────────────────
+  const typeCounts = {};
+  for (const p of passages) typeCounts[p.type] = (typeCounts[p.type]||0)+1;
+  const total = passages.length || 1;
+  const typeColors = { Container:'#ff8c00', Cruise:'#ff1493', Tanker:'#c9aa00', Cargo:'#00cc66' };
+  const sec3 = document.createElement('div');
+  sec3.className = 'stats-section';
+  sec3.innerHTML = `<h3>📊 Typ-Verteilung (${passages.length} Passagen gesamt)</h3>`;
+  const wrap3 = document.createElement('div');
+  wrap3.className = 'stats-bar-wrap';
+  for (const [type, cnt] of Object.entries(typeCounts).sort((a,b)=>b[1]-a[1])) {
+    const pct = Math.round(cnt/total*100);
+    const row = document.createElement('div');
+    row.className = 'stats-bar-row';
+    row.innerHTML = `
+      <span style="color:${typeColors[type]||'var(--mut)'}">${type||'?'}</span>
+      <div class="stats-bar-bg"><div class="stats-bar-fill" style="width:${pct}%;background:${typeColors[type]||'var(--blue)'}"></div></div>
+      <span class="stats-bar-lbl">${cnt} (${pct}%)</span>`;
+    wrap3.appendChild(row);
+  }
+  sec3.appendChild(wrap3);
+  chart.appendChild(sec3);
+}
+
+
 // Direkt aufrufen – Script läuft nach DOM-Parse, DOMContentLoaded bereits gefeuert
 checkAuth();
 </script>
+
+<!-- STATS PAGE -->
+<div id="statsPage">
+  <div id="statsBar">
+    <h2>📊 Passage-Statistik</h2>
+    <div class="log-filters">
+      <select class="log-search" id="statsDays" style="width:130px">
+        <option value="7">Letzte 7 Tage</option>
+        <option value="30" selected>Letzte 30 Tage</option>
+        <option value="90">Letzte 90 Tage</option>
+      </select>
+    </div>
+    <button class="pill" onclick="closeStats()">✕ Schließen</button>
+  </div>
+  <div id="statsBody">
+    <div id="statsLoading" style="padding:32px;text-align:center;color:var(--mut)">Lade…</div>
+    <table id="statsTable" style="display:none;width:100%;border-collapse:collapse;font-size:12px"></table>
+    <div id="statsChart" style="padding:16px"></div>
+  </div>
+</div>
+
 </body>
 </html>

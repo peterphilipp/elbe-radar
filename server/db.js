@@ -62,11 +62,54 @@ db.exec(`
   );
 `);
 
-// ── Migrations ────────────────────────────────────────────────────────────────
+// ── Passages table (statistics) ───────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS passages (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    mmsi     TEXT NOT NULL,
+    name     TEXT,
+    type     TEXT,
+    len      INTEGER DEFAULT 0,
+    direction TEXT NOT NULL,         -- 'Hamburg' | 'Nordsee'
+    lat      REAL, lon REAL,
+    sog      INTEGER,
+    ts       INTEGER NOT NULL,       -- Unix-ms
+    date_de  TEXT NOT NULL           -- 'YYYY-MM-DD' (Europe/Berlin)
+  );
+  CREATE INDEX IF NOT EXISTS idx_passages_ts   ON passages(ts);
+  CREATE INDEX IF NOT EXISTS idx_passages_date ON passages(date_de);
+  CREATE INDEX IF NOT EXISTS idx_passages_mmsi ON passages(mmsi);
+`);
+
+// ── Migrations (safe – immer try/catch) ───────────────────────────────────────
 for (const sql of [
   `ALTER TABLE alerts ADD COLUMN min_length_alert INTEGER DEFAULT 150`,
   `ALTER TABLE alerts ADD COLUMN user_id INTEGER DEFAULT NULL`,
 ]) { try { db.exec(sql); } catch(e) {} }
+
+// ── Passages helpers ──────────────────────────────────────────────────────────
+const insertPassage = db.prepare(`
+  INSERT INTO passages (mmsi,name,type,len,direction,lat,lon,sog,ts,date_de)
+  VALUES (@mmsi,@name,@type,@len,@direction,@lat,@lon,@sog,@ts,@date_de)
+`);
+const lastPassageTs = db.prepare(
+  `SELECT MAX(ts) as ts FROM passages WHERE mmsi=? AND direction=?`
+);
+const PASSAGE_DEDUP_MS = 30 * 60 * 1000; // selbes Schiff / selbe Richtung = 30 min
+
+function recordPassage(ship, direction) {
+  const last = (lastPassageTs.get(ship.mmsi, direction)||{}).ts || 0;
+  if (Date.now() - last < PASSAGE_DEDUP_MS) return;   // Duplikat vermeiden
+  const now = Date.now();
+  const date_de = new Date(now).toLocaleDateString('de-DE',
+    { timeZone:'Europe/Berlin', year:'numeric', month:'2-digit', day:'2-digit' }
+  ).split('.').reverse().join('-'); // → YYYY-MM-DD
+  insertPassage.run({
+    mmsi: ship.mmsi, name: ship.name||'', type: ship.type||'',
+    len: ship.len||0, direction, lat: ship.lat||0, lon: ship.lon||0,
+    sog: ship.sog||0, ts: now, date_de,
+  });
+}
 
 // ── Prepared Statements ───────────────────────────────────────────────────────
 const upsertShip = db.prepare(`
@@ -172,6 +215,18 @@ module.exports = {
   getUserSetting:  (uid, key)   => { const r=getUserSettStmt.get(uid,key); return r?r.value:null; },
   setUserSetting:  (uid, key, v) => setUserSettStmt.run(uid, key, String(v)),
   getAllUserSettings: uid => db.prepare(`SELECT key,value FROM user_settings WHERE user_id=?`).all(uid),
+
+  recordPassage,
+  getPassages: (days=30) =>
+    db.prepare(`SELECT * FROM passages WHERE ts > ? ORDER BY ts DESC LIMIT 2000`)
+      .all(Date.now() - days*24*3600*1000),
+  getPassageStats: (days=30) =>
+    db.prepare(`
+      SELECT date_de, direction, type, COUNT(*) as cnt
+      FROM passages WHERE ts > ?
+      GROUP BY date_de, direction, type
+      ORDER BY date_de DESC
+    `).all(Date.now() - days*24*3600*1000),
 
   // Auth
   countUsers:       () => countUsers.get().n,
