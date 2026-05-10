@@ -34,7 +34,7 @@ db.exec(`
     ship_type        TEXT,
     name_filter      TEXT,
     min_len          INTEGER DEFAULT 0,
-    max_eta_min      INTEGER DEFAULT 360,
+    max_eta_min      INTEGER DEFAULT 30,
     min_length_alert INTEGER DEFAULT 150,
     active           INTEGER DEFAULT 1,
     created          INTEGER DEFAULT (strftime('%s','now'))
