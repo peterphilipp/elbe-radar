@@ -69,7 +69,7 @@ const insertHistory = db.prepare(`
   VALUES (@mmsi,@name,@type,@len,@lat,@lon,@sog,@cog,@ts)
 `);
 const lastHistoryTs = db.prepare(`SELECT MAX(ts) as ts FROM history WHERE mmsi=?`);
-const HISTORY_INTERVAL = 30 * 60 * 1000;
+const HISTORY_INTERVAL = 5 * 60 * 1000;
 
 function saveShip(ship) {
   const eta = ship.eta || {};
