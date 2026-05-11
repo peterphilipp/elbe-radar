@@ -41,6 +41,8 @@ input,select{font-family:var(--font);}
 #loginOverlay.hidden{display:none;}
 #loginBox{background:var(--surf);border:1px solid var(--brd);border-radius:16px;padding:32px;
   width:min(380px,calc(100vw - 32px));box-shadow:0 16px 48px rgba(0,0,0,.25);}
+.login-box-inner{background:var(--surf);border:1px solid var(--brd);border-radius:16px;padding:32px;
+  width:min(380px,calc(100vw - 32px));box-shadow:0 16px 48px rgba(0,0,0,.25);}
 .login-logo{font-size:40px;text-align:center;margin-bottom:8px;}
 .login-title{font-size:22px;font-weight:800;text-align:center;margin-bottom:4px;}
 .login-sub{font-size:12px;color:var(--mut);text-align:center;margin-bottom:20px;}
@@ -452,7 +454,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
 <!-- PASSWORT VERGESSEN OVERLAY -->
 <div id="forgotOverlay" style="display:none;position:fixed;inset:0;z-index:1000;background:var(--bg);align-items:center;justify-content:center;">
-  <div id="loginBox" style="background:var(--surf);border:1px solid var(--brd);border-radius:16px;padding:32px;width:min(380px,calc(100vw - 32px));box-shadow:0 16px 48px rgba(0,0,0,.25);">
+  <div class="login-box-inner">
     <div class="login-logo">🔑</div>
     <div class="login-title">Passwort vergessen</div>
     <div class="login-sub" id="forgotSub">Gib deine E-Mail-Adresse ein</div>
@@ -469,7 +471,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
 <!-- PASSWORT ZURÜCKSETZEN OVERLAY (via Token-Link) -->
 <div id="resetOverlay" style="display:none;position:fixed;inset:0;z-index:1000;background:var(--bg);align-items:center;justify-content:center;">
-  <div style="background:var(--surf);border:1px solid var(--brd);border-radius:16px;padding:32px;width:min(380px,calc(100vw - 32px));box-shadow:0 16px 48px rgba(0,0,0,.25);">
+  <div class="login-box-inner">
     <div class="login-logo">🔐</div>
     <div class="login-title">Neues Passwort</div>
     <div class="login-sub" id="resetSub">Für: <b id="resetUsername">–</b></div>
@@ -487,7 +489,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.5.2</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.5.3</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -781,7 +783,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.5.0</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.5.3</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -955,6 +957,8 @@ async function doRegister() {
     btn.disabled = false; btn.textContent = 'Registrieren';
   }
 }
+
+function onLoggedIn(d) {
   authToken = d.token;
   currentUser = { username: d.username, isAdmin: d.isAdmin };
   localStorage.setItem('elbr_token', authToken);
