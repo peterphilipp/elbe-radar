@@ -6,6 +6,7 @@ const https        = require('https');
 const WebSocket    = require('ws');
 const path         = require('path');
 const fs           = require('fs');
+const nodemailer   = require('nodemailer');
 const AISConnector = require('./aisConnector');
 const db           = require('./db');
 const { sendTestMessage, invalidateUserCache } = require('./telegramBot');
@@ -14,6 +15,35 @@ const PORT       = process.env.PORT       || 3000;
 const API_SECRET = process.env.API_SECRET || '';
 const REG_CODE   = process.env.REGISTRATION_CODE || '';
 const SESSION_TTL= 30 * 24 * 3600 * 1000; // 30 Tage
+const APP_URL    = process.env.APP_URL    || `http://localhost:${PORT}`;
+
+// ── Mailer ────────────────────────────────────────────────────────────────────
+const mailer = nodemailer.createTransport({
+  host:   process.env.SMTP_HOST   || 'localhost',
+  port:   +(process.env.SMTP_PORT || 587),
+  secure: process.env.SMTP_SECURE === 'true',
+  auth:   process.env.SMTP_USER ? {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS || '',
+  } : undefined,
+});
+async function sendMail(to, subject, html) {
+  if (!process.env.SMTP_HOST) {
+    console.log(`[Mail] SMTP nicht konfiguriert – würde senden an ${to}: ${subject}`);
+    return false;
+  }
+  try {
+    await mailer.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@elberadar',
+      to, subject, html,
+    });
+    console.log(`[Mail] Gesendet an ${to}: ${subject}`);
+    return true;
+  } catch(e) {
+    console.error(`[Mail] Fehler: ${e.message}`);
+    return false;
+  }
+}
 
 const app    = express();
 const server = http.createServer(app);
@@ -100,25 +130,86 @@ wss.on('connection', (ws, req) => {
 
 // ── AUTH ENDPOINTS ────────────────────────────────────────────────────────────
 app.post('/api/auth/register', (req, res) => {
-  const { username, password, invite_code } = req.body;
+  const { username, password, invite_code, email } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Benutzername und Passwort erforderlich' });
   if (username.length < 3)    return res.status(400).json({ error: 'Benutzername mindestens 3 Zeichen' });
   if (password.length < 6)    return res.status(400).json({ error: 'Passwort mindestens 6 Zeichen' });
   const userCount = db.countUsers();
-  // Erster User = Admin, kein Code nötig. Danach: Code aus env oder leer = offen
   if (userCount > 0 && REG_CODE && invite_code !== REG_CODE) {
     return res.status(403).json({ error: 'Ungültiger Einladungscode' });
   }
   if (db.getUserByUsername(username)) return res.status(409).json({ error: 'Benutzername bereits vergeben' });
+  if (email && db.getUserByEmail(email)) return res.status(409).json({ error: 'E-Mail-Adresse bereits vergeben' });
   try {
     db.createUser(username, password, userCount === 0 ? 1 : 0);
     const user  = db.getUserByUsername(username);
+    if (email) db.setUserEmail(user.id, email.trim().toLowerCase());
     const token = db.generateToken();
     db.createSession(user.id, token, Date.now() + SESSION_TTL);
     res.json({ token, username: user.username, isAdmin: user.is_admin===1 });
   } catch(e) {
     res.status(500).json({ error: 'Registrierung fehlgeschlagen' });
   }
+});
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'E-Mail erforderlich' });
+  const user = db.getUserByEmail(email.trim().toLowerCase());
+  // Immer OK zurückgeben (verhindert User-Enumeration)
+  if (!user) return res.json({ ok: true });
+  const token = db.createResetToken(user.id);
+  const resetUrl = `${APP_URL}/reset-password?token=${token}`;
+  const html = `
+    <p>Hallo ${user.username},</p>
+    <p>du hast eine Passwortrücksetzung für dein Elbe Radar Konto angefordert.</p>
+    <p><a href="${resetUrl}" style="background:#1568c8;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">Passwort zurücksetzen</a></p>
+    <p>Dieser Link ist 1 Stunde gültig.</p>
+    <p>Falls du diese Anfrage nicht gestellt hast, ignoriere diese E-Mail.</p>
+    <p style="color:#888;font-size:12px">Elbe Radar – ${APP_URL}</p>
+  `;
+  const sent = await sendMail(user.email, 'Elbe Radar – Passwort zurücksetzen', html);
+  if (!sent && !process.env.SMTP_HOST) {
+    // Dev-Modus: Token im Log, Link in Response
+    console.log(`[PwReset] Token für ${user.username}: ${token}`);
+    console.log(`[PwReset] Link: ${resetUrl}`);
+    return res.json({ ok: true, devResetUrl: resetUrl }); // nur ohne SMTP konfiguration
+  }
+  res.json({ ok: true });
+});
+
+app.get('/api/auth/reset-password/:token', (req, res) => {
+  const entry = db.getResetToken(req.params.token);
+  if (!entry) return res.status(400).json({ error: 'Ungültiger oder abgelaufener Link' });
+  const user = db.getUserById(entry.user_id);
+  res.json({ valid: true, username: user?.username });
+});
+
+app.post('/api/auth/reset-password', (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ error: 'Token und Passwort erforderlich' });
+  if (password.length < 6) return res.status(400).json({ error: 'Passwort mindestens 6 Zeichen' });
+  const entry = db.getResetToken(token);
+  if (!entry) return res.status(400).json({ error: 'Ungültiger oder abgelaufener Link' });
+  db.resetPassword(entry.user_id, password);
+  db.markResetTokenUsed(token);
+  // Alle Sessions des Users löschen (Sicherheit)
+  db.deleteUserSessions(entry.user_id);
+  res.json({ ok: true });
+});
+
+// Email per User selbst ändern
+app.post('/api/user/email', authMiddleware, (req, res) => {
+  const { email } = req.body;
+  if (email && db.getUserByEmail(email.trim().toLowerCase())?.id !== req.userId) {
+    return res.status(409).json({ error: 'E-Mail bereits vergeben' });
+  }
+  db.setUserEmail(req.userId, email ? email.trim().toLowerCase() : null);
+  res.json({ ok: true });
+});
+app.get('/api/user/email', authMiddleware, (req, res) => {
+  const user = db.getUserById(req.userId);
+  res.json({ email: user?.email || '' });
 });
 
 app.post('/api/auth/login', (req, res) => {
@@ -521,11 +612,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.5.0',
+  uptime: Math.floor(process.uptime()), version:'0.5.2',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.5.0' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.5.2' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));
@@ -549,7 +640,7 @@ app.use(express.static(path.join(__dirname,'..','public'), {
 app.get('*', (req,res) => res.sendFile(path.join(__dirname,'..','public','index.html')));
 
 server.listen(PORT, () => {
-  console.log(`[Server] Elbe Radar v0.5.0 · Port ${PORT}`);
+  console.log(`[Server] Elbe Radar v0.5.2 · Port ${PORT}`);
   console.log(`[Server] AIS-Key:    ${process.env.AIS_API_KEY       ? 'gesetzt'           : 'NICHT gesetzt (Demo)'}`);
   console.log(`[Server] Reg-Code:   ${REG_CODE                      ? 'gesetzt'           : 'offen (jeder kann sich registrieren)'}`);
   console.log(`[Server] History:    ${process.env.RETAIN_DAYS||7} Tage · Intervall 5 min`);

@@ -85,7 +85,19 @@ db.exec(`
 for (const sql of [
   `ALTER TABLE alerts ADD COLUMN min_length_alert INTEGER DEFAULT 150`,
   `ALTER TABLE alerts ADD COLUMN user_id INTEGER DEFAULT NULL`,
+  `ALTER TABLE users ADD COLUMN email TEXT DEFAULT NULL`,
 ]) { try { db.exec(sql); } catch(e) {} }
+
+// Password-Reset-Tokens
+db.exec(`
+  CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    token      TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    used       INTEGER DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_prt_user ON password_reset_tokens(user_id);
+`);
 
 // ── Passages helpers ──────────────────────────────────────────────────────────
 const insertPassage = db.prepare(`
@@ -232,13 +244,29 @@ module.exports = {
   countUsers:       () => countUsers.get().n,
   getUserByUsername: name  => findUserByName.get(name),
   getUserById:       id    => findUserById.get(id),
+  getUserByEmail:    email => db.prepare(`SELECT * FROM users WHERE lower(email)=lower(?)`).get(email),
   createUser:        (username, password, isAdmin=0) => insertUserStmt.run(username, hashPassword(password), isAdmin),
+  setUserEmail:      (id, email) => db.prepare(`UPDATE users SET email=? WHERE id=?`).run(email||null, id),
   verifyPassword,
   hashPassword,
   generateToken,
   getSession:    token   => getSessionStmt.get(token, Date.now()),
   createSession: (userId, token, expiresAt) => createSessStmt.run(token, userId, expiresAt),
   deleteSession: token   => deleteSessStmt.run(token),
+
+  // Password-Reset-Tokens
+  createResetToken: (userId) => {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = Date.now() + 60 * 60 * 1000; // 1 Stunde
+    db.prepare(`DELETE FROM password_reset_tokens WHERE user_id=?`).run(userId); // alte löschen
+    db.prepare(`INSERT INTO password_reset_tokens (token,user_id,expires_at) VALUES (?,?,?)`).run(token, userId, expires);
+    return token;
+  },
+  getResetToken: (token) => db.prepare(
+    `SELECT * FROM password_reset_tokens WHERE token=? AND expires_at>? AND used=0`
+  ).get(token, Date.now()),
+  markResetTokenUsed: (token) => db.prepare(`UPDATE password_reset_tokens SET used=1 WHERE token=?`).run(token),
+  resetPassword: (userId, newPassword) => db.prepare(`UPDATE users SET password_hash=? WHERE id=?`).run(hashPassword(newPassword), userId),
 
   // Admin – Benutzerverwaltung
   getAllUsers:       () => db.prepare(`SELECT id, username, is_admin, created_at FROM users ORDER BY created_at ASC`).all(),

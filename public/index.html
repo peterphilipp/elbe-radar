@@ -428,9 +428,13 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <input class="abinput" id="loginPass" type="password" placeholder="Passwort" autocomplete="current-password"/>
       <button class="lbtn" onclick="doLogin()">Anmelden</button>
       <div class="login-err" id="loginErr"></div>
+      <div style="text-align:right;margin-top:4px">
+        <button onclick="showForgotPassword()" style="font-size:11px;color:var(--mut);background:none;border:none;cursor:pointer;text-decoration:underline;padding:2px">Passwort vergessen?</button>
+      </div>
     </div>
     <div id="regFormWrap" class="login-form" style="display:none">
       <input class="abinput" id="regUser"  placeholder="Benutzername (mind. 3 Zeichen)" autocomplete="username"/>
+      <input class="abinput" id="regEmail" type="email" placeholder="E-Mail-Adresse (für Passwort-Reset)" autocomplete="email"/>
       <input class="abinput" id="regPass"  type="password" placeholder="Passwort (mind. 6 Zeichen)" autocomplete="new-password"/>
       <input class="abinput" id="regPass2" type="password" placeholder="Passwort wiederholen"/>
       <input class="abinput" id="regCode"  placeholder="Einladungscode (falls erforderlich)"/>
@@ -446,12 +450,44 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
 <div id="anonBanner">👁 Anonymer Modus – <a onclick="exitAnonMode()" style="cursor:pointer">Jetzt anmelden</a></div>
 
+<!-- PASSWORT VERGESSEN OVERLAY -->
+<div id="forgotOverlay" style="display:none;position:fixed;inset:0;z-index:1000;background:var(--bg);align-items:center;justify-content:center;">
+  <div id="loginBox" style="background:var(--surf);border:1px solid var(--brd);border-radius:16px;padding:32px;width:min(380px,calc(100vw - 32px));box-shadow:0 16px 48px rgba(0,0,0,.25);">
+    <div class="login-logo">🔑</div>
+    <div class="login-title">Passwort vergessen</div>
+    <div class="login-sub" id="forgotSub">Gib deine E-Mail-Adresse ein</div>
+    <div class="login-form" style="margin-top:16px">
+      <input class="abinput" id="forgotEmail" type="email" placeholder="E-Mail-Adresse" autocomplete="email"/>
+      <button class="lbtn" onclick="doForgotPassword()">Reset-Link senden</button>
+      <div class="login-err" id="forgotErr"></div>
+    </div>
+    <div style="text-align:center;margin-top:14px">
+      <button onclick="hideForgotPassword()" style="font-size:11px;color:var(--mut);background:none;border:none;cursor:pointer;text-decoration:underline">← Zurück zum Login</button>
+    </div>
+  </div>
+</div>
+
+<!-- PASSWORT ZURÜCKSETZEN OVERLAY (via Token-Link) -->
+<div id="resetOverlay" style="display:none;position:fixed;inset:0;z-index:1000;background:var(--bg);align-items:center;justify-content:center;">
+  <div style="background:var(--surf);border:1px solid var(--brd);border-radius:16px;padding:32px;width:min(380px,calc(100vw - 32px));box-shadow:0 16px 48px rgba(0,0,0,.25);">
+    <div class="login-logo">🔐</div>
+    <div class="login-title">Neues Passwort</div>
+    <div class="login-sub" id="resetSub">Für: <b id="resetUsername">–</b></div>
+    <div class="login-form" style="margin-top:16px">
+      <input class="abinput" id="resetPass1" type="password" placeholder="Neues Passwort (mind. 6 Zeichen)" autocomplete="new-password"/>
+      <input class="abinput" id="resetPass2" type="password" placeholder="Passwort wiederholen"/>
+      <button class="lbtn" onclick="doResetPassword()">Passwort speichern</button>
+      <div class="login-err" id="resetErr"></div>
+    </div>
+  </div>
+</div>
+
 <header id="topbar">
   <div class="brand" id="topbarBrand">🚢 <span class="brand-text">Elbe Radar</span><span class="brand-sub" id="refNameBrand">Wedel</span></div>
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.5.0</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.5.2</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -641,9 +677,13 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <h3>👤 Konto</h3>
       <div class="sform">
         <div style="font-size:12px;color:var(--mut)">Angemeldet als <b id="sUsername">–</b></div>
+        <div class="abfield" style="margin-top:8px"><label class="ablbl">E-Mail (für Passwort-Reset)</label>
+          <input class="abinput" id="sEmail" type="email" placeholder="deine@email.de" autocomplete="email"/></div>
         <div class="sbtn-row">
           <button class="sbtn-sec sbtn-danger" id="sLogout">Abmelden</button>
+          <button class="abbtn" id="sEmailSave">💾 Email speichern</button>
         </div>
+        <div class="status-ok" id="sEmailOk">✓ E-Mail gespeichert</div>
       </div>
     </div>
 
@@ -893,6 +933,7 @@ $('loginUser').addEventListener('keydown', e => { if(e.key==='Enter') $('loginPa
 
 async function doRegister() {
   const username = $('regUser').value.trim();
+  const email    = $('regEmail') ? $('regEmail').value.trim() : '';
   const password = $('regPass').value;
   const pass2    = $('regPass2').value;
   const code     = $('regCode').value.trim();
@@ -902,7 +943,9 @@ async function doRegister() {
   const btn = $('regFormWrap').querySelector('.lbtn');
   btn.disabled = true; btn.textContent = '…';
   try {
-    const r = await fetch('/api/auth/register', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,invite_code:code})});
+    const body = {username, password, invite_code: code};
+    if (email) body.email = email;
+    const r = await fetch('/api/auth/register', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d = await r.json();
     if (!r.ok) { $('regErr').textContent = d.error || 'Registrierung fehlgeschlagen'; return; }
     onLoggedIn(d);
@@ -912,8 +955,6 @@ async function doRegister() {
     btn.disabled = false; btn.textContent = 'Registrieren';
   }
 }
-
-function onLoggedIn(d) {
   authToken = d.token;
   currentUser = { username: d.username, isAdmin: d.isAdmin };
   localStorage.setItem('elbr_token', authToken);
@@ -1193,7 +1234,7 @@ function renderFuture(){
   $('mobFutureEmpty')&&($('mobFutureEmpty').style.display=preds.length?'none':'block');
   ['futureList','mobFutureList'].forEach(id=>{const ul=$(id);if(!ul)return;const existing=new Map([...ul.querySelectorAll('li[data-mmsi]')].map(el=>[el.dataset.mmsi,el]));const newSet=new Set(preds.map(s=>s.mmsi));for(const[mmsi,el]of existing)if(!newSet.has(mmsi))el.remove();preds.forEach((s,i)=>{const h=hashS(s)+(s.eta_ts||'');let el=existing.get(s.mmsi);if(el){if(el.dataset.hash!==h){el.innerHTML=buildFiHtml(s);el.dataset.hash=h;}el.dataset.type=s.type;if(ul.children[i]!==el)ul.insertBefore(el,ul.children[i]||null);}else{el=document.createElement('li');el.className='fi';el.dataset.mmsi=s.mmsi;el.dataset.hash=h;el.dataset.type=s.type;el.innerHTML=buildFiHtml(s);el.onclick=()=>selectShip(s.mmsi);ul.insertBefore(el,ul.children[i]||null);}});});
 }
-function updateStats(){const a=[...ships.values()].filter(passes);$('liveCnt').textContent=a.length;$('shipNum').textContent=ships.size;$('stC').textContent=a.filter(s=>s.type==='Container').length;$('stK').textContent=a.filter(s=>s.type==='Cruise').length;$('stT').textContent=a.filter(s=>s.type==='Tanker').length;$('stF').textContent=a.filter(s=>s.type==='Cargo').length;}
+function updateStats(){const a=[...ships.values()].filter(passes);$('liveCnt').textContent=a.length;$('shipNum').textContent=playbackMode ? pbShips.size : ships.size;$('stC').textContent=a.filter(s=>s.type==='Container').length;$('stK').textContent=a.filter(s=>s.type==='Cruise').length;$('stT').textContent=a.filter(s=>s.type==='Tanker').length;$('stF').textContent=a.filter(s=>s.type==='Cargo').length;}
 function redraw(){syncMarkers();renderFuture();updateStats();if(logOpen)renderLog();}
 
 // Log
@@ -1211,7 +1252,7 @@ $('logLenSlider').oninput=e=>{logLenF=+e.target.value;$('logLenVal').textContent
 $('logSearch').oninput=()=>renderLog();
 
 // Settings
-function openSettings(){$('settingsPage').classList.add('open');$('settingsBtn').classList.add('active');loadTelegramSettings();}
+function openSettings(){$('settingsPage').classList.add('open');$('settingsBtn').classList.add('active');loadTelegramSettings();loadEmailSetting();}
 function closeSettings(){$('settingsPage').classList.remove('open');$('settingsBtn').classList.remove('active');}
 $('settingsBtn').onclick=()=>$('settingsPage').classList.contains('open')?closeSettings():openSettings();
 $('settingsClose').onclick=()=>closeSettings();
@@ -1315,7 +1356,7 @@ function connectBackend(){
   const tokenParam = authToken ? `?token=${encodeURIComponent(authToken)}` : '';
   ws=new WebSocket(`${proto}://${location.host}${tokenParam}`);
   ws.onopen=()=>{setConn('on', anonMode ? 'Anonym' : 'Live');dbg('Verbunden');sendBoxUpdate();};
-  ws.onmessage=ev=>{try{const d=JSON.parse(ev.data);if(d.type==='ships'){ships.clear();d.data.forEach(s=>ships.set(s.mmsi,s));redraw();dbg(`${ships.size} Schiffe · ${new Date(d.ts).toLocaleTimeString('de-DE')}`);}}catch(e){dbg('Fehler: '+e.message);}};
+  ws.onmessage=ev=>{try{const d=JSON.parse(ev.data);if(d.type==='ships'){ships.clear();d.data.forEach(s=>ships.set(s.mmsi,s));if(!playbackMode){redraw();dbg(`${ships.size} Schiffe · ${new Date(d.ts).toLocaleTimeString('de-DE')}`);}}}catch(e){dbg('Fehler: '+e.message);}};
   ws.onerror=()=>setConn('err','Fehler');
   ws.onclose=()=>{setConn('err','Getrennt');setTimeout(connectBackend,5000);};
 }
@@ -1664,6 +1705,75 @@ function buildTideSparkline(tide) {
     <circle cx="${lx}" cy="${ly}" r="2.5" fill="var(--blue,#4af)"/>
   </svg>`;
 }
+
+/* ─── Passwort vergessen / Reset ────────────────────────────────────────── */
+function showForgotPassword() {
+  $('forgotOverlay').style.display = 'flex';
+  $('forgotEmail').value = '';
+  $('forgotErr').textContent = '';
+  $('forgotSub').textContent = 'Gib deine E-Mail-Adresse ein';
+}
+function hideForgotPassword() {
+  $('forgotOverlay').style.display = 'none';
+}
+async function doForgotPassword() {
+  const email = $('forgotEmail').value.trim();
+  $('forgotErr').textContent = '';
+  if (!email) { $('forgotErr').textContent = 'E-Mail-Adresse eingeben'; return; }
+  const r = await fetch('/api/auth/forgot-password', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ email }),
+  }).then(r => r.json());
+  $('forgotSub').textContent = '✓ Falls die Adresse bekannt ist, wurde ein Link gesendet.';
+  $('forgotEmail').value = '';
+  // Dev-Modus: Link direkt anzeigen wenn kein SMTP konfiguriert
+  if (r.devResetUrl) {
+    $('forgotErr').style.color = 'var(--tel)';
+    $('forgotErr').textContent = `Dev-Link (kein SMTP): ${r.devResetUrl}`;
+  }
+}
+async function doResetPassword() {
+  const token = new URLSearchParams(location.search).get('token');
+  const pass1 = $('resetPass1').value;
+  const pass2 = $('resetPass2').value;
+  $('resetErr').textContent = '';
+  if (!pass1 || pass1.length < 6) { $('resetErr').textContent = 'Mind. 6 Zeichen'; return; }
+  if (pass1 !== pass2) { $('resetErr').textContent = 'Passwörter stimmen nicht überein'; return; }
+  const r = await fetch('/api/auth/reset-password', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ token, password: pass1 }),
+  }).then(r => r.json());
+  if (r.error) { $('resetErr').textContent = r.error; return; }
+  $('resetOverlay').style.display = 'none';
+  $('loginOverlay').classList.remove('hidden');
+  $('loginSub').textContent = '✓ Passwort geändert – bitte neu anmelden';
+}
+// Reset-Token aus URL prüfen beim Laden
+(async () => {
+  const token = new URLSearchParams(location.search).get('token');
+  if (!token) return;
+  const r = await fetch(`/api/auth/reset-password/${token}`).then(r => r.json()).catch(() => null);
+  if (r?.valid) {
+    $('resetOverlay').style.display = 'flex';
+    $('resetUsername').textContent = r.username || '–';
+    $('loginOverlay').classList.add('hidden');
+  }
+})();
+
+/* ─── Email in Settings laden/speichern ────────────────────────────────── */
+async function loadEmailSetting() {
+  const r = await apiFetch('/api/user/email').then(r => r.json()).catch(() => null);
+  if (r && $('sEmail')) $('sEmail').value = r.email || '';
+}
+if ($('sEmailSave')) $('sEmailSave').onclick = async () => {
+  const email = $('sEmail').value.trim();
+  const r = await apiFetch('/api/user/email', {method:'POST', body:JSON.stringify({email})}).then(r=>r.json());
+  if (r.error) { alert(r.error); return; }
+  $('sEmailOk').style.display = 'block';
+  setTimeout(() => { if($('sEmailOk')) $('sEmailOk').style.display='none'; }, 2500);
+};
 
 async function loadWeather() {
   try {
