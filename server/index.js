@@ -229,20 +229,24 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
         const tr = https.get(url, { headers: { 'User-Agent': 'ElbeRadar/0.4' } }, resp => {
           let d = ''; resp.on('data', c => d += c);
           resp.on('end', () => {
-            try { resolve(JSON.parse(d)); } catch(e) { resolve(null); }
+            console.log(`[Pegel] HTTP ${resp.statusCode}, Body-Anfang: ${d.slice(0,120)}`);
+            try { resolve(JSON.parse(d)); } catch(e) {
+              console.log(`[Pegel] JSON-Parse-Fehler: ${e.message}`);
+              resolve(null);
+            }
           });
         });
-        tr.on('error', () => resolve(null));
-        tr.setTimeout(6000, () => { tr.destroy(); resolve(null); });
+        tr.on('error', (e) => { console.log(`[Pegel] Netzwerkfehler: ${e.message}`); resolve(null); });
+        tr.setTimeout(6000, () => { tr.destroy(); console.log('[Pegel] Timeout'); resolve(null); });
       });
       if (Array.isArray(tideRaw) && tideRaw.length > 0) {
         tide = tideRaw;
-        console.log(`[Pegel] SCHULAU: ${tideRaw.length} Messpunkte, letzter Wert: ${tideRaw[tideRaw.length-1]?.value} cm`);
+        console.log(`[Pegel] OK – ${tideRaw.length} Messpunkte, letzter Wert: ${tideRaw[tideRaw.length-1]?.value} cm`);
       } else {
-        console.log(`[Pegel] SCHULAU: keine Daten (${JSON.stringify(tideRaw)?.slice(0,80)})`);
+        console.log(`[Pegel] Keine Daten – tideRaw: ${JSON.stringify(tideRaw)?.slice(0,120)}`);
       }
     } catch(e) {
-      console.log(`[Pegel] SCHULAU: Fehler: ${e.message}`);
+      console.log(`[Pegel] Fehler: ${e.message}`);
     }
     weatherCache = { weather: data, tide, fetchedAt: Date.now() };
     weatherCacheTs = Date.now();
@@ -250,6 +254,28 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
   } catch(e) {
     console.error('[Weather] Fehler:', e.message);
     res.status(502).json({ error: 'Wetterdaten nicht verfügbar', detail: e.message });
+  }
+});
+
+// ── PEGEL DEBUG (auth-geschützt, Cache wird ignoriert) ────────────────────────
+app.get('/api/pegel-debug', authMiddleware, async (req, res) => {
+  const url = `https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/SCHULAU/W/measurements.json?start=PT12H`;
+  try {
+    const result = await new Promise((resolve) => {
+      const tr = https.get(url, { headers: { 'User-Agent': 'ElbeRadar/0.4' } }, resp => {
+        let d = ''; resp.on('data', c => d += c);
+        resp.on('end', () => {
+          let parsed = null; let parseErr = null;
+          try { parsed = JSON.parse(d); } catch(e) { parseErr = e.message; }
+          resolve({ status: resp.statusCode, rawSnippet: d.slice(0, 300), parsed, parseErr });
+        });
+      });
+      tr.on('error', (e) => resolve({ networkError: e.message }));
+      tr.setTimeout(8000, () => { tr.destroy(); resolve({ timeout: true }); });
+    });
+    res.json({ url, ...result, isArray: Array.isArray(result.parsed), length: Array.isArray(result.parsed) ? result.parsed.length : null });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
