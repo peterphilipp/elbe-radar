@@ -204,8 +204,12 @@ app.post('/api/auth/reset-password', (req, res) => {
 // Email per User selbst ändern
 app.post('/api/user/email', authMiddleware, (req, res) => {
   const { email } = req.body;
-  if (email && db.getUserByEmail(email.trim().toLowerCase())?.id !== req.userId) {
-    return res.status(409).json({ error: 'E-Mail bereits vergeben' });
+  if (email) {
+    const existing = db.getUserByEmail(email.trim().toLowerCase());
+    // Nur ablehnen wenn die Email einem ANDEREN User gehört
+    if (existing && existing.id !== req.userId) {
+      return res.status(409).json({ error: 'E-Mail bereits vergeben' });
+    }
   }
   db.setUserEmail(req.userId, email ? email.trim().toLowerCase() : null);
   res.json({ ok: true });
@@ -478,28 +482,6 @@ app.get('/api/weather', async (req, res) => {
   }
 });
 
-// ── PEGEL DEBUG (kein Auth – nur zum Testen, danach entfernen) ────────────────
-app.get('/api/pegel-debug', async (req, res) => {
-  const url = `https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/SCHULAU/W/measurements.json?start=PT12H`;
-  try {
-    const result = await new Promise((resolve) => {
-      const tr = https.get(url, { headers: { 'User-Agent': 'ElbeRadar/0.4' } }, resp => {
-        let d = ''; resp.on('data', c => d += c);
-        resp.on('end', () => {
-          let parsed = null; let parseErr = null;
-          try { parsed = JSON.parse(d); } catch(e) { parseErr = e.message; }
-          resolve({ status: resp.statusCode, rawSnippet: d.slice(0, 300), parsed, parseErr });
-        });
-      });
-      tr.on('error', (e) => resolve({ networkError: e.message }));
-      tr.setTimeout(8000, () => { tr.destroy(); resolve({ timeout: true }); });
-    });
-    res.json({ url, ...result, isArray: Array.isArray(result.parsed), length: Array.isArray(result.parsed) ? result.parsed.length : null });
-  } catch(e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // ── LOG VIEWER ────────────────────────────────────────────────────────────────
 app.get('/api/logs', adminMiddleware, (req, res) => {
   const since = +(req.query.since || 0);
@@ -693,11 +675,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.6.1',
+  uptime: Math.floor(process.uptime()), version:'0.6.2',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.6.1' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.6.2' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));

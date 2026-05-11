@@ -269,7 +269,7 @@ module.exports = {
   resetPassword: (userId, newPassword) => db.prepare(`UPDATE users SET password_hash=? WHERE id=?`).run(hashPassword(newPassword), userId),
 
   // Admin – Benutzerverwaltung
-  getAllUsers:       () => db.prepare(`SELECT id, username, is_admin, created_at FROM users ORDER BY created_at ASC`).all(),
+  getAllUsers:       () => db.prepare(`SELECT id, username, email, is_admin, created_at FROM users ORDER BY created_at ASC`).all(),
   deleteUser:        id => db.prepare(`DELETE FROM users WHERE id=?`).run(id),
   deleteUserSessions: id => db.prepare(`DELETE FROM sessions WHERE user_id=?`).run(id),
   setUserAdmin:     (id, v) => db.prepare(`UPDATE users SET is_admin=? WHERE id=?`).run(v?1:0, id),

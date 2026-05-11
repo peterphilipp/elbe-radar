@@ -503,7 +503,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.6.1</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.6.2</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -806,7 +806,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.6.1</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.6.2</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -2088,50 +2088,70 @@ document.querySelectorAll('[data-level]').forEach(btn => {
 /* ─── Admin – Benutzerverwaltung ────────────────────────────────────────── */
 async function loadAdminUsers() {
   const users = await apiFetch('/api/admin/users').then(r=>r.json()).catch(()=>null);
-  if (!users || !Array.isArray(users)) { $('adminUserList').innerHTML='<div class="shint">Keine Rechte oder Fehler</div>'; return; }
-  if (users.length === 0) { $('adminUserList').innerHTML='<div class="shint">Keine Benutzer</div>'; return; }
-  let html = '<table class="user-table"><thead><tr><th>Name</th><th>Rolle</th><th>Erstellt</th><th></th></tr></thead><tbody>';
+  if (!users || !Array.isArray(users)) {
+    $('adminUserList').innerHTML='<div class="shint">Keine Rechte oder Fehler beim Laden</div>'; return;
+  }
+  if (users.length === 0) { $('adminUserList').innerHTML='<div class="shint">Keine Benutzer vorhanden</div>'; return; }
+
+  let html = `<table class="user-table">
+    <thead><tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Seit</th><th></th></tr></thead><tbody>`;
   for (const u of users) {
-    const dt = new Date(u.created_at*1000).toLocaleDateString('de-DE');
-    const role = u.is_admin ? '<b style="color:var(--blue)">Admin</b>' : 'User';
-    html += `<tr>
-      <td>${escHtml(u.username)}</td>
+    const dt    = new Date(u.created_at * 1000).toLocaleDateString('de-DE');
+    const email = u.email ? escHtml(u.email) : '<span style="color:var(--mut);font-style:italic">–</span>';
+    const role  = u.is_admin
+      ? '<span style="color:var(--blue);font-weight:700">Admin</span>'
+      : '<span style="color:var(--mut)">User</span>';
+    const isSelf = currentUser && u.username === currentUser.username;
+    html += `<tr style="${isSelf?'background:var(--surf2)':''}">
+      <td>${escHtml(u.username)}${isSelf?' <span style="font-size:9px;color:var(--mut)">(ich)</span>':''}</td>
+      <td style="font-size:10px">${email}</td>
       <td>${role}</td>
-      <td style="color:var(--mut)">${dt}</td>
-      <td style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="ubtn" onclick="adminToggleRole(${u.id},${u.is_admin})">${u.is_admin?'→ User':'→ Admin'}</button>
-        <button class="ubtn" onclick="adminResetPw(${u.id},'${escHtml(u.username)}')">🔑</button>
-        <button class="ubtn danger" onclick="adminDeleteUser(${u.id},'${escHtml(u.username)}')">✕</button>
+      <td style="color:var(--mut);font-size:10px">${dt}</td>
+      <td style="display:flex;gap:3px;flex-wrap:wrap;align-items:center">
+        ${!isSelf ? `<button class="ubtn" onclick="adminToggleRole(${u.id},${u.is_admin})" title="${u.is_admin?'Zu User degradieren':'Zu Admin befördern'}">${u.is_admin?'↓User':'↑Admin'}</button>` : ''}
+        <button class="ubtn" onclick="adminResetPw(${u.id},'${escHtml(u.username)}')" title="Passwort zurücksetzen">🔑</button>
+        ${!isSelf ? `<button class="ubtn danger" onclick="adminDeleteUser(${u.id},'${escHtml(u.username)}')" title="Löschen">✕</button>` : ''}
       </td>
     </tr>`;
   }
   html += '</tbody></table>';
   $('adminUserList').innerHTML = html;
 }
+
 async function adminToggleRole(id, currentAdmin) {
-  await apiFetch(`/api/admin/users/${id}/role`, {method:'PATCH', body:JSON.stringify({is_admin: currentAdmin?0:1})});
+  const r = await apiFetch(`/api/admin/users/${id}/role`, {
+    method:'PATCH', body:JSON.stringify({is_admin: currentAdmin?0:1})
+  }).then(r=>r.json());
+  if (r.error) { alert('Fehler: '+r.error); return; }
   loadAdminUsers();
 }
 async function adminResetPw(id, name) {
-  const pw = prompt(`Neues Passwort für ${name}:`);
-  if (!pw || pw.length < 6) { alert('Mind. 6 Zeichen'); return; }
-  const r = await apiFetch(`/api/admin/users/${id}/reset-password`, {method:'POST', body:JSON.stringify({password:pw})}).then(r=>r.json());
-  if (r.ok) alert('Passwort geändert'); else alert('Fehler: '+r.error);
+  const pw = prompt(`Neues Passwort für "${name}" (mind. 6 Zeichen):`);
+  if (pw === null) return;
+  if (!pw || pw.length < 6) { alert('Mind. 6 Zeichen erforderlich'); return; }
+  const r = await apiFetch(`/api/admin/users/${id}/reset-password`, {
+    method:'POST', body:JSON.stringify({password:pw})
+  }).then(r=>r.json());
+  alert(r.ok ? `✓ Passwort für "${name}" geändert` : 'Fehler: '+(r.error||'unbekannt'));
 }
 async function adminDeleteUser(id, name) {
-  if (!confirm(`Benutzer "${name}" wirklich löschen?`)) return;
+  if (!confirm(`Benutzer "${name}" wirklich unwiderruflich löschen?`)) return;
   await apiFetch(`/api/admin/users/${id}`, {method:'DELETE'});
   loadAdminUsers();
 }
 if ($('adminNewUserBtn')) $('adminNewUserBtn').onclick = () => {
-  $('adminNewUserForm').style.display = $('adminNewUserForm').style.display==='none' ? '' : 'none';
+  const f = $('adminNewUserForm');
+  f.style.display = f.style.display==='none' ? '' : 'none';
 };
 if ($('adminNewUserSave')) $('adminNewUserSave').onclick = async () => {
   const username = $('adminNewUser').value.trim();
   const password = $('adminNewPass').value;
   const is_admin = $('adminNewAdmin').checked ? 1 : 0;
   $('adminNewErr').textContent = '';
-  const r = await apiFetch('/api/admin/users', {method:'POST', body:JSON.stringify({username,password,is_admin})}).then(r=>r.json());
+  if (!username || !password) { $('adminNewErr').textContent='Name und Passwort erforderlich'; return; }
+  const r = await apiFetch('/api/admin/users', {
+    method:'POST', body:JSON.stringify({username, password, is_admin})
+  }).then(r=>r.json());
   if (r.error) { $('adminNewErr').textContent = r.error; return; }
   $('adminNewUserForm').style.display='none';
   $('adminNewUser').value=''; $('adminNewPass').value=''; $('adminNewAdmin').checked=false;
