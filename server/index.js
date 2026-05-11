@@ -5,6 +5,7 @@ const http         = require('http');
 const https        = require('https');
 const WebSocket    = require('ws');
 const path         = require('path');
+const fs           = require('fs');
 const AISConnector = require('./aisConnector');
 const db           = require('./db');
 const { sendTestMessage, invalidateUserCache } = require('./telegramBot');
@@ -22,6 +23,19 @@ app.use(express.json());
 const BUILD_SHA  = process.env.BUILD_SHA  || 'dev';
 const BUILD_TIME = process.env.BUILD_TIME || new Date().toISOString();
 
+// ── Log-Buffer (letzten 500 Einträge) ────────────────────────────────────────
+const LOG_BUFFER = [];
+const MAX_LOGS   = 500;
+function logPush(level, ...args) {
+  const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+  LOG_BUFFER.push({ ts: Date.now(), level, msg });
+  if (LOG_BUFFER.length > MAX_LOGS) LOG_BUFFER.shift();
+  process.stdout.write(`[${level.toUpperCase()}] ${msg}\n`);
+}
+console.log   = (...a) => logPush('info',  ...a);
+console.error = (...a) => logPush('error', ...a);
+console.warn  = (...a) => logPush('warn',  ...a);
+
 // ── Auth Middleware ───────────────────────────────────────────────────────────
 function getTokenFromReq(req) {
   const auth = req.headers['authorization'] || '';
@@ -32,6 +46,23 @@ function authMiddleware(req, res, next) {
   const session = token ? db.getSession(token) : null;
   if (!session) return res.status(401).json({ error: 'Nicht angemeldet' });
   req.userId = session.user_id;
+  next();
+}
+function adminMiddleware(req, res, next) {
+  const token   = getTokenFromReq(req);
+  const session = token ? db.getSession(token) : null;
+  if (!session) return res.status(401).json({ error: 'Nicht angemeldet' });
+  const user = db.getUserById(session.user_id);
+  if (!user || !user.is_admin) return res.status(403).json({ error: 'Admin-Rechte erforderlich' });
+  req.userId = session.user_id;
+  next();
+}
+// Optionaler Auth: setzt req.userId wenn Token gültig, sonst null (kein Fehler)
+function optionalAuth(req, res, next) {
+  const token   = getTokenFromReq(req);
+  const session = token ? db.getSession(token) : null;
+  req.userId    = session ? session.user_id : null;
+  req.isAnon    = !session;
   next();
 }
 // Optionaler alter API-Key-Schutz (backward compat)
@@ -52,12 +83,12 @@ function broadcast(ships) {
 }
 
 wss.on('connection', (ws, req) => {
-  // WebSocket-Authentifizierung via Query-Parameter
+  // WebSocket-Authentifizierung via Query-Parameter; anonym erlaubt (eingeschränkt)
   const url     = new URL(req.url, 'http://localhost');
   const token   = url.searchParams.get('token') || '';
   const session = token ? db.getSession(token) : null;
-  if (!session) { ws.close(1008, 'Unauthorized'); return; }
-  ws.userId = session.user_id;
+  ws.userId = session ? session.user_id : null;
+  ws.isAnon = !session;
   ws.send(JSON.stringify({ type:'ships', data: db.getActiveShips(15*60*1000), ts: Date.now() }));
   ws.on('message', raw => {
     try {
@@ -245,10 +276,28 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
       } else {
         console.log(`[Pegel] Keine Daten – tideRaw: ${JSON.stringify(tideRaw)?.slice(0,120)}`);
       }
+
+      // Gezeitenvorhersage (TRM) – nächste 6h, falls verfügbar
+      let tideForecast = null;
+      try {
+        const trmRaw = await new Promise((resolve) => {
+          const u2 = `https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/SCHULAU/TRM/measurements.json?start=P0D&end=PT6H`;
+          const tr2 = https.get(u2, { headers: { 'User-Agent': 'ElbeRadar/0.5' } }, resp => {
+            let d = ''; resp.on('data', c => d += c);
+            resp.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { resolve(null); } });
+          });
+          tr2.on('error', () => resolve(null));
+          tr2.setTimeout(5000, () => { tr2.destroy(); resolve(null); });
+        });
+        if (Array.isArray(trmRaw) && trmRaw.length > 0) {
+          tideForecast = trmRaw;
+          console.log(`[Pegel] TRM Vorhersage: ${trmRaw.length} Punkte`);
+        }
+      } catch(e) { /* kein TRM für diese Station */ }
     } catch(e) {
       console.log(`[Pegel] Fehler: ${e.message}`);
     }
-    weatherCache = { weather: data, tide, fetchedAt: Date.now() };
+    weatherCache = { weather: data, tide, tideForecast, fetchedAt: Date.now() };
     weatherCacheTs = Date.now();
     res.json(weatherCache);
   } catch(e) {
@@ -277,6 +326,56 @@ app.get('/api/pegel-debug', async (req, res) => {
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// ── LOG VIEWER ────────────────────────────────────────────────────────────────
+app.get('/api/logs', adminMiddleware, (req, res) => {
+  const since = +(req.query.since || 0);
+  const logs  = since ? LOG_BUFFER.filter(l => l.ts > since) : LOG_BUFFER.slice(-200);
+  res.json({ logs, total: LOG_BUFFER.length });
+});
+
+// ── ADMIN – BENUTZERVERWALTUNG ────────────────────────────────────────────────
+app.get('/api/admin/users', adminMiddleware, (req, res) => {
+  res.json(db.getAllUsers());
+});
+app.delete('/api/admin/users/:id', adminMiddleware, (req, res) => {
+  const id = +req.params.id;
+  if (id === req.userId) return res.status(400).json({ error: 'Eigenen Account nicht löschbar' });
+  db.deleteUserSessions(id);
+  db.deleteUser(id);
+  res.json({ ok: true });
+});
+app.patch('/api/admin/users/:id/role', adminMiddleware, (req, res) => {
+  const id = +req.params.id;
+  if (id === req.userId) return res.status(400).json({ error: 'Eigene Rolle nicht änderbar' });
+  db.setUserAdmin(id, req.body.is_admin ? 1 : 0);
+  res.json({ ok: true });
+});
+app.post('/api/admin/users/:id/reset-password', adminMiddleware, (req, res) => {
+  const { password } = req.body;
+  if (!password || password.length < 6) return res.status(400).json({ error: 'Mindestens 6 Zeichen' });
+  db.resetUserPassword(+req.params.id, password);
+  res.json({ ok: true });
+});
+app.post('/api/admin/users', adminMiddleware, (req, res) => {
+  const { username, password, is_admin } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'username + password erforderlich' });
+  if (username.length < 3)   return res.status(400).json({ error: 'Username mind. 3 Zeichen' });
+  if (password.length < 6)   return res.status(400).json({ error: 'Passwort mind. 6 Zeichen' });
+  if (db.getUserByUsername(username)) return res.status(409).json({ error: 'Username bereits vergeben' });
+  db.createUser(username, password, is_admin ? 1 : 0);
+  const user = db.getUserByUsername(username);
+  res.json({ id: user.id, username: user.username, is_admin: user.is_admin });
+});
+
+// ── DB-STATS ──────────────────────────────────────────────────────────────────
+app.get('/api/admin/db-stats', adminMiddleware, (req, res) => {
+  const dbPath = path.join(process.env.DATA_DIR || '/app/data', 'elbe-radar.db');
+  let dbSizeBytes = 0;
+  try { dbSizeBytes = fs.statSync(dbPath).size; } catch(e) {}
+  const stats = db.getDbStats();
+  res.json({ dbSizeBytes, ...stats });
 });
 
 // ── PLAYBACK API ──────────────────────────────────────────────────────────────
@@ -422,11 +521,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.4.3',
+  uptime: Math.floor(process.uptime()), version:'0.5.0',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.4.3' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.5.0' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));
@@ -450,7 +549,7 @@ app.use(express.static(path.join(__dirname,'..','public'), {
 app.get('*', (req,res) => res.sendFile(path.join(__dirname,'..','public','index.html')));
 
 server.listen(PORT, () => {
-  console.log(`[Server] Elbe Radar v0.4.3 · Port ${PORT}`);
+  console.log(`[Server] Elbe Radar v0.5.0 · Port ${PORT}`);
   console.log(`[Server] AIS-Key:    ${process.env.AIS_API_KEY       ? 'gesetzt'           : 'NICHT gesetzt (Demo)'}`);
   console.log(`[Server] Reg-Code:   ${REG_CODE                      ? 'gesetzt'           : 'offen (jeder kann sich registrieren)'}`);
   console.log(`[Server] History:    ${process.env.RETAIN_DAYS||7} Tage · Intervall 5 min`);

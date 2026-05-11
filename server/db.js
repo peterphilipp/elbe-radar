@@ -239,5 +239,22 @@ module.exports = {
   getSession:    token   => getSessionStmt.get(token, Date.now()),
   createSession: (userId, token, expiresAt) => createSessStmt.run(token, userId, expiresAt),
   deleteSession: token   => deleteSessStmt.run(token),
+
+  // Admin – Benutzerverwaltung
+  getAllUsers:       () => db.prepare(`SELECT id, username, is_admin, created_at FROM users ORDER BY created_at ASC`).all(),
+  deleteUser:        id => db.prepare(`DELETE FROM users WHERE id=?`).run(id),
+  deleteUserSessions: id => db.prepare(`DELETE FROM sessions WHERE user_id=?`).run(id),
+  setUserAdmin:     (id, v) => db.prepare(`UPDATE users SET is_admin=? WHERE id=?`).run(v?1:0, id),
+  resetUserPassword: (id, pw) => db.prepare(`UPDATE users SET password_hash=? WHERE id=?`).run(hashPassword(pw), id),
+
+  // DB-Stats
+  getDbStats: () => ({
+    history:  db.prepare(`SELECT COUNT(*) as cnt, MIN(ts) as min_ts, MAX(ts) as max_ts FROM history`).get(),
+    ships:    db.prepare(`SELECT COUNT(*) as cnt FROM ships`).get().cnt,
+    passages: db.prepare(`SELECT COUNT(*) as cnt FROM passages`).get().cnt,
+    users:    db.prepare(`SELECT COUNT(*) as cnt FROM users`).get().cnt,
+    sessions: db.prepare(`SELECT COUNT(*) as cnt FROM sessions WHERE expires_at > ?`).get(Date.now()).cnt,
+  }),
+
   db,
 };

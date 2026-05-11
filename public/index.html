@@ -361,6 +361,41 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .ww-tide b{color:var(--txt);}
 .ww-tide-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .tide-spark{display:block;flex-shrink:0;opacity:0.9;}
+
+/* ── Log Viewer ──────────────────────────────────────────────────────────── */
+#logPage{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;flex-direction:column;}
+#logPage.open{display:flex;}
+#logBody{flex:1;overflow-y:auto;padding:12px;font-family:var(--mono);font-size:11px;line-height:1.6;}
+.log-line{padding:1px 0;border-bottom:1px solid var(--div);white-space:pre-wrap;word-break:break-all;}
+.log-line.error{color:var(--red);}
+.log-line.warn{color:#f0a050;}
+.log-ts{color:var(--mut);margin-right:6px;user-select:none;}
+
+/* ── Admin User Table ───────────────────────────────────────────────────── */
+.user-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+.user-table th{text-align:left;padding:5px 8px;border-bottom:2px solid var(--brd);color:var(--mut);font-weight:600;}
+.user-table td{padding:5px 8px;border-bottom:1px solid var(--div);}
+.user-table tr:last-child td{border:none;}
+.ubtn{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--brd);background:var(--surf2);color:var(--txt);}
+.ubtn.danger{border-color:var(--red);color:var(--red);}
+.ubtn.primary{background:var(--blue);color:#fff;border-color:var(--blue);}
+
+/* ── Anon Banner ─────────────────────────────────────────────────────────── */
+#anonBanner{display:none;position:fixed;top:50px;left:50%;transform:translateX(-50%);z-index:180;
+  background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:8px 16px;
+  font-size:12px;color:var(--mut);box-shadow:0 4px 16px rgba(0,0,0,.2);white-space:nowrap;}
+#anonBanner a{color:var(--blue);cursor:pointer;}
+.anon-disabled{opacity:0.4;pointer-events:none;cursor:not-allowed;position:relative;}
+.anon-disabled::after{content:'🔒 Login erforderlich';position:absolute;bottom:calc(100%+4px);
+  left:50%;transform:translateX(-50%);background:var(--surf);border:1px solid var(--brd);
+  border-radius:6px;padding:4px 8px;font-size:10px;color:var(--mut);white-space:nowrap;pointer-events:none;opacity:0;}
+.anon-disabled:hover::after{opacity:1;}
+
+/* ── DB Stats ────────────────────────────────────────────────────────────── */
+.db-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+.db-stat-card{background:var(--surf2);border:1px solid var(--brd);border-radius:8px;padding:10px 12px;}
+.db-stat-val{font-size:18px;font-weight:700;color:var(--blue);}
+.db-stat-lbl{font-size:10px;color:var(--mut);margin-top:2px;}
 @media(max-width:700px){#weatherWidget{top:auto;bottom:calc(30vh + 60px);right:10px;font-size:10px;min-width:130px;}}
 #weatherWidget.hidden{display:none;}
 
@@ -403,15 +438,20 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <div class="login-err" id="regErr"></div>
     </div>
     <div id="loginVersion" style="font-size:10px;color:var(--fnt);text-align:center;margin-top:14px;font-family:var(--mono);opacity:.7;">v–</div>
+    <div style="text-align:center;margin-top:10px;">
+      <button onclick="enterAnonMode()" style="font-size:11px;color:var(--mut);background:none;border:none;cursor:pointer;text-decoration:underline;padding:4px;">Anonym fortfahren (kein Login)</button>
+    </div>
   </div>
 </div>
+
+<div id="anonBanner">👁 Anonymer Modus – <a onclick="exitAnonMode()" style="cursor:pointer">Jetzt anmelden</a></div>
 
 <header id="topbar">
   <div class="brand" id="topbarBrand">🚢 <span class="brand-text">Elbe Radar</span><span class="brand-sub" id="refNameBrand">Wedel</span></div>
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.4.5</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.5.0</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -518,7 +558,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <aside class="panel right">
     <div class="tabs">
       <button class="tab on" data-tab="eta">ETA <span class="cnt" id="futureCnt">0</span></button>
-      <button class="tab" data-tab="alerts">🔔 Alerts</button>
+      <button class="tab" data-tab="alerts" id="alertsTabBtn">🔔 Alerts</button>
     </div>
     <div class="tabcontent on" id="tab-eta">
       <div class="pscroll">
@@ -664,11 +704,44 @@ input[type=range]{flex:1;accent-color:var(--blue);}
         <span>Debug-Log anzeigen</span>
         <div class="toggle-switch" id="dbgToggle"></div>
       </div>
+      <div class="sbtn-row" style="margin-top:8px" id="serverLogBtnWrap">
+        <button class="sbtn-sec" id="openServerLogBtn">🖥 Server-Logs öffnen</button>
+      </div>
+    </div>
+
+    <div class="ssec" id="adminSection" style="display:none">
+      <h3>🛡 Admin – Benutzerverwaltung</h3>
+      <div id="adminUserList"><div class="shint">Lade…</div></div>
+      <div class="sbtn-row" style="margin-top:8px;gap:6px">
+        <button class="abbtn" id="adminNewUserBtn">+ Neuer Benutzer</button>
+      </div>
+      <div id="adminNewUserForm" style="display:none;margin-top:10px" class="sform">
+        <div class="abfield"><label class="ablbl">Benutzername</label>
+          <input class="abinput" id="adminNewUser" placeholder="username"/></div>
+        <div class="abfield"><label class="ablbl">Passwort</label>
+          <input class="abinput" id="adminNewPass" type="password" placeholder="mind. 6 Zeichen"/></div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;padding:2px 0">
+          <input type="checkbox" id="adminNewAdmin"> Admin-Rechte
+        </label>
+        <div class="sbtn-row">
+          <button class="sbtn-sec" onclick="$('adminNewUserForm').style.display='none'">Abbrechen</button>
+          <button class="abbtn" id="adminNewUserSave">Anlegen</button>
+        </div>
+        <div class="status-err" id="adminNewErr"></div>
+      </div>
+    </div>
+
+    <div class="ssec" id="dbStatsSection" style="display:none">
+      <h3>🗄 Datenbank</h3>
+      <div class="db-stats-grid" id="dbStatsGrid"><div class="shint">Lade…</div></div>
+      <div class="sbtn-row" style="margin-top:8px">
+        <button class="sbtn-sec" id="dbStatsRefresh">🔄 Aktualisieren</button>
+      </div>
     </div>
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.4.5</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.5.0</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -1238,8 +1311,9 @@ $('buildPill').onclick=()=>alert($('buildinfo').textContent);
 
 function connectBackend(){
   const proto=location.protocol==='https:'?'wss':'ws';
-  ws=new WebSocket(`${proto}://${location.host}?token=${encodeURIComponent(authToken)}`);
-  ws.onopen=()=>{setConn('on','Live');dbg('Verbunden');sendBoxUpdate();};
+  const tokenParam = authToken ? `?token=${encodeURIComponent(authToken)}` : '';
+  ws=new WebSocket(`${proto}://${location.host}${tokenParam}`);
+  ws.onopen=()=>{setConn('on', anonMode ? 'Anonym' : 'Live');dbg('Verbunden');sendBoxUpdate();};
   ws.onmessage=ev=>{try{const d=JSON.parse(ev.data);if(d.type==='ships'){ships.clear();d.data.forEach(s=>ships.set(s.mmsi,s));redraw();dbg(`${ships.size} Schiffe · ${new Date(d.ts).toLocaleTimeString('de-DE')}`);}}catch(e){dbg('Fehler: '+e.message);}};
   ws.onerror=()=>setConn('err','Fehler');
   ws.onclose=()=>{setConn('err','Getrennt');setTimeout(connectBackend,5000);};
@@ -1250,7 +1324,6 @@ function loadBuildInfo(){apiFetch('/api/version').then(r=>r.json()).then(v=>{con
 
 function startApp(){
   initMap();
-  // Mehrfache invalidateSize – sicherstellt dass Leaflet die Containergröße erkennt
   requestAnimationFrame(()=>map.invalidateSize());
   setTimeout(()=>{if(map)map.invalidateSize();}, 100);
   setTimeout(()=>{if(map)map.invalidateSize();}, 500);
@@ -1261,6 +1334,20 @@ function startApp(){
   loadAlerts();
   loadWeather();
   setInterval(loadWeather, 15 * 60 * 1000);
+  // Anon-Modus: eingeschränkte UI
+  if (anonMode) {
+    if ($('alertsTabBtn')) {
+      $('alertsTabBtn').style.opacity='0.4';
+      $('alertsTabBtn').title='🔒 Login erforderlich';
+      $('alertsTabBtn').onclick = e => { e.preventDefault(); exitAnonMode(); };
+    }
+    document.querySelectorAll('.ssec').forEach(s => {
+      if (s.innerHTML.includes('Telegram') || s.innerHTML.includes('Alerts')) {
+        s.style.opacity='0.4'; s.style.pointerEvents='none';
+        s.insertAdjacentHTML('afterbegin','<div style="font-size:11px;color:var(--mut);margin-bottom:6px">🔒 Login erforderlich</div>');
+      }
+    });
+  }
 }
 
 window.addEventListener('resize',()=>{if(map)map.invalidateSize();});
@@ -1585,14 +1672,13 @@ async function loadWeather() {
     const spdMs = +(cur.windspeed_10m || 0).toFixed(1);
     const dirDeg = Math.round(cur.winddirection_10m || 0);
     const temp = cur.temperature_2m != null ? Math.round(cur.temperature_2m) : null;
-    // Beaufort aus m/s
     const bft = spdMs<0.3?0:spdMs<1.6?1:spdMs<3.4?2:spdMs<5.5?3:spdMs<8?4:spdMs<10.8?5:spdMs<13.9?6:spdMs<17.2?7:spdMs<20.8?8:9;
     $('wwWind').textContent = `${spdMs} m/s (Bft ${bft})`;
     $('wwDir').textContent  = `Wind: ${windDirName(dirDeg)} (${dirDeg}°)`;
     $('wwTemp').textContent = temp != null ? `${temp}°C` : '–°C';
     $('wwIcon').textContent = WMO_ICONS[cur.weathercode] || '🌤';
     $('weatherWidget').classList.remove('loading');
-    // Pegel
+    // Pegel mit Sparkline (Verlauf + optional Forecast)
     const tide = d.tide;
     if (tide && Array.isArray(tide) && tide.length > 0) {
       const latest  = tide[tide.length - 1];
@@ -1602,7 +1688,7 @@ async function loadWeather() {
       const measTime = latest.timestamp ? new Date(latest.timestamp).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : '';
       $('wwPegel').textContent = `${val} cm ${trend}`;
       if (measTime) $('wwPegel').title = `Messung um ${measTime}`;
-      $('wwTideSpark').innerHTML = buildTideSparkline(tide);
+      $('wwTideSpark').innerHTML = buildTideSparkline(tide, d.tideForecast);
       $('wwTide').style.display = 'block';
     } else {
       $('wwTide').style.display = 'none';
@@ -1610,6 +1696,166 @@ async function loadWeather() {
   } catch(e) { $('weatherWidget').classList.remove('loading'); }
 }
 $('weatherWidget').onclick = () => { $('weatherWidget').classList.add('loading'); loadWeather(); };
+
+/* ─── Anonymer Modus ────────────────────────────────────────────────────── */
+let anonMode = false;
+function enterAnonMode() {
+  anonMode = true;
+  $('loginOverlay').classList.add('hidden');
+  $('anonBanner').style.display = 'block';
+  // Alerts, Telegram-Felder deaktivieren
+  document.querySelectorAll('.anon-hide').forEach(el => el.style.display='none');
+  // App starten ohne Auth
+  startApp();
+}
+function exitAnonMode() {
+  anonMode = false;
+  $('anonBanner').style.display = 'none';
+  $('loginOverlay').classList.remove('hidden');
+}
+
+/* ─── Server-Log-Viewer ─────────────────────────────────────────────────── */
+let slogFilter = 'all', slogAutoInterval = null, slogLastTs = 0;
+
+function openServerLog() {
+  $('serverLogPage').style.display = 'flex';
+  loadServerLogs(true);
+}
+function closeServerLog() {
+  $('serverLogPage').style.display = 'none';
+  if (slogAutoInterval) { clearInterval(slogAutoInterval); slogAutoInterval = null; }
+  if ($('slogAutoRefresh')) $('slogAutoRefresh').checked = false;
+}
+async function loadServerLogs(full = false) {
+  const since = full ? 0 : slogLastTs;
+  const data = await apiFetch(`/api/logs${since ? '?since='+since : ''}`).then(r=>r.json()).catch(()=>null);
+  if (!data) { $('slogStatus').textContent = 'Fehler beim Laden'; return; }
+  const logs = data.logs;
+  if (full) {
+    slogLastTs = 0;
+    $('slogBody').innerHTML = '';
+  }
+  if (logs.length === 0 && full) {
+    $('slogBody').innerHTML = '<div style="color:var(--mut);padding:20px">Keine Log-Einträge</div>';
+    return;
+  }
+  const frag = document.createDocumentFragment();
+  for (const l of logs) {
+    if (slogFilter !== 'all' && l.level !== slogFilter) continue;
+    const div = document.createElement('div');
+    div.className = `log-line ${l.level}`;
+    const t = new Date(l.ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const levelColor = l.level==='error' ? 'var(--red)' : l.level==='warn' ? '#f0a050' : 'var(--mut)';
+    div.innerHTML = '<span class="log-ts">' + t + '</span><span style="color:' + levelColor + ';font-weight:600;margin-right:4px">[' + l.level + ']</span>' + escHtml(l.msg);
+    frag.appendChild(div);
+    if (l.ts > slogLastTs) slogLastTs = l.ts;
+  }
+  $('slogBody').appendChild(frag);
+  $('slogBody').scrollTop = $('slogBody').scrollHeight;
+  $('slogStatus').textContent = `${data.total} Einträge gesamt · letztes Update ${new Date().toLocaleTimeString('de-DE')}`;
+}
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+if ($('slogClose'))     $('slogClose').onclick     = closeServerLog;
+if ($('slogRefresh'))   $('slogRefresh').onclick   = () => loadServerLogs(true);
+if ($('openServerLogBtn')) $('openServerLogBtn').onclick = openServerLog;
+if ($('slogAutoRefresh')) {
+  $('slogAutoRefresh').onchange = () => {
+    if ($('slogAutoRefresh').checked) {
+      slogAutoInterval = setInterval(() => loadServerLogs(false), 5000);
+    } else {
+      if (slogAutoInterval) { clearInterval(slogAutoInterval); slogAutoInterval = null; }
+    }
+  };
+}
+document.querySelectorAll('[data-level]').forEach(btn => {
+  if (!btn.closest('#serverLogPage')) return;
+  btn.onclick = () => {
+    slogFilter = btn.dataset.level;
+    document.querySelectorAll('[data-level]').forEach(b => { if(b.closest('#serverLogPage')) b.classList.toggle('on', b===btn); });
+    loadServerLogs(true);
+  };
+});
+
+/* ─── Admin – Benutzerverwaltung ────────────────────────────────────────── */
+async function loadAdminUsers() {
+  const users = await apiFetch('/api/admin/users').then(r=>r.json()).catch(()=>null);
+  if (!users || !Array.isArray(users)) { $('adminUserList').innerHTML='<div class="shint">Keine Rechte oder Fehler</div>'; return; }
+  if (users.length === 0) { $('adminUserList').innerHTML='<div class="shint">Keine Benutzer</div>'; return; }
+  let html = '<table class="user-table"><thead><tr><th>Name</th><th>Rolle</th><th>Erstellt</th><th></th></tr></thead><tbody>';
+  for (const u of users) {
+    const dt = new Date(u.created_at*1000).toLocaleDateString('de-DE');
+    const role = u.is_admin ? '<b style="color:var(--blue)">Admin</b>' : 'User';
+    html += `<tr>
+      <td>${escHtml(u.username)}</td>
+      <td>${role}</td>
+      <td style="color:var(--mut)">${dt}</td>
+      <td style="display:flex;gap:4px;flex-wrap:wrap">
+        <button class="ubtn" onclick="adminToggleRole(${u.id},${u.is_admin})">${u.is_admin?'→ User':'→ Admin'}</button>
+        <button class="ubtn" onclick="adminResetPw(${u.id},'${escHtml(u.username)}')">🔑</button>
+        <button class="ubtn danger" onclick="adminDeleteUser(${u.id},'${escHtml(u.username)}')">✕</button>
+      </td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  $('adminUserList').innerHTML = html;
+}
+async function adminToggleRole(id, currentAdmin) {
+  await apiFetch(`/api/admin/users/${id}/role`, {method:'PATCH', body:JSON.stringify({is_admin: currentAdmin?0:1})});
+  loadAdminUsers();
+}
+async function adminResetPw(id, name) {
+  const pw = prompt(`Neues Passwort für ${name}:`);
+  if (!pw || pw.length < 6) { alert('Mind. 6 Zeichen'); return; }
+  const r = await apiFetch(`/api/admin/users/${id}/reset-password`, {method:'POST', body:JSON.stringify({password:pw})}).then(r=>r.json());
+  if (r.ok) alert('Passwort geändert'); else alert('Fehler: '+r.error);
+}
+async function adminDeleteUser(id, name) {
+  if (!confirm(`Benutzer "${name}" wirklich löschen?`)) return;
+  await apiFetch(`/api/admin/users/${id}`, {method:'DELETE'});
+  loadAdminUsers();
+}
+if ($('adminNewUserBtn')) $('adminNewUserBtn').onclick = () => {
+  $('adminNewUserForm').style.display = $('adminNewUserForm').style.display==='none' ? '' : 'none';
+};
+if ($('adminNewUserSave')) $('adminNewUserSave').onclick = async () => {
+  const username = $('adminNewUser').value.trim();
+  const password = $('adminNewPass').value;
+  const is_admin = $('adminNewAdmin').checked ? 1 : 0;
+  $('adminNewErr').textContent = '';
+  const r = await apiFetch('/api/admin/users', {method:'POST', body:JSON.stringify({username,password,is_admin})}).then(r=>r.json());
+  if (r.error) { $('adminNewErr').textContent = r.error; return; }
+  $('adminNewUserForm').style.display='none';
+  $('adminNewUser').value=''; $('adminNewPass').value=''; $('adminNewAdmin').checked=false;
+  loadAdminUsers();
+};
+
+/* ─── DB Stats ──────────────────────────────────────────────────────────── */
+async function loadDbStats() {
+  const s = await apiFetch('/api/admin/db-stats').then(r=>r.json()).catch(()=>null);
+  if (!s) { $('dbStatsGrid').innerHTML='<div class="shint">Keine Rechte oder Fehler</div>'; return; }
+  const mb = (s.dbSizeBytes/1024/1024).toFixed(1);
+  const from = s.history.min_ts ? new Date(s.history.min_ts).toLocaleDateString('de-DE') : '–';
+  const to   = s.history.max_ts ? new Date(s.history.max_ts).toLocaleDateString('de-DE') : '–';
+  $('dbStatsGrid').innerHTML = `
+    <div class="db-stat-card"><div class="db-stat-val">${mb} MB</div><div class="db-stat-lbl">DB-Größe</div></div>
+    <div class="db-stat-card"><div class="db-stat-val">${(s.history.cnt||0).toLocaleString('de-DE')}</div><div class="db-stat-lbl">History-Punkte</div></div>
+    <div class="db-stat-card"><div class="db-stat-val">${s.ships||0}</div><div class="db-stat-lbl">Aktive Schiffe</div></div>
+    <div class="db-stat-card"><div class="db-stat-val">${s.passages||0}</div><div class="db-stat-lbl">Passagen</div></div>
+    <div class="db-stat-card" style="grid-column:1/-1"><div class="db-stat-val" style="font-size:13px">${from} – ${to}</div><div class="db-stat-lbl">Zeitraum History</div></div>
+  `;
+}
+if ($('dbStatsRefresh')) $('dbStatsRefresh').onclick = loadDbStats;
+
+/* ─── Settings öffnen: Admin-Sektionen einblenden ───────────────────────── */
+const _origOpenSettings = openSettings;
+openSettings = function() {
+  _origOpenSettings();
+  if (currentUser && currentUser.isAdmin) {
+    if ($('adminSection'))  { $('adminSection').style.display='';  loadAdminUsers(); }
+    if ($('dbStatsSection')){ $('dbStatsSection').style.display=''; loadDbStats(); }
+  }
+};
 
 /* ─── Playback ──────────────────────────────────────────────────────────── */
 let playbackMode = false, pbTimer = null, pbShips = new Map();
@@ -1646,15 +1892,20 @@ function closePlayback() {
 
 async function pbSeek(ts) {
   pbCurrentTs = ts;
-  // Slider position
   const pct = pbMaxTs > pbMinTs ? (ts - pbMinTs) / (pbMaxTs - pbMinTs) * 1000 : 0;
   $('pbSlider').value = Math.round(pct);
   $('pbTime').textContent = new Date(ts).toLocaleString('de-DE',
     {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
   const data = await apiFetch(`/api/playback?ts=${ts}`).then(r => r.json()).catch(() => null);
   if (!data) return;
-  // Karte mit historischen Schiffen rendern
-  pbShips = new Map(data.ships.map(s => [s.mmsi, { ...s, seen: s.ts }]));
+  // Nur Schiffe anzeigen deren Datenpunkt max. 4 Minuten vom Zielzeitpunkt entfernt ist
+  // → verhindert "Teleportations"-Artefakte bei großen Zeitlücken
+  const MAX_DIFF_MS = 4 * 60 * 1000;
+  pbShips = new Map(
+    data.ships
+      .filter(s => (s.diff ?? Infinity) <= MAX_DIFF_MS)
+      .map(s => [s.mmsi, { ...s, seen: s.ts }])
+  );
   renderPlaybackMap(pbShips);
 }
 
@@ -1735,6 +1986,26 @@ checkAuth();
     <table id="statsTable" style="display:none;width:100%;border-collapse:collapse;font-size:12px"></table>
     <div id="statsChart" style="padding:16px"></div>
   </div>
+</div>
+
+<!-- SERVER LOG PAGE -->
+<div id="serverLogPage" style="display:none;position:fixed;inset:0;z-index:210;background:var(--bg);flex-direction:column;">
+  <div class="sbar" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--brd);">
+    <h2 style="flex:1">🖥 Server-Logs</h2>
+    <button id="slogRefresh" class="sbtn-sec" style="font-size:12px">🔄 Refresh</button>
+    <button id="slogClose" class="ibtn">✕</button>
+  </div>
+  <div style="display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--div);flex-wrap:wrap;">
+    <button class="chip on" data-level="all" id="slogAll">Alle</button>
+    <button class="chip" data-level="info" id="slogInfo">Info</button>
+    <button class="chip" data-level="warn" id="slogWarn">Warn</button>
+    <button class="chip" data-level="error" id="slogError">Error</button>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-left:auto;">
+      <input type="checkbox" id="slogAutoRefresh"> Auto-Refresh (5s)
+    </label>
+  </div>
+  <div id="slogBody" style="flex:1;overflow-y:auto;padding:10px 16px;font-family:var(--mono);font-size:11px;line-height:1.7;"></div>
+  <div style="padding:6px 16px;border-top:1px solid var(--div);font-size:10px;color:var(--mut);" id="slogStatus"></div>
 </div>
 
 </body>
