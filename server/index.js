@@ -300,159 +300,83 @@ try { db.db.exec(`ALTER TABLE ships ADD COLUMN photo_checked INTEGER DEFAULT 0`)
 // Schlechte Einträge zurücksetzen damit beim nächsten Klick Wikipedia versucht wird
 try { db.db.exec(`UPDATE ships SET photo_checked=0, photo_url=NULL WHERE photo_checked=1 AND photo_url IS NULL`); } catch(e) {}
 
-// Hilfsfunktion: prüft ob URL ein Bild liefert (ohne zu streamen)
-function probeImage(url_or_opts) {
-  return new Promise(resolve => {
-    const req2 = https.get(url_or_opts, imgRes => {
-      const ct = imgRes.headers['content-type'] || '';
-      imgRes.resume();
-      if (imgRes.statusCode === 200 && ct.startsWith('image/')) resolve(true);
-      else resolve(false);
-    });
-    req2.on('error', () => resolve(false));
-    req2.setTimeout(5000, () => { req2.destroy(); resolve(false); });
-  });
-}
-
-function fetchJson(url) {
-  return new Promise((resolve, reject) => {
-    const r = https.get(url, { headers: { 'User-Agent': 'ElbeRadar/0.3' } }, resp => {
-      let d = ''; resp.on('data', c => d += c);
-      resp.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { reject(e); } });
-    });
-    r.on('error', reject); r.setTimeout(6000, () => { r.destroy(); reject(new Error('timeout')); });
-  });
-}
-
-
-
-function tryPhotoSources(mmsi, sources, res) {
-  if (!sources.length) return res.status(404).end();
-  const [src, ...rest] = sources;
-  const req2 = https.get(src, imgRes => {
-    // Redirect folgen
-    if (imgRes.statusCode === 301 || imgRes.statusCode === 302) {
-      imgRes.resume();
-      const loc = imgRes.headers['location'];
-      if (loc && rest.length === 0) {
-        // Follow redirect once
-        https.get(loc, r2 => {
-          if (r2.statusCode !== 200) { r2.resume(); return tryPhotoSources(mmsi, rest, res); }
-          res.setHeader('Content-Type', r2.headers['content-type'] || 'image/jpeg');
-          res.setHeader('Cache-Control', 'public, max-age=86400');
-          r2.pipe(res);
-        }).on('error', () => tryPhotoSources(mmsi, rest, res));
-      } else {
-        tryPhotoSources(mmsi, rest, res);
-      }
-      return;
-    }
-    if (imgRes.statusCode !== 200) { imgRes.resume(); return tryPhotoSources(mmsi, rest, res); }
-    // Prüfen ob Content-Type wirklich ein Bild ist (MarineTraffic liefert manchmal HTML 200)
-    const ct = imgRes.headers['content-type'] || '';
-    if (!ct.startsWith('image/')) { imgRes.resume(); return tryPhotoSources(mmsi, rest, res); }
-    res.setHeader('Content-Type', ct);
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    imgRes.pipe(res);
-  });
-  req2.on('error', () => tryPhotoSources(mmsi, rest, res));
-  req2.setTimeout(5000, () => { req2.destroy(); tryPhotoSources(mmsi, rest, res); });
-}
-
-// Hilfsfunktion: HTTPS-JSON abrufen
-function fetchJsonHTTPS(url) {
-  return new Promise((resolve, reject) => {
-    const r = https.get(url, { headers: { 'User-Agent': 'ElbeRadar/0.4 (contact: admin)' } }, resp => {
-      // Redirects folgen
-      if (resp.statusCode === 301 || resp.statusCode === 302) {
-        resp.resume();
-        return resolve(fetchJsonHTTPS(resp.headers.location));
-      }
-      let d = ''; resp.on('data', c => d += c);
-      resp.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { reject(e); } });
-    });
-    r.on('error', reject); r.setTimeout(7000, () => { r.destroy(); reject(new Error('timeout')); });
-  });
-}
-
+// ── SHIP PHOTO PROXY ─────────────────────────────────────────────────────────
+// Gibt sofort ein Bild zurück oder 404. Kein Blockieren, kein race condition.
 app.get('/api/ship/:mmsi/photo', (req, res) => {
   const mmsi = req.params.mmsi.replace(/\D/g, '');
   if (!mmsi) return res.status(400).end();
-  const ua = 'Mozilla/5.0 (compatible; ElbeRadar/0.4)';
 
-  // Harter Timeout: Photo-Anfrage darf max 4s dauern
-  // Verhindert dass Browser-Verbindungspool durch langsame externe APIs blockiert wird
-  let responded = false;
-  const photoTimeout = setTimeout(() => {
-    if (!responded && !res.headersSent) {
-      responded = true;
-      res.status(504).end();
-    }
-  }, 4000);
-  const origEnd = res.end.bind(res);
-  res.end = (...args) => { responded = true; clearTimeout(photoTimeout); return origEnd(...args); };
-
-  // 1. Gecachte URL aus DB
+  // 1. Gecachten Eintrag prüfen
   try {
-    const row = db.db.prepare('SELECT photo_url, photo_checked, name FROM ships WHERE mmsi=?').get(mmsi);
-    if (row && row.photo_checked && row.photo_url) return res.redirect(302, row.photo_url);
+    const row = db.db.prepare('SELECT photo_url, photo_checked FROM ships WHERE mmsi=?').get(mmsi);
+    if (row && row.photo_checked && row.photo_url)  return res.redirect(302, row.photo_url);
     if (row && row.photo_checked && !row.photo_url) return res.status(404).end();
   } catch(e) { /* DB nicht bereit */ }
 
-  // Wrapper: nach tryPhotoSources 404 → Wikipedia/Commons asynchron
-  const patchedRes = {
-    get headersSent() { return res.headersSent; },
-    setHeader: (k, v) => { if (!res.headersSent) res.setHeader(k, v); },
-    status: (c) => ({
-      end: () => {
-        if (!res.headersSent) {
-          // MarineTraffic hat nichts → Wikipedia/Commons versuchen
-          fetchWikipediaPhoto(mmsi).then(url => {
-            if (url) {
-              try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=? WHERE mmsi=?').run(url, mmsi); } catch(e){}
-              if (!res.headersSent) res.redirect(302, url);
-            } else {
-              try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=NULL WHERE mmsi=?').run(mmsi); } catch(e){}
-              if (!res.headersSent) res.status(404).end();
-            }
-          }).catch(() => { if (!res.headersSent) res.status(404).end(); });
-        }
-      }
-    }),
-    pipe: (src) => {
-      res.setHeader('Cache-Control', 'public, max-age=86400');
-      src.pipe(res);
-      // Cache: kein URL aber erfolgreich gestreamt – mark checked without url
-      setTimeout(() => { try { db.db.prepare('UPDATE ships SET photo_checked=1 WHERE mmsi=? AND photo_url IS NULL').run(mmsi); } catch(e){} }, 500);
-    },
-  };
+  // 2. MarineTraffic → VesselTracker → Wikipedia (async, in Hintergrund)
+  //    Sofort mit 404 antworten wenn nichts gecacht → nächster Klick liefert Bild
+  const ua = 'Mozilla/5.0 (compatible; ElbeRadar/0.4)';
+  res.status(404).end(); // sofort antworten
 
-  tryPhotoSources(mmsi, [
-    { hostname: 'photos.marinetraffic.com', path: `/ais/showphoto.aspx?mmsi=${mmsi}&size=thumb800`, headers: { 'Referer': 'https://www.marinetraffic.com/', 'User-Agent': ua } },
-    { hostname: 'photos.marinetraffic.com', path: `/ais/showphoto.aspx?mmsi=${mmsi}`,               headers: { 'Referer': 'https://www.marinetraffic.com/', 'User-Agent': ua } },
-    { hostname: 'photos.vesseltracker.com', path: `/photos/vessels/thumb_${mmsi}.jpg`,              headers: { 'Referer': 'https://www.vesseltracker.com/', 'User-Agent': ua } },
-  ], patchedRes);
+  // Bild im Hintergrund suchen und cachen (für nächsten Klick)
+  (async () => {
+    const sources = [
+      { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=${mmsi}&size=thumb800`, headers:{'Referer':'https://www.marinetraffic.com/','User-Agent':ua} },
+      { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=${mmsi}`,               headers:{'Referer':'https://www.marinetraffic.com/','User-Agent':ua} },
+      { hostname:'photos.vesseltracker.com', path:`/photos/vessels/thumb_${mmsi}.jpg`,              headers:{'Referer':'https://www.vesseltracker.com/','User-Agent':ua} },
+    ];
+
+    for (const src of sources) {
+      const url = await probeAndGetImageUrl(src);
+      if (url) {
+        try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=? WHERE mmsi=?').run(url, mmsi); } catch(e){}
+        return;
+      }
+    }
+
+    // Wikipedia REST API
+    const url = await fetchWikipediaPhotoUrl(mmsi);
+    try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=? WHERE mmsi=?').run(url||null, mmsi); } catch(e){}
+  })().catch(() => {
+    try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=NULL WHERE mmsi=?').run(mmsi); } catch(e){}
+  });
 });
 
-async function fetchWikipediaPhoto(mmsi) {
+// Gibt die endgültige Bild-URL zurück (folgt Redirects, prüft Content-Type)
+function probeAndGetImageUrl(opts) {
+  return new Promise(resolve => {
+    const req = https.get(opts, resp => {
+      if (resp.statusCode === 301 || resp.statusCode === 302) {
+        resp.resume();
+        const loc = resp.headers.location;
+        return resolve(loc ? probeAndGetImageUrl(loc) : null);
+      }
+      const ct = resp.headers['content-type'] || '';
+      resp.resume();
+      if (resp.statusCode === 200 && ct.startsWith('image/')) {
+        // Bild-URL aus den Request-Optionen rekonstruieren
+        const url = typeof opts === 'string' ? opts : `https://${opts.hostname}${opts.path}`;
+        resolve(url);
+      } else {
+        resolve(null);
+      }
+    });
+    req.on('error', () => resolve(null));
+    req.setTimeout(4000, () => { req.destroy(); resolve(null); });
+  });
+}
+
+async function fetchWikipediaPhotoUrl(mmsi) {
   try {
     const row = db.db.prepare('SELECT name FROM ships WHERE mmsi=?').get(mmsi);
     if (!row || !row.name) return null;
-    const nameClean = row.name.trim();
-
-    // Versuch 1: Wikipedia REST API (beste Qualität, direkt Thumbnail)
-    const slug = encodeURIComponent(nameClean.replace(/\s+/g, '_'));
-    try {
-      const wiki = await fetchJsonHTTPS(`https://en.wikipedia.org/api/rest_v1/page/summary/${slug}`);
-      const thumb = wiki?.thumbnail?.source || wiki?.originalimage?.source;
-      if (thumb) return thumb.replace(/\/\d+px-/, '/600px-');
-    } catch(e) { /* Kein Wikipedia-Artikel */ }
-
-    // Versuch 2: Wikimedia Commons Dateisuche
-    const q = encodeURIComponent(nameClean + ' ship');
-    const commons = await fetchJsonHTTPS(
-      `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${q}&srnamespace=6&srlimit=5&format=json`
-    );
+    const slug = encodeURIComponent(row.name.trim().replace(/\s+/g, '_'));
+    const wiki = await fetchJsonHTTPS(`https://en.wikipedia.org/api/rest_v1/page/summary/${slug}`);
+    const thumb = wiki?.thumbnail?.source || wiki?.originalimage?.source;
+    if (thumb) return thumb.replace(/\/\d+px-/, '/600px-');
+    // Commons fallback
+    const q = encodeURIComponent(row.name.trim() + ' ship');
+    const commons = await fetchJsonHTTPS(`https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${q}&srnamespace=6&srlimit=3&format=json`);
     const hits = (commons?.query?.search || []).filter(r => /\.(jpg|jpeg|png)/i.test(r.title));
     if (hits.length > 0) {
       const title = hits[0].title.replace(/^File:/, '');
@@ -462,17 +386,32 @@ async function fetchWikipediaPhoto(mmsi) {
   } catch(e) { return null; }
 }
 
+function fetchJsonHTTPS(url) {
+  return new Promise((resolve, reject) => {
+    const r = https.get(url, { headers: { 'User-Agent': 'ElbeRadar/0.4' } }, resp => {
+      if (resp.statusCode === 301 || resp.statusCode === 302) {
+        resp.resume();
+        return resolve(fetchJsonHTTPS(resp.headers.location));
+      }
+      let d = ''; resp.on('data', c => d += c);
+      resp.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { reject(e); } });
+    });
+    r.on('error', reject); r.setTimeout(6000, () => { r.destroy(); reject(new Error('timeout')); });
+  });
+}
+
+
 // ── AIS STATUS ────────────────────────────────────────────────────────────────
 app.get('/api/ships',            authMiddleware, (req,res) => res.json(db.getActiveShips()));
 app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHistory(+(req.query.days||1))));
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.4.2',
+  uptime: Math.floor(process.uptime()), version:'0.4.3',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.4.2' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.4.3' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));
@@ -496,7 +435,7 @@ app.use(express.static(path.join(__dirname,'..','public'), {
 app.get('*', (req,res) => res.sendFile(path.join(__dirname,'..','public','index.html')));
 
 server.listen(PORT, () => {
-  console.log(`[Server] Elbe Radar v0.4.2 · Port ${PORT}`);
+  console.log(`[Server] Elbe Radar v0.4.3 · Port ${PORT}`);
   console.log(`[Server] AIS-Key:    ${process.env.AIS_API_KEY       ? 'gesetzt'           : 'NICHT gesetzt (Demo)'}`);
   console.log(`[Server] Reg-Code:   ${REG_CODE                      ? 'gesetzt'           : 'offen (jeder kann sich registrieren)'}`);
   console.log(`[Server] History:    ${process.env.RETAIN_DAYS||7} Tage · Intervall 5 min`);

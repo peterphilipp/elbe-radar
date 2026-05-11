@@ -140,7 +140,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .mbt{font-size:13px;font-weight:700;flex:1;}
 .mstat{font-size:11px;color:var(--mut);padding:2px 7px;background:var(--off);border:1px solid var(--div);border-radius:5px;white-space:nowrap;}
 .mstat b{font-family:var(--mono);font-weight:700;color:var(--txt);}
-#map{flex:1;min-height:200px;width:100%;height:100%;}
+#map{flex:1;min-height:200px;width:100%;}
 .tile-group{display:flex;gap:3px;border:1px solid var(--brd);border-radius:7px;padding:2px;background:var(--off);}
 .tbt{font-size:13px;width:26px;height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;opacity:.5;transition:opacity .15s,background .15s;}
 .tbt:hover{opacity:.8;}.tbt.on{opacity:1;background:var(--surf);box-shadow:0 1px 3px rgba(0,0,0,.15);}
@@ -409,7 +409,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.4.2</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.4.3</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -666,7 +666,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.4.2</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.4.3</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -1046,11 +1046,21 @@ function updateAllLabels(){const show=currentZoom>=ZOOM_LABEL;for(const[mmsi,mk]
 function checkSelectionValid(){if(selMmsi&&ships.has(selMmsi)&&!passes(ships.get(selMmsi))){selMmsi=null;$('detail').classList.remove('open');clearTrackLayers();}}
 
 function loadShipImage(mmsi){
-  const wrap=$('dimgwrap');wrap.innerHTML='';
-  const img=document.createElement('img');img.className='dimg';img.alt='Schiff';
-  // Foto-Proxy: Server lädt das Bild mit korrektem Referer-Header
-  img.onerror=()=>{wrap.innerHTML='<div class="dimg-ph">🚢</div>';};
-  img.src=`/api/ship/${mmsi}/photo`;
+  const wrap=$('dimgwrap'); wrap.innerHTML='';
+  const img=document.createElement('img'); img.className='dimg'; img.alt='Schiff';
+  img.onerror=()=>{
+    wrap.innerHTML='<div class="dimg-ph">🚢</div>';
+    // Server sucht Bild im Hintergrund - nach 6s nochmal probieren
+    setTimeout(()=>{
+      if(selMmsi===mmsi){
+        const img2=document.createElement('img'); img2.className='dimg'; img2.alt='Schiff';
+        img2.onerror=()=>{};
+        img2.onload=()=>{ wrap.innerHTML=''; wrap.appendChild(img2); };
+        img2.src='/api/ship/'+mmsi+'/photo?t='+Date.now();
+      }
+    }, 6000);
+  };
+  img.src='/api/ship/'+mmsi+'/photo';
   wrap.appendChild(img);
 }
 
