@@ -411,7 +411,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.4.4</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.4.5</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -668,7 +668,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.4.4</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.4.5</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -769,7 +769,21 @@ function authHeaders(extra={}) {
 }
 function apiFetch(url, opts={}) {
   opts.headers = { ...(opts.headers||{}), 'Authorization':`Bearer ${authToken}`, 'Content-Type':'application/json' };
-  return fetch(url, opts);
+  return fetch(url, opts).then(r => {
+    if (r.status === 401) {
+      // Session abgelaufen → zurück zum Login
+      authToken = '';
+      localStorage.removeItem('authToken');
+      const ov = $('loginOverlay');
+      if (ov) {
+        ov.style.opacity = '';
+        ov.style.pointerEvents = '';
+        ov.classList.remove('hidden');
+        $('loginSub').textContent = 'Sitzung abgelaufen – bitte erneut anmelden';
+      }
+    }
+    return r;
+  });
 }
 
 /* ─── Login / Register ───────────────────────────────────────────────────── */
@@ -1320,10 +1334,10 @@ function closeStats() {
   $('statsBtn').classList.remove('active');
 }
 $('statsBtn').onclick = () => statsOpen ? closeStats() : openStats();
-$('statsDays').onchange  = () => { if (statsOpen) loadStats(); };
-$('statsType').onchange  = () => { if (statsOpen) loadStats(); };
-$('statsDir').onchange   = () => { if (statsOpen) loadStats(); };
-$('statsMinLen').onchange = () => { if (statsOpen) loadStats(); };
+if ($('statsDays'))   $('statsDays').onchange   = () => { if (statsOpen) loadStats(); };
+if ($('statsType'))   $('statsType').onchange   = () => { if (statsOpen) loadStats(); };
+if ($('statsDir'))    $('statsDir').onchange    = () => { if (statsOpen) loadStats(); };
+if ($('statsMinLen')) $('statsMinLen').onchange = () => { if (statsOpen) loadStats(); };
 
 async function loadStats() {
   $('statsLoading').style.display = 'block';
