@@ -503,7 +503,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.5.9</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.6.0</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -806,7 +806,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.5.9</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.6.0</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -1278,12 +1278,10 @@ function updateStats(){
   $('stK').textContent=byLen.filter(s=>s.type==='Cruise').length;
   $('stT').textContent=byLen.filter(s=>s.type==='Tanker').length;
   $('stF').textContent=byLen.filter(s=>s.type==='Cargo').length;
-  // Aktiven Filter auf Cards + Reset-Button
+  // Aktiven Filter auf Cards spiegeln (mehrere können aktiv sein)
   const typeFiltered = !typeFSet.has('all');
   document.querySelectorAll('.sg-filter').forEach(el =>
     el.classList.toggle('active', typeFiltered && typeFSet.has(el.dataset.t)));
-  const resetBtn = $('typeFilterReset');
-  if (resetBtn) resetBtn.style.display = typeFiltered ? '' : 'none';
 }
 
 function resetTypeFilter() {
@@ -1293,18 +1291,23 @@ function resetTypeFilter() {
   checkSelectionValid(); redraw(); renderETA(); updateStats(); updateFilterBadge();
 }
 
-// Stat-Cards als Typ-Filter
+// Stat-Cards als additiver Typ-Filter
 document.querySelectorAll('.sg-filter').forEach(card => {
   card.onclick = () => {
     const t = card.dataset.t;
-    if (typeFSet.has(t) && typeFSet.size === 1) {
-      resetTypeFilter();
-    } else {
+    if (typeFSet.has('all')) {
+      // Erster Klick ab "Alle": nur diesen Typ selektieren
       typeFSet = new Set([t]);
-      document.querySelectorAll('#typeChips .chip, #mTypeChips .chip').forEach(c =>
-        c.classList.toggle('on', c.dataset.t === t));
-      checkSelectionValid(); redraw(); renderETA(); updateStats(); updateFilterBadge();
+    } else if (typeFSet.has(t)) {
+      typeFSet.delete(t);
+      if (typeFSet.size === 0) typeFSet = new Set(['all']); // alle zurück wenn leer
+    } else {
+      typeFSet.add(t);
     }
+    // Sync hidden chips
+    document.querySelectorAll('#typeChips .chip, #mTypeChips .chip').forEach(c =>
+      c.classList.toggle('on', typeFSet.has(c.dataset.t)));
+    checkSelectionValid(); redraw(); renderETA(); updateStats(); updateFilterBadge();
   };
 });
 function redraw(){syncMarkers();renderFuture();updateStats();if(logOpen)renderLog();}
@@ -1789,11 +1792,11 @@ function buildTideSparkline(tide, forecast) {
 
   const nowIdx = pastDs.length - 1;
 
-  const W = 172, H = 44, PT = 12, PB = 10, PL = 2, PR = 4;
+  const W = 172, H = 56, PT = 14, PB = 12, PL = 2, PR = 4;
   const n = allPts.length;
   const vals = allPts.map(p => p.value);
-  const minV = Math.min(...vals) - 15;
-  const maxV = Math.max(...vals) + 15;
+  const minV = Math.min(...vals) - 5;
+  const maxV = Math.max(...vals) + 5;
   const range = maxV - minV;
   const toX = i => PL + (i / (n - 1)) * (W - PL - PR);
   const toY = v => PT + (1 - (v - minV) / range) * (H - PT - PB);
@@ -1825,14 +1828,20 @@ function buildTideSparkline(tide, forecast) {
   const fcLine = fcBridged.map((p, j) =>
     `${toX(nowIdx + j).toFixed(1)},${toY(p.value).toFixed(1)}`).join(' ');
 
-  // Wendepunkte aus Forecast (ab nowIdx)
+  // Wendepunkte – Gezeitenperiode ~6h → mind. 3h Abstand zwischen Wendepunkten
+  // Bei 5min-Datenpunkten = 36 Punkte Mindestabstand
+  const MIN_TP_GAP = Math.max(30, Math.floor(fcBridged.length / 4));
   const turning = [];
-  let lastTpI = -8;
-  for (let i = 1; i < fcBridged.length - 1 && turning.length < 3; i++) {
-    if (i - lastTpI < 8) continue;
-    const v = fcBridged[i].value, vp = fcBridged[i-1].value, vn = fcBridged[i+1].value;
-    const isHW = v > vp + 5 && v > vn + 5;
-    const isNW = v < vp - 5 && v < vn - 5;
+  let lastTpI = -MIN_TP_GAP;
+  for (let i = 1; i < fcBridged.length - 1 && turning.length < 2; i++) {
+    if (i - lastTpI < MIN_TP_GAP) continue;
+    // Vergleich mit Nachbarn im 10-Punkt-Fenster (glättet Messnoise)
+    const win = 10;
+    const vBefore = fcBridged[Math.max(0, i-win)].value;
+    const vAfter  = fcBridged[Math.min(fcBridged.length-1, i+win)].value;
+    const v = fcBridged[i].value;
+    const isHW = v > vBefore + 20 && v > vAfter + 20;
+    const isNW = v < vBefore - 20 && v < vAfter - 20;
     if (!isHW && !isNW) continue;
     const ts = new Date(fcBridged[i].timestamp).getTime();
     if (ts <= nowTs) continue;
