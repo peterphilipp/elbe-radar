@@ -40,6 +40,20 @@ class AISConnector {
   }
 
   start() {
+    // Beim Start sofort alle bekannten Schiffe aus DB laden (letzte 2h)
+    // So ist die Karte sofort befüllt ohne auf AIS-Nachrichten warten zu müssen
+    try {
+      const stored = db.getActiveShips(2 * 60 * 60 * 1000); // letzte 2h
+      for (const s of stored) {
+        this.ships.set(String(s.mmsi), s);
+      }
+      if (stored.length > 0) {
+        console.log(`[AIS] ${stored.length} Schiffe aus DB geladen`);
+        this.onUpdate(this.ships);
+      }
+    } catch(e) {
+      console.error('[AIS] DB-Lade-Fehler:', e.message);
+    }
     if (!this.apiKey) { this._startDemo(); return; }
     this._connect();
   }

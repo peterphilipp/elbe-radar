@@ -108,7 +108,9 @@ const ais = new AISConnector(ships => broadcast(ships));
 ais.start();
 
 function broadcast(ships) {
-  const payload = JSON.stringify({ type:'ships', data: db.getActiveShips(15*60*1000), ts: Date.now() });
+  // ships ist die In-Memory-Map vom AIS-Connector – immer aktuell
+  const active = [...ships.values()].filter(s => (Date.now() - (s.seen||0)) < 15*60*1000);
+  const payload = JSON.stringify({ type:'ships', data: active, ts: Date.now() });
   for (const c of wss.clients) if (c.readyState===WebSocket.OPEN) c.send(payload);
 }
 
@@ -119,7 +121,8 @@ wss.on('connection', (ws, req) => {
   const session = token ? db.getSession(token) : null;
   ws.userId = session ? session.user_id : null;
   ws.isAnon = !session;
-  ws.send(JSON.stringify({ type:'ships', data: db.getActiveShips(15*60*1000), ts: Date.now() }));
+  const active = [...ais.ships.values()].filter(s => (Date.now() - (s.seen||0)) < 15*60*1000);
+  ws.send(JSON.stringify({ type:'ships', data: active, ts: Date.now() }));
   ws.on('message', raw => {
     try {
       const msg = JSON.parse(raw);
@@ -324,41 +327,70 @@ app.get('/api/ship/:mmsi/type', authMiddleware, (req, res) => {
 // ── SHIP PHOTO PROXY (umgeht CORS & Referer-Check) ────────────────────────────
 // ── WEATHER & TIDE PROXY ──────────────────────────────────────────────────────
 // ── Synthetische Gezeitenvorhersage (Fallback wenn kein TRM verfügbar) ────────
-function extrapolateTide(measurements, horizonSec = 9 * 3600) {
-  if (!measurements || measurements.length < 60) return [];
+function extrapolateTide(measurements, horizonSec = 10 * 3600) {
+  if (!measurements || measurements.length < 120) return [];
   const pts = measurements.map(m => ({
     t: new Date(m.timestamp).getTime(), v: m.value,
   })).sort((a, b) => a.t - b.t);
-  // Lokale Extrema (Fenster ±5 Punkte)
+
+  // Glättung: gleitender Durchschnitt über 15 Punkte (15 min bei 1min-Auflösung)
+  const smooth = pts.map((p, i) => {
+    const w = 15, start = Math.max(0, i-w), end = Math.min(pts.length-1, i+w);
+    const slice = pts.slice(start, end+1);
+    return { t: p.t, v: slice.reduce((s,x)=>s+x.v,0)/slice.length };
+  });
+
+  // Extrema mit großem Fenster: ±60 Punkte = ±1h bei 1min-Auflösung
+  // Nur echte Gezeiten-Extrema (mind. 3h auseinander)
+  const MIN_HALF_PERIOD_MS = 3 * 3600 * 1000;
+  const WIN = 60;
   const extrema = [];
-  for (let i = 5; i < pts.length - 5; i++) {
-    const win = pts.slice(i-5, i+6).map(p => p.v);
-    const v = pts[i].v;
-    if (v === Math.max(...win) && v > pts[i-1].v + 5) extrema.push({t:pts[i].t, v, isHW:true});
-    if (v === Math.min(...win) && v < pts[i-1].v - 5) extrema.push({t:pts[i].t, v, isHW:false});
+  let lastExT = -MIN_HALF_PERIOD_MS;
+  for (let i = WIN; i < smooth.length - WIN; i++) {
+    if (smooth[i].t - lastExT < MIN_HALF_PERIOD_MS) continue;
+    const win = smooth.slice(i-WIN, i+WIN+1).map(p => p.v);
+    const v = smooth[i].v;
+    const isHW = v === Math.max(...win);
+    const isNW = v === Math.min(...win);
+    if (!isHW && !isNW) continue;
+    // Abwechslung sicherstellen (kein HW nach HW)
+    if (extrema.length > 0 && extrema[extrema.length-1].isHW === isHW) continue;
+    extrema.push({ t: pts[i].t, v: pts[i].v, isHW });
+    lastExT = smooth[i].t;
   }
+
   if (extrema.length < 2) return [];
-  // Mittlere Halbperiode
+
+  // Mittlere Halbperiode aus den gefundenen Extrema
   let halfPeriodSum = 0;
   for (let i = 1; i < extrema.length; i++) halfPeriodSum += extrema[i].t - extrema[i-1].t;
   const halfPeriodMs = halfPeriodSum / (extrema.length - 1);
   const periodMs     = halfPeriodMs * 2;
-  // Amplitude + Mittelwert
-  const hwVals = extrema.filter(e => e.isHW).map(e => e.v);
-  const nwVals = extrema.filter(e => !e.isHW).map(e => e.v);
-  const hw = hwVals.length ? hwVals.reduce((a,b)=>a+b)/hwVals.length : 700;
+
+  // Amplitude: Mittelwert der letzten 2 HW und 2 NW
+  const hwVals = extrema.filter(e => e.isHW).slice(-2).map(e => e.v);
+  const nwVals = extrema.filter(e => !e.isHW).slice(-2).map(e => e.v);
+  const hw = hwVals.length ? hwVals.reduce((a,b)=>a+b)/hwVals.length : 680;
   const nw = nwVals.length ? nwVals.reduce((a,b)=>a+b)/nwVals.length : 350;
   const amp = (hw - nw) / 2, mid = (hw + nw) / 2;
+
+  // Phase aus letztem Extremum
   const lastEx = extrema[extrema.length - 1];
   const phaseOffset = lastEx.isHW ? 0 : Math.PI;
-  // Extrapolation alle 5min
+
+  // Extrapolation alle 10min (sauberere Kurve, weniger Datenpunkte)
   const nowTs = pts[pts.length-1].t;
   const result = [];
-  for (let dt = 5*60*1000; dt <= horizonSec*1000; dt += 5*60*1000) {
+  for (let dt = 10*60*1000; dt <= horizonSec*1000; dt += 10*60*1000) {
     const t = nowTs + dt;
     const phi = ((t - lastEx.t) / periodMs) * 2 * Math.PI + phaseOffset;
-    result.push({ timestamp: new Date(t).toISOString(), value: Math.round((mid + amp * Math.cos(phi)) * 10) / 10, synthetic: true });
+    result.push({
+      timestamp: new Date(t).toISOString(),
+      value: Math.round((mid + amp * Math.cos(phi)) * 10) / 10,
+      synthetic: true,
+    });
   }
+  console.log(`[Tide] Extrapolation: ${extrema.length} Extrema, Periode ${(periodMs/3600000).toFixed(2)}h, Amp=${Math.round(amp)}cm`);
   return result;
 }
 
@@ -366,7 +398,7 @@ function extrapolateTide(measurements, horizonSec = 9 * 3600) {
 let weatherCache = null, weatherCacheTs = 0;
 // Cache beim Start leer, damit neue Stationsnamen sofort ausprobiert werden
 app.get('/api/weather', async (req, res) => {
-  if (weatherCache && Date.now() - weatherCacheTs < 10 * 60 * 1000) {
+  if (weatherCache && Date.now() - weatherCacheTs < 10 * 60 * 1000 && !req.query.force) {
     return res.json(weatherCache);
   }
   try {
@@ -661,11 +693,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.6.0',
+  uptime: Math.floor(process.uptime()), version:'0.6.1',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.6.0' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.6.1' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));

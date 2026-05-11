@@ -503,7 +503,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.6.0</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.6.1</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -806,7 +806,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.6.0</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.6.1</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -1102,7 +1102,13 @@ let logOpen=false,logTypeF='all',logLenF=0,logDirF='all';
 let currentRefPoint={...DEFAULT_REF};
 const passes=s=>{
   if(!typeFSet.has('all')&&!typeFSet.has(s.type)) return false;
-  // Schiffe ohne bekannte Länge → gelten als < 50m (werden bei lenF>=50 ausgeblendet)
+  const effectiveLen = s.len || 0;
+  // Schiffe ohne bekannte Länge → gleiche Behandlung wie kurze Schiffe
+  if(lenF > 0 && effectiveLen < lenF) return false;
+  return true;
+};
+// Längenfilter ohne Typfilter (für Zähler)
+const passesByLen=s=>{
   const effectiveLen = s.len || 0;
   if(lenF > 0 && effectiveLen < lenF) return false;
   return true;
@@ -1272,8 +1278,8 @@ function updateStats(){
   const a=[...ships.values()].filter(passes);
   $('liveCnt').textContent=a.length;
   $('shipNum').textContent=playbackMode ? pbShips.size : ships.size;
-  // Zähler respektieren Längenfilter, aber ignorieren Typ-Filter (um alle Typen anzuzeigen)
-  const byLen=[...ships.values()].filter(s=>lenF===0||(s.len && s.len>=lenF)||(!s.len && lenF<=50));
+  // Zähler: gleicher Längenfilter wie Karte, aber ohne Typfilter
+  const byLen=[...ships.values()].filter(passesByLen);
   $('stC').textContent=byLen.filter(s=>s.type==='Container').length;
   $('stK').textContent=byLen.filter(s=>s.type==='Cruise').length;
   $('stT').textContent=byLen.filter(s=>s.type==='Tanker').length;
@@ -1945,9 +1951,10 @@ if ($('sEmailSave')) $('sEmailSave').onclick = async () => {
   setTimeout(() => { if($('sEmailOk')) $('sEmailOk').style.display='none'; }, 2500);
 };
 
-async function loadWeather() {
+async function loadWeather(force=false) {
   try {
-    const d = await apiFetch('/api/weather').then(r => r.json());
+    const url = force ? '/api/weather?force=1' : '/api/weather';
+    const d = await apiFetch(url).then(r => r.json());
     const cur = d.weather?.current;
     if (!cur) return;
     const spdMs = +(cur.windspeed_10m || 0).toFixed(1);
@@ -1997,7 +2004,7 @@ async function loadWeather() {
     }
   } catch(e) { $('weatherWidget').classList.remove('loading'); }
 }
-$('weatherWidget').onclick = () => { $('weatherWidget').classList.add('loading'); loadWeather(); };
+$('weatherWidget').onclick = () => { $('weatherWidget').classList.add('loading'); loadWeather(true); };
 
 /* ─── Anonymer Modus ────────────────────────────────────────────────────── */
 function enterAnonMode() {
