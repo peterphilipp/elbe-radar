@@ -355,16 +355,22 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 }
 
 /* ── WETTER WIDGET ───────────────────────────────────────────────────────── */
-#weatherWidget{position:absolute;top:50px;right:10px;z-index:490;background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:7px 11px;font-size:11px;color:var(--txt);box-shadow:0 4px 16px rgba(0,0,0,.2);min-width:180px;cursor:default;}
+#weatherWidget{position:absolute;top:50px;right:10px;z-index:490;background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:7px 11px;font-size:11px;color:var(--txt);box-shadow:0 4px 16px rgba(0,0,0,.2);min-width:190px;cursor:default;}
 #weatherWidget.loading{opacity:.6;}
 .ww-row{display:flex;align-items:center;gap:7px;margin-bottom:3px;}
 .ww-icon{font-size:20px;line-height:1;}
 .ww-main{font-size:16px;font-weight:700;}
 .ww-sub{font-size:10px;color:var(--mut);}
 .ww-tide{margin-top:4px;padding-top:4px;border-top:1px solid var(--div);font-size:10px;color:var(--mut);}
-.ww-tide b{color:var(--txt);}
-.ww-tide-row{display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow:hidden;}
-.tide-spark{display:block;flex-shrink:0;overflow:visible;}
+.ww-tide-header{display:flex;align-items:baseline;gap:6px;margin-bottom:3px;}
+.ww-tide-header b{font-size:13px;color:var(--txt);font-weight:700;}
+.ww-tide-header span{font-size:10px;}
+.tide-spark{display:block;overflow:visible;}
+.ww-tide-next{display:flex;gap:6px;flex-wrap:wrap;margin-top:3px;}
+.tide-tp{font-size:9px;display:flex;flex-direction:column;align-items:center;gap:1px;}
+.tide-tp-lbl{font-weight:700;font-size:9px;}
+.tide-tp-time{color:var(--mut);font-size:8px;}
+.tide-tp-val{font-size:8px;}
 
 /* ── Log Viewer ──────────────────────────────────────────────────────────── */
 #logPage{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;flex-direction:column;}
@@ -400,7 +406,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .db-stat-card{background:var(--surf2);border:1px solid var(--brd);border-radius:8px;padding:10px 12px;}
 .db-stat-val{font-size:18px;font-weight:700;color:var(--blue);}
 .db-stat-lbl{font-size:10px;color:var(--mut);margin-top:2px;}
-@media(max-width:700px){#weatherWidget{top:56px;bottom:auto;right:8px;font-size:10px;min-width:130px;}}
+@media(max-width:700px){#weatherWidget{top:56px;bottom:auto;right:8px;font-size:10px;min-width:180px;max-width:200px;}}
 #weatherWidget.hidden{display:none;}
 
 /* ── PLAYBACK BAR ────────────────────────────────────────────────────────── */
@@ -491,7 +497,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.5.4</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.5.5</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -521,8 +527,8 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <div>
         <div class="flbl">Mindestlänge</div>
         <div class="chips" id="lenChips">
-          <button class="chip" data-len="0">Alle</button>
-          <button class="chip on" data-len="50">≥ 50 m</button>
+          <button class="chip on" data-len="0">Alle</button>
+          <button class="chip" data-len="50">≥ 50 m</button>
           <button class="chip" data-len="100">≥ 100 m</button>
           <button class="chip" data-len="200">≥ 200 m</button>
           <button class="chip" data-len="300">≥ 300 m</button>
@@ -575,7 +581,14 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     <div id="weatherWidget" class="loading" title="Klicken zum Aktualisieren">
       <div class="ww-row"><span class="ww-icon" id="wwIcon">🌤</span><div><div class="ww-main" id="wwWind">– m/s</div><div class="ww-sub" id="wwTemp">–°C</div></div></div>
       <div class="ww-sub" id="wwDir">–</div>
-      <div class="ww-tide" id="wwTide" style="display:none">🌊 Pegel Schulau: <div class="ww-tide-row"><b id="wwPegel">–</b><span id="wwTideSpark"></span></div></div>
+      <div class="ww-tide" id="wwTide" style="display:none">
+        <div class="ww-tide-header">
+          <span id="wwTideState">🌊</span>
+          <b id="wwPegel">– cm</b>
+        </div>
+        <div id="wwTideSpark"></div>
+        <div class="ww-tide-next" id="wwTideNext"></div>
+      </div>
     </div>
 
     <div id="detailBackdrop" onclick="closeDetail()"></div>
@@ -785,7 +798,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.5.4</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.5.5</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -826,8 +839,8 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <div>
         <div class="flbl">Mindestlänge</div>
         <div class="chips" id="mLenChips">
-          <button class="chip" data-len="0">Alle</button>
-          <button class="chip on" data-len="50">≥ 50 m</button>
+          <button class="chip on" data-len="0">Alle</button>
+          <button class="chip" data-len="50">≥ 50 m</button>
           <button class="chip" data-len="100">≥ 100 m</button>
           <button class="chip" data-len="200">≥ 200 m</button>
           <button class="chip" data-len="300">≥ 300 m</button>
@@ -837,19 +850,24 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   </div>
   <div class="mob-content" id="mob-alerts">
     <div class="abwrap" style="background:var(--surf)">
-      <h3>🔔 Neuer Alert</h3>
-      <div class="abform">
-        <div class="abfield"><label class="ablbl">Name</label><input class="abinput" id="mAName" placeholder="Alert-Name"/></div>
-        <div class="abrow2">
-          <div class="abfield"><label class="ablbl">Typ</label>
-            <select class="abinput" id="mAType"><option value="">Alle</option><option>Container</option><option>Cruise</option><option>Tanker</option><option>Cargo</option></select></div>
-          <div class="abfield"><label class="ablbl">Namensteil</label><input class="abinput" id="mANameF" placeholder="z.B. MSC"/></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="const f=$('mobAlertForm');f.style.display=f.style.display==='none'?'':'none';this.querySelector('.mob-alert-toggle').textContent=f.style.display===''?'▲':'▼'">
+        <h3>🔔 Neuer Alert</h3>
+        <span class="mob-alert-toggle" style="color:var(--mut);font-size:11px">▼</span>
+      </div>
+      <div id="mobAlertForm" style="display:none">
+        <div class="abform">
+          <div class="abfield"><label class="ablbl">Name</label><input class="abinput" id="mAName" placeholder="Alert-Name"/></div>
+          <div class="abrow2">
+            <div class="abfield"><label class="ablbl">Typ</label>
+              <select class="abinput" id="mAType"><option value="">Alle</option><option>Container</option><option>Cruise</option><option>Tanker</option><option>Cargo</option></select></div>
+            <div class="abfield"><label class="ablbl">Namensteil</label><input class="abinput" id="mANameF" placeholder="z.B. MSC"/></div>
+          </div>
+          <div class="abrow2">
+            <div class="abfield"><label class="ablbl">Mindestlänge</label><input class="abinput" id="mALenAlert" type="number" value="150"/></div>
+            <div class="abfield"><label class="ablbl">ETA ≤ Min.</label><input class="abinput" id="mAEta" type="number" value="30"/></div>
+          </div>
+          <button class="abbtn" id="mASave">✚ Anlegen</button>
         </div>
-        <div class="abrow2">
-          <div class="abfield"><label class="ablbl">Mindestlänge</label><input class="abinput" id="mALenAlert" type="number" value="150"/></div>
-          <div class="abfield"><label class="ablbl">ETA ≤ Min.</label><input class="abinput" id="mAEta" type="number" value="30"/></div>
-        </div>
-        <button class="abbtn" id="mASave">✚ Anlegen</button>
       </div>
     </div>
     <ul class="slist" id="mobAlertList"></ul>
@@ -1071,12 +1089,12 @@ function calcETA(ship, ref) {
 
 let ships=new Map(),markers=new Map(),labelShown=new Set(),trackLayer=null,extrapLayer=null;
 let map,tileLayer,ws,refPointLayer=null;
-let selMmsi=null,typeFSet=new Set(['all']),lenF=50,etaF=60,theme='dark',currentZoom=12;
+let selMmsi=null,typeFSet=new Set(['all']),lenF=0,etaF=60,theme='dark',currentZoom=12;
 let logOpen=false,logTypeF='all',logLenF=0,logDirF='all';
 let currentRefPoint={...DEFAULT_REF};
 const passes=s=>{
   if(!typeFSet.has('all')&&!typeFSet.has(s.type)) return false;
-  if((s.len||0)<lenF) return false;
+  if(s.len && lenF && s.len < lenF) return false;  // len=0 = unbekannt → nicht filtern
   return true;
 };
 const passesEta=s=>{
@@ -1350,7 +1368,7 @@ function setLenFilter(v) {
 }
 $('lenChips').onclick = e => { const c=e.target.closest('.chip'); if(c) setLenFilter(+c.dataset.len); };
 $('dclose').onclick=()=>closeDetail();
-function closeDetail(){$('detail').classList.remove('open');$('detailBackdrop').classList.remove('on');$('mobile-bottom').classList.remove('collapsed');selMmsi=null;clearTrackLayers();redraw();updateFabPos();}
+function closeDetail(){$('detail').classList.remove('open');$('detailBackdrop').classList.remove('on');$('mobile-bottom').classList.remove('collapsed');selMmsi=null;clearTrackLayers();redraw();updateFabPos();updateLegendPos();}
 // Show drag handle on mobile
 if(window.innerWidth<=700){$('detailHandle').style.display='block';}
 $('themeBtn').onclick=()=>{theme=theme==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',theme);$('themeBtn').textContent=theme==='dark'?'🌙':'☀️';};
@@ -1430,7 +1448,7 @@ $('mTypeChips').onclick=e=>{
     document.querySelectorAll(`#typeChips .chip[data-t="${t}"]`).forEach(x=>x.classList.toggle('on', typeFSet.has(t)));
     if(typeFSet.size===0){ typeFSet.add('all'); document.querySelectorAll('#mTypeChips .chip[data-t="all"], #typeChips .chip[data-t="all"]').forEach(x=>x.classList.add('on')); }
   }
-  checkSelectionValid(); redraw(); renderETA(); updateStats();
+  checkSelectionValid(); redraw(); renderETA(); updateStats(); updateFilterBadge();
 };
 document.querySelectorAll('#mEtaChips .chip').forEach(btn => {
   btn.onclick = () => {
@@ -1447,10 +1465,18 @@ if($('mLenChips')) $('mLenChips').onclick = e => { const c=e.target.closest('.ch
 
 /* ─── Mobile collapse button ─────────────────────────────────────────────── */
 const mobCollapseBtn = $('mobCollapseBtn');
+function updateLegendPos() {
+  const leg = $('legend');
+  if (!leg || window.innerWidth > 700) return;
+  const collapsed = $('mobile-bottom').classList.contains('collapsed');
+  leg.style.bottom = collapsed ? '44px' : 'calc(30vh + 8px)';
+}
 if (mobCollapseBtn) {
   mobCollapseBtn.onclick = (e) => {
     e.stopPropagation();
     $('mobile-bottom').classList.toggle('collapsed');
+    updateLegendPos();
+  };
   };
 }
 
@@ -1669,118 +1695,114 @@ const DIR_NAMES = ['N','NNO','NO','ONO','O','OSO','SO','SSO','S','SSW','SW','WSW
 function windDirName(deg) { return DIR_NAMES[Math.round((deg||0)/22.5) % 16]; }
 
 /* ─── Tide Sparkline ─────────────────────────────────────────────────────── */
+/* ─── Tide Sparkline ─────────────────────────────────────────────────────── */
+// Findet Wendepunkte (HW/NW) in einem Daten-Array
+function findTurningPoints(data, minGapPts=8, minDelta=5) {
+  const pts = [];
+  let last = -minGapPts;
+  for (let i = 1; i < data.length - 1; i++) {
+    if (i - last < minGapPts) continue;
+    const v = data[i].value, vp = data[i-1].value, vn = data[i+1].value;
+    if (v > vp + minDelta && v > vn + minDelta) { pts.push({i, isHW:true,  ...data[i]}); last = i; }
+    else if (v < vp - minDelta && v < vn - minDelta) { pts.push({i, isHW:false, ...data[i]}); last = i; }
+  }
+  return pts;
+}
+
 function buildTideSparkline(tide, forecast) {
-  if (!tide || tide.length < 3) return '';
+  if (!tide || tide.length < 3) return { svg: '', turning: [] };
 
-  // Alle verfügbaren Datenpunkte zusammenführen
-  // Vergangenheit: letzte 3h für Kontext, ab "jetzt" alle Punkte
-  const now = tide[tide.length - 1];
-  const nowTs = new Date(now.timestamp).getTime();
-  const show3hAgo = nowTs - 3 * 3600 * 1000;
+  const nowPt  = tide[tide.length - 1];
+  const nowTs  = new Date(nowPt.timestamp).getTime();
 
-  // Past: letzte 3h (downsampled), dann forecast
-  const past = tide.filter(p => new Date(p.timestamp).getTime() >= show3hAgo);
-  const step  = Math.max(1, Math.floor(past.length / 40)); // max ~40 past points
+  // Letzten 3h der Messdaten (downsampled)
+  const cutoff = nowTs - 3 * 3600 * 1000;
+  const past   = tide.filter(p => new Date(p.timestamp).getTime() >= cutoff);
+  const step   = Math.max(1, Math.floor(past.length / 50));
   const pastDs = past.filter((_, i) => i % step === 0 || i === past.length - 1);
 
-  // Forecast-Punkte (TRM)
-  const fc = Array.isArray(forecast) && forecast.length > 0 ? forecast : [];
-  const fcStep = Math.max(1, Math.floor(fc.length / 40));
-  const fcDs = fc.filter((_, i) => i % fcStep === 0 || i === fc.length - 1);
+  // Forecast (TRM) – nächste 9h
+  const fc   = Array.isArray(forecast) && forecast.length > 0 ? forecast : [];
+  const fcS  = Math.max(1, Math.floor(fc.length / 60));
+  const fcDs = fc.filter((_, i) => i % fcS === 0 || i === fc.length - 1);
 
   const allPts = [...pastDs, ...fcDs];
-  if (allPts.length < 2) return '';
+  if (allPts.length < 2) return { svg: '', turning: [] };
 
-  const nowIdx = pastDs.length - 1; // Index des aktuellen Werts in allPts
+  const nowIdx = pastDs.length - 1;
+  const vals   = allPts.map(p => p.value);
+  const minV   = Math.min(...vals), maxV = Math.max(...vals);
+  const range  = (maxV - minV) || 1;
 
-  // Alle kombinierten Werte für Skala
-  const vals = allPts.map(p => p.value);
-  const minV = Math.min(...vals), maxV = Math.max(...vals);
-  const range = maxV - minV || 1;
+  const W = 172, H = 44, PT = 12, PB = 10, PL = 2, PR = 2;
+  const toX = i  => PL + (i / (allPts.length - 1)) * (W - PL - PR);
+  const toY = v  => PT + (1 - (v - minV) / range) * (H - PT - PB);
 
-  const W = 160, H = 36, PAD_L = 2, PAD_R = 2, PAD_T = 8, PAD_B = 2;
-  const toX = i => PAD_L + (i / (allPts.length - 1)) * (W - PAD_L - PAD_R);
-  const toY = v => PAD_T + (1 - (v - minV) / range) * (H - PAD_T - PAD_B);
+  // Zeitachsen-Labels (alle 3h)
+  const startTs = new Date(allPts[0].timestamp).getTime();
+  const endTs   = new Date(allPts[allPts.length-1].timestamp).getTime();
+  const spanMs  = endTs - startTs;
+  let timeLabels = '';
+  for (let t = Math.ceil(startTs / (3*3600*1000)) * (3*3600*1000); t <= endTs; t += 3*3600*1000) {
+    const x = PL + ((t - startTs) / spanMs) * (W - PL - PR);
+    const lbl = new Date(t).toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'});
+    timeLabels += `<text x="${x.toFixed(1)}" y="${H}" text-anchor="middle" font-size="6" fill="var(--fnt,#888)">${lbl}</text>`;
+  }
 
   // Past-Linie
-  const pastLine = pastDs.map((p, i) => `${toX(i).toFixed(1)},${toY(p.value).toFixed(1)}`).join(' ');
+  const pastLine = pastDs.map((p, i) =>
+    `${toX(i).toFixed(1)},${toY(p.value).toFixed(1)}`).join(' ');
 
-  // Forecast-Linie (gestrichelt, startet beim letzten Past-Punkt)
+  // Forecast-Linie (gestrichelt)
   let fcLine = '';
   if (fcDs.length > 0) {
-    const fcPts = [pastDs[pastDs.length-1], ...fcDs]
-      .map((p, i) => `${toX(nowIdx + i).toFixed(1)},${toY(p.value).toFixed(1)}`)
-      .join(' ');
+    const fcPts = [pastDs[nowIdx], ...fcDs].map((p, j) =>
+      `${toX(nowIdx + j).toFixed(1)},${toY(p.value).toFixed(1)}`).join(' ');
     fcLine = `<polyline points="${fcPts}" fill="none" stroke="var(--blue,#4af)"
-      stroke-width="1.2" stroke-dasharray="3,2" stroke-linecap="round" opacity="0.55"/>`;
+      stroke-width="1.2" stroke-dasharray="3,2" opacity="0.5"/>`;
   }
 
-  // Aktueller Wert: Marker + Label
-  const nx = toX(nowIdx), ny = toY(now.value);
-  const valLabel = Math.round(now.value);
-  // Label links oder rechts je nach Position
-  const labelX = nowIdx < allPts.length * 0.6 ? nx + 4 : nx - 4;
-  const anchor  = nowIdx < allPts.length * 0.6 ? 'start' : 'end';
+  // "Jetzt"-Linie
+  const nx = toX(nowIdx), ny = toY(nowPt.value);
+  const nowLine = `<line x1="${nx.toFixed(1)}" y1="${PT-2}" x2="${nx.toFixed(1)}" y2="${H-PB+2}"
+    stroke="var(--mut)" stroke-width="0.8" stroke-dasharray="2,2" opacity="0.5"/>`;
 
-  // Nächste 3 HW/NW-Wendepunkte (ab aktuellem Zeitpunkt)
-  // Suche in forecast (präzise) oder in past-Daten (extrapoliert)
-  const turningPoints = [];
-  const searchData = fcDs.length > 2 ? fcDs : allPts.slice(nowIdx);
-  const minGap = 10; // min. 10 Datenpunkte zwischen Wendepunkten
-  let lastTp = -minGap;
-  for (let i = 1; i < searchData.length - 1 && turningPoints.length < 3; i++) {
-    if (i - lastTp < minGap) continue;
-    const v  = searchData[i].value;
-    const vp = searchData[i-1].value;
-    const vn = searchData[i+1].value;
-    const isHW = v > vp + 3 && v > vn + 3;
-    const isNW = v < vp - 3 && v < vn - 3;
-    if (isHW || isNW) {
-      // Index in allPts: offset von nowIdx wenn in fcDs, sonst direkt
-      const allIdx = fcDs.length > 2
-        ? nowIdx + 1 + i
-        : nowIdx + i;
-      const cappedIdx = Math.min(allIdx, allPts.length - 1);
-      turningPoints.push({ isHW, v, x: toX(cappedIdx), y: toY(v),
-        time: searchData[i].timestamp });
-      lastTp = i;
-    }
-  }
+  // Wendepunkte suchen – nur ab "Jetzt" (in Forecast oder im restlichen Past)
+  const searchData = fcDs.length > 3
+    ? [pastDs[nowIdx], ...fcDs]
+    : allPts.slice(nowIdx);
+  const rawTurning = findTurningPoints(searchData, 8, 5).slice(0, 3);
 
+  // Marker + Labels für Wendepunkte
   let tpMarkers = '';
-  for (const tp of turningPoints) {
+  const turning = rawTurning.map((tp, idx) => {
+    const ptIdx = fcDs.length > 3 ? nowIdx + tp.i : nowIdx + tp.i;
+    const cappedIdx = Math.min(ptIdx, allPts.length - 1);
+    const x = toX(cappedIdx), y = toY(tp.value);
     const col = tp.isHW ? 'var(--blue,#4af)' : '#f0a050';
     const lbl = tp.isHW ? 'HW' : 'NW';
-    const timeStr = tp.time
-      ? new Date(tp.time).toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'})
-      : '';
-    // Marker-Kreis
-    tpMarkers += `<circle cx="${tp.x.toFixed(1)}" cy="${tp.y.toFixed(1)}" r="3" fill="${col}" opacity="0.85"/>`;
-    // Label: HW/NW + Uhrzeit, oberhalb/unterhalb je nachdem ob HW oder NW
-    const lblY = tp.isHW ? tp.y - 5 : tp.y + 11;
-    const valTxt = `${Math.round(tp.v)}`;
-    tpMarkers += `<text x="${tp.x.toFixed(1)}" y="${lblY.toFixed(1)}" text-anchor="middle"
-      font-size="6" fill="${col}" font-weight="700">${lbl}</text>`;
-    if (timeStr) {
-      tpMarkers += `<text x="${tp.x.toFixed(1)}" y="${(lblY + (tp.isHW ? -6 : 7)).toFixed(1)}"
-        text-anchor="middle" font-size="5.5" fill="${col}" opacity="0.8">${timeStr}</text>`;
-    }
-  }
+    const timeStr = new Date(tp.timestamp).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+    // Linie vom Punkt nach oben/unten zum Label
+    const labelY = tp.isHW ? PT - 1 : H - PB + 1;
+    const anchor  = cappedIdx < allPts.length * 0.8 ? 'middle' : 'end';
+    tpMarkers += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" fill="${col}"/>`;
+    tpMarkers += `<text x="${x.toFixed(1)}" y="${(labelY + (tp.isHW ? 0 : 8)).toFixed(1)}"
+      text-anchor="${anchor}" font-size="6.5" font-weight="700" fill="${col}">${lbl} ${timeStr}</text>`;
+    return { isHW: tp.isHW, value: Math.round(tp.value), time: timeStr };
+  });
 
-  // "Jetzt"-Trennlinie
-  const nowLine = `<line x1="${nx.toFixed(1)}" y1="${PAD_T}" x2="${nx.toFixed(1)}" y2="${H - PAD_B}"
-    stroke="var(--mut,#888)" stroke-width="0.8" stroke-dasharray="2,2" opacity="0.5"/>`;
-
-  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="tide-spark">
+  // Aktueller Wert
+  const svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="tide-spark">
+    ${timeLabels}
     ${nowLine}
-    <polyline points="${pastLine}" fill="none" stroke="var(--blue,#4af)" stroke-width="1.5"
-      stroke-linejoin="round" stroke-linecap="round"/>
+    <polyline points="${pastLine}" fill="none" stroke="var(--blue,#4af)"
+      stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
     ${fcLine}
     ${tpMarkers}
-    <circle cx="${nx.toFixed(1)}" cy="${ny.toFixed(1)}" r="3.5" fill="var(--blue,#4af)"/>
-    <text x="${labelX.toFixed(1)}" y="${(ny + 1).toFixed(1)}" dominant-baseline="middle"
-      text-anchor="${anchor}" font-size="8" font-weight="700" fill="var(--blue,#4af)">${valLabel}</text>
+    <circle cx="${nx.toFixed(1)}" cy="${ny.toFixed(1)}" r="4" fill="var(--blue,#4af)"/>
   </svg>`;
+
+  return { svg, turning };
 }
 
 /* ─── Passwort vergessen / Reset ────────────────────────────────────────── */
@@ -1866,17 +1888,33 @@ async function loadWeather() {
     $('wwTemp').textContent = temp != null ? `${temp}°C` : '–°C';
     $('wwIcon').textContent = WMO_ICONS[cur.weathercode] || '🌤';
     $('weatherWidget').classList.remove('loading');
-    // Pegel mit Sparkline (Verlauf + optional Forecast)
+    // Pegel mit neuem Chart
     const tide = d.tide;
     if (tide && Array.isArray(tide) && tide.length > 0) {
-      const latest  = tide[tide.length - 1];
-      const prev    = tide.length > 1 ? tide[tide.length - 2] : null;
-      const val     = Math.round(latest.value);
-      const trend   = prev ? (latest.value > prev.value + 2 ? '↑' : latest.value < prev.value - 2 ? '↓' : '→') : '';
-      const measTime = latest.timestamp ? new Date(latest.timestamp).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : '';
-      $('wwPegel').textContent = `${val} cm ${trend}`;
-      if (measTime) $('wwPegel').title = `Messung um ${measTime}`;
-      $('wwTideSpark').innerHTML = buildTideSparkline(tide, d.tideForecast);
+      const latest = tide[tide.length - 1];
+      const prev   = tide.length > 3 ? tide[tide.length - 4] : null; // ~3 Min Vergleich
+      const val    = Math.round(latest.value);
+      const rising = prev ? latest.value > prev.value + 1 : null;
+      const trendArrow = rising === true ? '↑' : rising === false ? '↓' : '→';
+      const stateText  = rising === true ? '🌊 Flut' : rising === false ? '🌊 Ebbe' : '🌊 Pegel';
+
+      $('wwTideState').textContent = stateText + ' · Schulau';
+      $('wwPegel').textContent = `${val} cm ${trendArrow}`;
+
+      const { svg, turning } = buildTideSparkline(tide, d.tideForecast);
+      $('wwTideSpark').innerHTML = svg;
+
+      // Nächste 3 HW/NW als kleine Badges
+      $('wwTideNext').innerHTML = turning.map(tp => {
+        const col = tp.isHW ? 'var(--blue)' : '#f0a050';
+        const lbl = tp.isHW ? '▲ HW' : '▽ NW';
+        return `<span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;font-size:9px;min-width:38px">
+          <span style="font-weight:700;color:${col}">${lbl}</span>
+          <span style="color:var(--mut)">${tp.time}</span>
+          <span style="color:var(--txt)">${tp.value} cm</span>
+        </span>`;
+      }).join('');
+
       $('wwTide').style.display = 'block';
     } else {
       $('wwTide').style.display = 'none';
@@ -2189,6 +2227,9 @@ function updateFilterBadge() {
   const active = !typeFSet.has('all') || lenF > 0 || etaF < 9999;
   const badge = $('filterBadge');
   if (badge) badge.style.display = active ? '' : 'none';
+  // Sync mobile filter-tab visual indicator
+  const mTab = document.querySelector('.mob-tab[data-mob="mob-filter"]');
+  if (mTab) mTab.style.fontWeight = active ? '800' : '';
 }
 // Direkt aufrufen – Script läuft nach DOM-Parse, DOMContentLoaded bereits gefeuert
 checkAuth();
