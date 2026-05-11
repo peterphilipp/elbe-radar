@@ -503,7 +503,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.6.2</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.6.3</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -806,7 +806,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.6.2</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.6.3</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -1437,7 +1437,23 @@ function connectBackend(){
   const tokenParam = authToken ? `?token=${encodeURIComponent(authToken)}` : '';
   ws=new WebSocket(`${proto}://${location.host}${tokenParam}`);
   ws.onopen=()=>{setConn('on', anonMode ? 'Anonym' : 'Live');dbg('Verbunden');sendBoxUpdate();};
-  ws.onmessage=ev=>{try{const d=JSON.parse(ev.data);if(d.type==='ships'){ships.clear();d.data.forEach(s=>ships.set(s.mmsi,s));if(!playbackMode){redraw();dbg(`${ships.size} Schiffe · ${new Date(d.ts).toLocaleTimeString('de-DE')}`);}}}catch(e){dbg('Fehler: '+e.message);}};
+  ws.onmessage=ev=>{
+    try{
+      const d=JSON.parse(ev.data);
+      if(d.type==='ships'){
+        // Merge: neue Daten überschreiben, aber bestehende Einträge bleiben bis Timeout
+        d.data.forEach(s=>ships.set(s.mmsi,s));
+        // Schiffe entfernen die vom Server nicht mehr gesendet werden UND älter als 10min sind
+        if(d.data.length > 0) {
+          const inMsg = new Set(d.data.map(s=>s.mmsi));
+          for(const [mmsi,s] of ships){
+            if(!inMsg.has(mmsi) && (Date.now()-(s.seen||0)) > 10*60*1000) ships.delete(mmsi);
+          }
+        }
+        if(!playbackMode){redraw();dbg(`${ships.size} Schiffe (${d.data.length} Update) · ${new Date(d.ts).toLocaleTimeString('de-DE')}`);}
+      }
+    }catch(e){dbg('Fehler: '+e.message);}
+  };
   ws.onerror=()=>setConn('err','Fehler');
   ws.onclose=()=>{setConn('err','Getrennt');setTimeout(connectBackend,5000);};
 }
@@ -1457,6 +1473,15 @@ function startApp(){
   loadAlerts();
   loadWeather();
   setInterval(loadWeather, 15 * 60 * 1000);
+  // Schiffe die seit > 10 Min kein Update hatten von der Karte entfernen
+  setInterval(() => {
+    const cutoff = Date.now() - 10 * 60 * 1000;
+    let removed = 0;
+    for (const [mmsi, s] of ships) {
+      if ((s.seen || 0) < cutoff) { ships.delete(mmsi); removed++; }
+    }
+    if (removed > 0) { redraw(); dbg(`${removed} abgelaufene Schiffe entfernt`); }
+  }, 60 * 1000);
   // Anon-Modus: eingeschränkte UI
   if (anonMode) {
     if ($('alertsTabBtn')) {

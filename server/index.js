@@ -107,12 +107,27 @@ function legacyAuth(req, res, next) {
 const ais = new AISConnector(ships => broadcast(ships));
 ais.start();
 
+const SHIP_TTL_MS = 10 * 60 * 1000; // 10 Minuten
+
 function broadcast(ships) {
-  // ships ist die In-Memory-Map vom AIS-Connector – immer aktuell
-  const active = [...ships.values()].filter(s => (Date.now() - (s.seen||0)) < 15*60*1000);
+  const cutoff = Date.now() - SHIP_TTL_MS;
+  const active = [...ships.values()].filter(s => (s.seen || 0) >= cutoff);
   const payload = JSON.stringify({ type:'ships', data: active, ts: Date.now() });
   for (const c of wss.clients) if (c.readyState===WebSocket.OPEN) c.send(payload);
 }
+
+// Alte Schiffe aus In-Memory-Map entfernen und Clients informieren
+setInterval(() => {
+  const cutoff = Date.now() - SHIP_TTL_MS;
+  let removed = 0;
+  for (const [mmsi, s] of ais.ships) {
+    if ((s.seen || 0) < cutoff) { ais.ships.delete(mmsi); removed++; }
+  }
+  if (removed > 0) {
+    console.log(`[AIS] ${removed} abgelaufene Schiffe aus Memory entfernt`);
+    broadcast(ais.ships); // Clients über Entfernung informieren
+  }
+}, 60 * 1000);
 
 wss.on('connection', (ws, req) => {
   // WebSocket-Authentifizierung via Query-Parameter; anonym erlaubt (eingeschränkt)
@@ -121,7 +136,8 @@ wss.on('connection', (ws, req) => {
   const session = token ? db.getSession(token) : null;
   ws.userId = session ? session.user_id : null;
   ws.isAnon = !session;
-  const active = [...ais.ships.values()].filter(s => (Date.now() - (s.seen||0)) < 15*60*1000);
+  const cutoff = Date.now() - SHIP_TTL_MS;
+  const active = [...ais.ships.values()].filter(s => (s.seen || 0) >= cutoff);
   ws.send(JSON.stringify({ type:'ships', data: active, ts: Date.now() }));
   ws.on('message', raw => {
     try {
@@ -675,11 +691,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.6.2',
+  uptime: Math.floor(process.uptime()), version:'0.6.3',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.6.2' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.6.3' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));

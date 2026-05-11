@@ -40,16 +40,16 @@ class AISConnector {
   }
 
   start() {
-    // Beim Start sofort alle bekannten Schiffe aus DB laden (letzte 2h)
-    // So ist die Karte sofort befüllt ohne auf AIS-Nachrichten warten zu müssen
+    // Beim Start sofort Schiffe aus DB laden – letzte 10 Min (passt zu SHIP_TTL_MS auf dem Server)
+    // Damit ist die Karte beim ersten WS-Connect sofort befüllt
     try {
-      const stored = db.getActiveShips(2 * 60 * 60 * 1000); // letzte 2h
-      for (const s of stored) {
-        this.ships.set(String(s.mmsi), s);
-      }
+      const stored = db.getActiveShips(10 * 60 * 1000);
+      for (const s of stored) this.ships.set(String(s.mmsi), s);
       if (stored.length > 0) {
-        console.log(`[AIS] ${stored.length} Schiffe aus DB geladen`);
+        console.log(`[AIS] ${stored.length} Schiffe aus DB (letzte 10 Min) geladen`);
         this.onUpdate(this.ships);
+      } else {
+        console.log('[AIS] Keine aktuellen Schiffe in DB (< 10 Min)');
       }
     } catch(e) {
       console.error('[AIS] DB-Lade-Fehler:', e.message);
