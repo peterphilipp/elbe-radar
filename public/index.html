@@ -102,6 +102,9 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .slider-val{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--blue);min-width:52px;text-align:right;}
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px 13px;border-bottom:1px solid var(--div);flex-shrink:0;}
 .sg-item{background:var(--surf2);border:1px solid var(--div);border-left-width:3px;border-radius:8px;padding:8px 10px;text-align:center;}
+.sg-filter{cursor:pointer;transition:opacity .15s,box-shadow .15s;}
+.sg-filter:hover{opacity:.85;}
+.sg-filter.active{box-shadow:0 0 0 2px var(--blue);background:var(--surf);}
 .sg-num{font-family:var(--mono);font-size:22px;font-weight:700;line-height:1;}
 .sg-lbl{font-size:10px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-top:3px;}
 .open-log-btn{margin:10px 13px 0;padding:8px 14px;border-radius:8px;background:var(--off);border:1px solid var(--brd);
@@ -299,7 +302,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     border-bottom:none!important;
   }
   /* Legende: mobil unten rechts */
-  #legend{bottom:calc(30vh + 8px);left:auto;right:8px;top:auto;padding:5px 9px;}
+  #legend{bottom:calc(40vh + 8px);left:auto;right:8px;top:auto;padding:5px 9px;}
   #legend h4{display:none;}
   /* Leaflet zoom oben links bleibt */
   .leaflet-top.leaflet-left{top:4px;}
@@ -314,8 +317,11 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 #detailBackdrop{display:none;position:fixed;inset:0;z-index:590;background:rgba(0,0,0,.4);}
 #detailBackdrop.on{display:block;}
 
-#mobile-bottom{display:none;position:fixed;bottom:0;left:0;right:0;z-index:70;background:var(--surf);border-top:1px solid var(--brd);max-height:30vh;overflow-y:auto;transition:max-height .25s ease;}
-#mobile-bottom.collapsed{max-height:36px!important;overflow:hidden;}
+#mobile-bottom{display:none;position:fixed;bottom:0;left:0;right:0;z-index:70;background:var(--surf);border-top:1px solid var(--brd);max-height:42vh;overflow:hidden;transition:max-height .25s ease;flex-direction:column;}
+#mobile-bottom.collapsed{max-height:36px!important;}
+#mobile-bottom .mob-tabs{flex-shrink:0;display:flex;border-bottom:1px solid var(--div);overflow-x:auto;}
+#mobile-bottom .mob-content-wrap{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;}
+.mob-content{display:none;}.mob-content.on{display:block;}
 .mob-tabs{display:flex;border-bottom:1px solid var(--div);flex-shrink:0;}
 .mob-tab{flex:1;padding:7px 4px;font-size:11px;font-weight:700;color:var(--mut);border-bottom:2px solid transparent;text-align:center;}
 .mob-tab.on{color:var(--blue);border-color:var(--blue);}
@@ -418,7 +424,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .pb-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--brd);background:var(--surf2);font-size:11px;font-weight:700;cursor:pointer;color:var(--txt);}
 .pb-btn.active{background:var(--blue);color:#fff;border-color:var(--blue);}
 #pbClose{margin-left:auto;}
-@media(max-width:700px){#playbackBar{bottom:calc(30vh);font-size:10px;padding:6px 10px;gap:6px;}#pbSlider{min-width:80px;}}
+@media(max-width:700px){#playbackBar{bottom:calc(40vh);font-size:10px;padding:6px 10px;gap:6px;}#pbSlider{min-width:80px;}}
 </style>
 </head>
 <body>
@@ -497,7 +503,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.5.7</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.5.8</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -514,21 +520,12 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <p>Schiffe im Kartenausschnitt</p>
     </div>
     <div class="filters">
-      <div>
-        <div class="flbl">Typ (Kartenfilter)</div>
-        <div class="chips" id="typeChips">
-          <button class="chip on" data-t="all">Alle</button>
-          <button class="chip" data-t="Container">Container</button>
-          <button class="chip" data-t="Cruise">Kreuzfahrt</button>
-          <button class="chip" data-t="Tanker">Tanker</button>
-          <button class="chip" data-t="Cargo">Frachter</button>
-        </div>
-      </div>
+<div style="display:none"><div class="chips" id="typeChips"><button class="chip on" data-t="all">Alle</button><button class="chip" data-t="Container">Container</button><button class="chip" data-t="Cruise">Kreuzfahrt</button><button class="chip" data-t="Tanker">Tanker</button><button class="chip" data-t="Cargo">Frachter</button></div></div>
       <div>
         <div class="flbl">Mindestlänge</div>
         <div class="chips" id="lenChips">
-          <button class="chip on" data-len="0">Alle</button>
-          <button class="chip" data-len="50">≥ 50 m</button>
+          <button class="chip" data-len="0">Alle</button>
+          <button class="chip on" data-len="50">≥ 50 m</button>
           <button class="chip" data-len="100">≥ 100 m</button>
           <button class="chip" data-len="200">≥ 200 m</button>
           <button class="chip" data-len="300">≥ 300 m</button>
@@ -545,10 +542,10 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       </div>
     </div>
     <div class="stat-grid">
-      <div class="sg-item" style="border-left-color:#ff8c00"><div class="sg-num" style="color:#ff8c00" id="stC">0</div><div class="sg-lbl">Container</div></div>
-      <div class="sg-item" style="border-left-color:#ff1493"><div class="sg-num" style="color:#ff1493" id="stK">0</div><div class="sg-lbl">Kreuzfahrt</div></div>
-      <div class="sg-item" style="border-left-color:#c9aa00"><div class="sg-num" style="color:#c9aa00" id="stT">0</div><div class="sg-lbl">Tanker</div></div>
-      <div class="sg-item" style="border-left-color:#00cc66"><div class="sg-num" style="color:#00cc66" id="stF">0</div><div class="sg-lbl">Frachter</div></div>
+      <div class="sg-item sg-filter" data-t="Container" style="border-left-color:#ff8c00" title="Filter: nur Container"><div class="sg-num" style="color:#ff8c00" id="stC">0</div><div class="sg-lbl">Container</div></div>
+      <div class="sg-item sg-filter" data-t="Cruise"    style="border-left-color:#ff1493" title="Filter: nur Kreuzfahrt"><div class="sg-num" style="color:#ff1493" id="stK">0</div><div class="sg-lbl">Kreuzfahrt</div></div>
+      <div class="sg-item sg-filter" data-t="Tanker"    style="border-left-color:#c9aa00" title="Filter: nur Tanker"><div class="sg-num" style="color:#c9aa00" id="stT">0</div><div class="sg-lbl">Tanker</div></div>
+      <div class="sg-item sg-filter" data-t="Cargo"     style="border-left-color:#00cc66" title="Filter: nur Frachter"><div class="sg-num" style="color:#00cc66" id="stF">0</div><div class="sg-lbl">Frachter</div></div>
     </div>
     <button class="open-log-btn" id="openLogBtn">📋 Schiffsliste öffnen</button>
     <div style="flex:1"></div>
@@ -803,7 +800,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.5.7</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.5.8</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -816,6 +813,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     <button class="mob-tab" data-mob="mob-filter">⚙️ Filter <span id="filterBadge" style="display:none;background:var(--blue);color:#fff;border-radius:99px;font-size:9px;padding:1px 5px;margin-left:2px">!</span></button>
     <button class="mob-tab mob-collapse-btn" id="mobCollapseBtn" title="Einklappen">▼</button>
   </div>
+  <div class="mob-content-wrap">
   <div class="mob-content on" id="mob-eta">
     <ul class="slist" id="mobFutureList"></ul>
     <div class="empty" id="mobFutureEmpty">Noch keine Prognosen.</div>
@@ -844,8 +842,8 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <div>
         <div class="flbl">Mindestlänge</div>
         <div class="chips" id="mLenChips">
-          <button class="chip on" data-len="0">Alle</button>
-          <button class="chip" data-len="50">≥ 50 m</button>
+          <button class="chip" data-len="0">Alle</button>
+          <button class="chip on" data-len="50">≥ 50 m</button>
           <button class="chip" data-len="100">≥ 100 m</button>
           <button class="chip" data-len="200">≥ 200 m</button>
           <button class="chip" data-len="300">≥ 300 m</button>
@@ -878,9 +876,8 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     <ul class="slist" id="mobAlertList"></ul>
     <div class="empty" id="mobAlertEmpty">Keine Alerts.</div>
   </div>
+  </div><!-- end mob-content-wrap -->
 </div>
-
-<!-- PLAYBACK BAR -->
 <div id="playbackBar">
   <span class="pb-title">⏮ Playback</span>
   <button class="pb-btn" id="pbPlay">▶</button>
@@ -1094,7 +1091,7 @@ function calcETA(ship, ref) {
 
 let ships=new Map(),markers=new Map(),labelShown=new Set(),trackLayer=null,extrapLayer=null;
 let map,tileLayer,ws,refPointLayer=null;
-let selMmsi=null,typeFSet=new Set(['all']),lenF=0,etaF=60,theme='dark',currentZoom=12;
+let selMmsi=null,typeFSet=new Set(['all']),lenF=50,etaF=60,theme='dark',currentZoom=12;
 let logOpen=false,logTypeF='all',logLenF=0,logDirF='all';
 let currentRefPoint={...DEFAULT_REF};
 const passes=s=>{
@@ -1265,7 +1262,40 @@ function renderFuture(){
   $('mobFutureEmpty')&&($('mobFutureEmpty').style.display=preds.length?'none':'block');
   ['futureList','mobFutureList'].forEach(id=>{const ul=$(id);if(!ul)return;const existing=new Map([...ul.querySelectorAll('li[data-mmsi]')].map(el=>[el.dataset.mmsi,el]));const newSet=new Set(preds.map(s=>s.mmsi));for(const[mmsi,el]of existing)if(!newSet.has(mmsi))el.remove();preds.forEach((s,i)=>{const h=hashS(s)+(s.eta_ts||'');let el=existing.get(s.mmsi);if(el){if(el.dataset.hash!==h){el.innerHTML=buildFiHtml(s);el.dataset.hash=h;}el.dataset.type=s.type;if(ul.children[i]!==el)ul.insertBefore(el,ul.children[i]||null);}else{el=document.createElement('li');el.className='fi';el.dataset.mmsi=s.mmsi;el.dataset.hash=h;el.dataset.type=s.type;el.innerHTML=buildFiHtml(s);el.onclick=()=>selectShip(s.mmsi);ul.insertBefore(el,ul.children[i]||null);}});});
 }
-function updateStats(){const a=[...ships.values()].filter(passes);$('liveCnt').textContent=a.length;$('shipNum').textContent=playbackMode ? pbShips.size : ships.size;$('stC').textContent=a.filter(s=>s.type==='Container').length;$('stK').textContent=a.filter(s=>s.type==='Cruise').length;$('stT').textContent=a.filter(s=>s.type==='Tanker').length;$('stF').textContent=a.filter(s=>s.type==='Cargo').length;}
+function updateStats(){
+  const a=[...ships.values()].filter(passes);
+  $('liveCnt').textContent=a.length;
+  $('shipNum').textContent=playbackMode ? pbShips.size : ships.size;
+  // Zähler (alle Schiffe je Typ, ungefiltert nach Typ)
+  const all=[...ships.values()];
+  $('stC').textContent=all.filter(s=>s.type==='Container').length;
+  $('stK').textContent=all.filter(s=>s.type==='Cruise').length;
+  $('stT').textContent=all.filter(s=>s.type==='Tanker').length;
+  $('stF').textContent=all.filter(s=>s.type==='Cargo').length;
+  // Aktiven Filter auf Cards spiegeln
+  document.querySelectorAll('.sg-filter').forEach(el => {
+    const t = el.dataset.t;
+    el.classList.toggle('active', !typeFSet.has('all') && typeFSet.has(t));
+  });
+}
+
+// Stat-Cards als Typ-Filter
+document.querySelectorAll('.sg-filter').forEach(card => {
+  card.onclick = () => {
+    const t = card.dataset.t;
+    if (typeFSet.has(t) && typeFSet.size === 1) {
+      // Gleicher Typ nochmal → zurück zu "Alle"
+      typeFSet = new Set(['all']);
+    } else {
+      typeFSet = new Set([t]);
+    }
+    // Sync mit hidden typeChips
+    document.querySelectorAll('#typeChips .chip, #mTypeChips .chip').forEach(c => {
+      c.classList.toggle('on', typeFSet.has(c.dataset.t));
+    });
+    checkSelectionValid(); redraw(); renderETA(); updateStats(); updateFilterBadge();
+  };
+});
 function redraw(){syncMarkers();renderFuture();updateStats();if(logOpen)renderLog();}
 
 // Log
@@ -1476,7 +1506,7 @@ function updateLegendPos() {
   const leg = $('legend');
   if (!leg || window.innerWidth > 700) return;
   const collapsed = $('mobile-bottom').classList.contains('collapsed');
-  leg.style.bottom = collapsed ? '44px' : 'calc(30vh + 8px)';
+  leg.style.bottom = collapsed ? '44px' : 'calc(40vh + 8px)';
 }
 if (mobCollapseBtn) {
   mobCollapseBtn.onclick = (e) => {
@@ -1718,100 +1748,98 @@ function findTurningPoints(data, minGapPts=8, minDelta=5) {
 function buildTideSparkline(tide, forecast) {
   if (!tide || tide.length < 3) return { svg: '', turning: [] };
 
-  const nowPt  = tide[tide.length - 1];
+  const nowPt = tide[tide.length - 1];
+  const nowVal = nowPt.value;
   const nowTs  = new Date(nowPt.timestamp).getTime();
 
-  // Letzten 3h der Messdaten (downsampled)
-  const cutoff = nowTs - 3 * 3600 * 1000;
+  // Forecast: bevorzuge TRM, sonst extrapolierte Daten
+  const fc = Array.isArray(forecast) && forecast.length > 3 ? forecast : [];
+
+  // Zeige: 1h Vergangenheit + 9h Zukunft
+  const cutoff = nowTs - 1 * 3600 * 1000;
   const past   = tide.filter(p => new Date(p.timestamp).getTime() >= cutoff);
-  const step   = Math.max(1, Math.floor(past.length / 50));
-  const pastDs = past.filter((_, i) => i % step === 0 || i === past.length - 1);
+  const pastStep = Math.max(1, Math.floor(past.length / 20));
+  const pastDs = past.filter((_, i) => i % pastStep === 0 || i === past.length - 1);
 
-  // Forecast (TRM) – nächste 9h
-  const fc   = Array.isArray(forecast) && forecast.length > 0 ? forecast : [];
-  const fcS  = Math.max(1, Math.floor(fc.length / 60));
-  const fcDs = fc.filter((_, i) => i % fcS === 0 || i === fc.length - 1);
+  const fcStep = Math.max(1, Math.floor(fc.length / 80));
+  const fcDs   = fc.filter((_, i) => i % fcStep === 0 || i === fc.length - 1);
 
+  // Gesamte Datenpunkte für Darstellung
   const allPts = [...pastDs, ...fcDs];
   if (allPts.length < 2) return { svg: '', turning: [] };
 
   const nowIdx = pastDs.length - 1;
   const vals   = allPts.map(p => p.value);
-  const minV   = Math.min(...vals), maxV = Math.max(...vals);
-  const range  = (maxV - minV) || 1;
+  const minV   = Math.min(...vals) - 20;  // etwas Padding unten
+  const maxV   = Math.max(...vals) + 20;  // Padding oben
+  const range  = maxV - minV || 1;
 
-  const W = 172, H = 44, PT = 12, PB = 10, PL = 2, PR = 2;
-  const toX = i  => PL + (i / (allPts.length - 1)) * (W - PL - PR);
-  const toY = v  => PT + (1 - (v - minV) / range) * (H - PT - PB);
+  const W = 172, H = 48, PT = 14, PB = 8, PL = 2, PR = 4;
+  const n    = allPts.length;
+  const toX  = i  => PL + (i / (n - 1)) * (W - PL - PR);
+  const toY  = v  => PT + (1 - (v - minV) / range) * (H - PT - PB);
 
-  // Zeitachsen-Labels (alle 3h)
+  // Zeitachse: alle 3h ab jetzt
   const startTs = new Date(allPts[0].timestamp).getTime();
-  const endTs   = new Date(allPts[allPts.length-1].timestamp).getTime();
-  const spanMs  = endTs - startTs;
+  const endTs   = new Date(allPts[n-1].timestamp).getTime();
   let timeLabels = '';
-  for (let t = Math.ceil(startTs / (3*3600*1000)) * (3*3600*1000); t <= endTs; t += 3*3600*1000) {
-    const x = PL + ((t - startTs) / spanMs) * (W - PL - PR);
+  for (let t = Math.ceil(nowTs / (3*3600*1000)) * (3*3600*1000); t <= endTs; t += 3*3600*1000) {
+    const xFrac = (t - startTs) / (endTs - startTs);
+    const x = PL + xFrac * (W - PL - PR);
     const lbl = new Date(t).toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'});
-    timeLabels += `<text x="${x.toFixed(1)}" y="${H}" text-anchor="middle" font-size="6" fill="var(--fnt,#888)">${lbl}</text>`;
+    timeLabels += `<text x="${x.toFixed(1)}" y="${H}" text-anchor="middle" font-size="6" fill="var(--fnt,#777)">${lbl}</text>`;
+    timeLabels += `<line x1="${x.toFixed(1)}" y1="${PT}" x2="${x.toFixed(1)}" y2="${H-PB}" stroke="var(--div)" stroke-width="0.4" opacity="0.5"/>`;
   }
 
-  // Past-Linie
+  // Vergangenheits-Linie (gestrichelt, dezent)
   const pastLine = pastDs.map((p, i) =>
     `${toX(i).toFixed(1)},${toY(p.value).toFixed(1)}`).join(' ');
 
-  // Forecast-Linie (gestrichelt)
-  let fcLine = '';
-  if (fcDs.length > 0) {
-    const fcPts = [pastDs[nowIdx], ...fcDs].map((p, j) =>
-      `${toX(nowIdx + j).toFixed(1)},${toY(p.value).toFixed(1)}`).join(' ');
-    fcLine = `<polyline points="${fcPts}" fill="none" stroke="var(--blue,#4af)"
-      stroke-width="1.2" stroke-dasharray="3,2" opacity="0.5"/>`;
-  }
+  // Forecast-Linie (durchgezogen, prominent)
+  const fcPts = [pastDs[nowIdx], ...fcDs].map((p, j) =>
+    `${toX(nowIdx + j).toFixed(1)},${toY(p.value).toFixed(1)}`).join(' ');
+  const fcLine = fcDs.length > 0
+    ? `<polyline points="${fcPts}" fill="none" stroke="var(--blue,#4af)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>`
+    : '';
 
-  // "Jetzt"-Linie
-  const nx = toX(nowIdx), ny = toY(nowPt.value);
-  const nowLine = `<line x1="${nx.toFixed(1)}" y1="${PT-2}" x2="${nx.toFixed(1)}" y2="${H-PB+2}"
-    stroke="var(--mut)" stroke-width="0.8" stroke-dasharray="2,2" opacity="0.5"/>`;
+  // Jetzt-Linie
+  const nx = toX(nowIdx), ny = toY(nowVal);
+  const nowLine = `<line x1="${nx.toFixed(1)}" y1="${PT}" x2="${nx.toFixed(1)}" y2="${H-PB}"
+    stroke="var(--mut)" stroke-width="0.8" stroke-dasharray="2,2" opacity="0.6"/>`;
 
-  // Wendepunkte suchen – ab "Jetzt" vorwärts
-  // Priorität: TRM-Forecast, sonst restliche Messpunkte nach nowIdx
+  // Wendepunkte aus Forecast suchen
   const searchData = fcDs.length > 3
     ? [pastDs[nowIdx], ...fcDs]
     : allPts.slice(Math.max(0, nowIdx));
-  const rawTurning = findTurningPoints(searchData, 8, 5);
-
-  // Nur echte Zukunfts-Zeitstempel
-  const nowTime = new Date(nowPt.timestamp).getTime();
+  const rawTurning = findTurningPoints(searchData, 6, 8);
   const futureTurning = rawTurning
-    .filter(tp => new Date(tp.timestamp).getTime() >= nowTime)
+    .filter(tp => new Date(tp.timestamp).getTime() > nowTs)
     .slice(0, 3);
 
-  // Marker + Labels für Wendepunkte
   let tpMarkers = '';
-  const turning = futureTurning.map((tp) => {
-    const ptIdx = nowIdx + tp.i;
-    const cappedIdx = Math.min(ptIdx, allPts.length - 1);
-    const x = toX(cappedIdx), y = toY(tp.value);
+  const turning = futureTurning.map(tp => {
+    const ptIdx = Math.min(nowIdx + tp.i, n - 1);
+    const x = toX(ptIdx), y = toY(tp.value);
     const col = tp.isHW ? 'var(--blue,#4af)' : '#f0a050';
-    const lbl = tp.isHW ? 'HW' : 'NW';
-    const timeStr = new Date(tp.timestamp).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-    const labelY = tp.isHW ? PT - 1 : H - PB + 1;
-    const anchor  = cappedIdx < allPts.length * 0.8 ? 'middle' : 'end';
+    const timeStr = new Date(tp.timestamp).toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'});
+    // Markierungslinie von Kurve zu Label
+    const lblY = tp.isHW ? PT - 2 : H - PB + 2;
+    const lineEnd = tp.isHW ? PT + 2 : H - PB - 2;
+    tpMarkers += `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x.toFixed(1)}" y2="${lineEnd.toFixed(1)}" stroke="${col}" stroke-width="0.8" stroke-dasharray="1.5,1.5" opacity="0.7"/>`;
     tpMarkers += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" fill="${col}"/>`;
-    tpMarkers += `<text x="${x.toFixed(1)}" y="${(labelY + (tp.isHW ? 0 : 8)).toFixed(1)}"
-      text-anchor="${anchor}" font-size="6.5" font-weight="700" fill="${col}">${lbl} ${timeStr}</text>`;
+    const lbl = tp.isHW ? 'HW' : 'NW';
+    const txtAnchor = ptIdx < n * 0.85 ? 'middle' : 'end';
+    tpMarkers += `<text x="${x.toFixed(1)}" y="${(tp.isHW ? lblY - 1 : lblY + 9).toFixed(1)}" text-anchor="${txtAnchor}" font-size="6.5" font-weight="700" fill="${col}">${lbl} ${timeStr}</text>`;
     return { isHW: tp.isHW, value: Math.round(tp.value), time: timeStr };
   });
 
-  // Aktueller Wert
   const svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="tide-spark">
     ${timeLabels}
     ${nowLine}
-    <polyline points="${pastLine}" fill="none" stroke="var(--blue,#4af)"
-      stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <polyline points="${pastLine}" fill="none" stroke="var(--mut,#888)" stroke-width="1" stroke-dasharray="3,2" opacity="0.5"/>
     ${fcLine}
     ${tpMarkers}
-    <circle cx="${nx.toFixed(1)}" cy="${ny.toFixed(1)}" r="4" fill="var(--blue,#4af)"/>
+    <circle cx="${nx.toFixed(1)}" cy="${ny.toFixed(1)}" r="4" fill="var(--blue,#4af)" stroke="var(--surf)" stroke-width="1.5"/>
   </svg>`;
 
   return { svg, turning };
