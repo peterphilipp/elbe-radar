@@ -235,7 +235,7 @@ app.get('/api/ship/:mmsi/type', authMiddleware, (req, res) => {
 // Open-Meteo: kostenlos, kein Key, HTTPS
 let weatherCache = null, weatherCacheTs = 0;
 // Cache beim Start leer, damit neue Stationsnamen sofort ausprobiert werden
-app.get('/api/weather', authMiddleware, async (req, res) => {
+app.get('/api/weather', async (req, res) => {
   if (weatherCache && Date.now() - weatherCacheTs < 10 * 60 * 1000) {
     return res.json(weatherCache);
   }
@@ -254,6 +254,7 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
     // Pegelonline WSV – Pegel Schulau (bei Wedel/Willkomm-Höft)
     // Korrekte API-Basis: rest-api/v2 (nicht rest/v2)
     let tide = null;
+    let tideForecast = null;
     try {
       const tideRaw = await new Promise((resolve) => {
         const url = `https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/SCHULAU/W/measurements.json?start=PT12H`;
@@ -278,7 +279,6 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
       }
 
       // Gezeitenvorhersage (TRM) – nächste 6h, falls verfügbar
-      let tideForecast = null;
       try {
         const trmRaw = await new Promise((resolve) => {
           const u2 = `https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/SCHULAU/TRM/measurements.json?start=P0D&end=PT6H`;

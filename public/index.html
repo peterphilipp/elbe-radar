@@ -827,6 +827,7 @@ const $ = id => document.getElementById(id);
 const isMobile = () => window.innerWidth <= 700;
 /* ─── Auth State ─────────────────────────────────────────────────────────── */
 let authToken = localStorage.getItem('elbr_token') || '';
+let anonMode  = false;
 let currentUser = null;
 
 // Overlay: bei vorhandenem Token nur kurz transparent machen (kein Flash),
@@ -843,7 +844,7 @@ function authHeaders(extra={}) {
 function apiFetch(url, opts={}) {
   opts.headers = { ...(opts.headers||{}), 'Authorization':`Bearer ${authToken}`, 'Content-Type':'application/json' };
   return fetch(url, opts).then(r => {
-    if (r.status === 401) {
+    if (r.status === 401 && !anonMode) {
       // Session abgelaufen → zurück zum Login
       authToken = '';
       localStorage.removeItem('authToken');
@@ -1698,7 +1699,6 @@ async function loadWeather() {
 $('weatherWidget').onclick = () => { $('weatherWidget').classList.add('loading'); loadWeather(); };
 
 /* ─── Anonymer Modus ────────────────────────────────────────────────────── */
-let anonMode = false;
 function enterAnonMode() {
   anonMode = true;
   $('loginOverlay').classList.add('hidden');
@@ -1880,6 +1880,8 @@ async function openPlayback() {
 function closePlayback() {
   playbackMode = false;
   if (pbTimer) { clearInterval(pbTimer); pbTimer = null; }
+  if (pbAnimFrame) { cancelAnimationFrame(pbAnimFrame); pbAnimFrame = null; }
+  pbPrevPositions.clear();
   $('playbackBar').classList.remove('on');
   $('playbackBtn').classList.remove('active');
   $('pbPlay').textContent = '▶';
@@ -1909,13 +1911,66 @@ async function pbSeek(ts) {
   renderPlaybackMap(pbShips);
 }
 
+// Speichert die zuletzt gerenderten Positionen für Interpolation
+let pbPrevPositions = new Map(); // mmsi → {lat, lon}
+let pbAnimFrame = null;
+let pbAnimStart = 0, pbAnimDuration = 700; // ms
+
 function renderPlaybackMap(shipMap) {
   if (!playbackMode) return;
-  // Temporär ships-Map ersetzen für redraw
-  const live = ships;
-  ships = shipMap;
-  redraw();
-  ships = live;
+
+  // Positionen der aktuellen Schiffe als Startpositionen speichern
+  const fromPos = new Map();
+  for (const [mmsi, ship] of shipMap) {
+    const prev = pbPrevPositions.get(mmsi);
+    fromPos.set(mmsi, prev
+      ? { lat: prev.lat, lon: prev.lon }
+      : { lat: ship.lat, lon: ship.lon } // neu aufgetauchtes Schiff: kein Tween
+    );
+  }
+
+  // Laufende Animation abbrechen
+  if (pbAnimFrame) { cancelAnimationFrame(pbAnimFrame); pbAnimFrame = null; }
+
+  pbAnimStart = performance.now();
+
+  function animate(now) {
+    if (!playbackMode) return;
+    const t = Math.min(1, (now - pbAnimStart) / pbAnimDuration);
+    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // easeInOut
+
+    // Interpolierte Positionen in temporäre Map schreiben
+    const interpolated = new Map();
+    for (const [mmsi, ship] of shipMap) {
+      const from = fromPos.get(mmsi);
+      if (!from || (from.lat === ship.lat && from.lon === ship.lon)) {
+        interpolated.set(mmsi, ship);
+      } else {
+        interpolated.set(mmsi, {
+          ...ship,
+          lat: from.lat + (ship.lat - from.lat) * ease,
+          lon: from.lon + (ship.lon - from.lon) * ease,
+        });
+      }
+    }
+
+    const live = ships;
+    ships = interpolated;
+    redraw();
+    ships = live;
+
+    if (t < 1) {
+      pbAnimFrame = requestAnimationFrame(animate);
+    } else {
+      // Animation fertig: endgültige Positionen als Basis für nächsten Schritt merken
+      pbPrevPositions = new Map(
+        [...shipMap].map(([mmsi, s]) => [mmsi, { lat: s.lat, lon: s.lon }])
+      );
+      pbAnimFrame = null;
+    }
+  }
+
+  pbAnimFrame = requestAnimationFrame(animate);
 }
 
 // Playback controls – bound after DOM is ready (elements added before script)
