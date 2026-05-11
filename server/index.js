@@ -257,8 +257,8 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
   }
 });
 
-// ── PEGEL DEBUG (auth-geschützt, Cache wird ignoriert) ────────────────────────
-app.get('/api/pegel-debug', authMiddleware, async (req, res) => {
+// ── PEGEL DEBUG (kein Auth – nur zum Testen, danach entfernen) ────────────────
+app.get('/api/pegel-debug', async (req, res) => {
   const url = `https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/SCHULAU/W/measurements.json?start=PT12H`;
   try {
     const result = await new Promise((resolve) => {
