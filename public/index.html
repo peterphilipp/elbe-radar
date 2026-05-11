@@ -359,6 +359,8 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .ww-sub{font-size:10px;color:var(--mut);}
 .ww-tide{margin-top:4px;padding-top:4px;border-top:1px solid var(--div);font-size:10px;color:var(--mut);}
 .ww-tide b{color:var(--txt);}
+.ww-tide-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.tide-spark{display:block;flex-shrink:0;opacity:0.9;}
 @media(max-width:700px){#weatherWidget{top:auto;bottom:calc(30vh + 60px);right:10px;font-size:10px;min-width:130px;}}
 #weatherWidget.hidden{display:none;}
 
@@ -493,7 +495,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     <div id="weatherWidget" class="loading" title="Klicken zum Aktualisieren">
       <div class="ww-row"><span class="ww-icon" id="wwIcon">🌤</span><div><div class="ww-main" id="wwWind">– m/s</div><div class="ww-sub" id="wwTemp">–°C</div></div></div>
       <div class="ww-sub" id="wwDir">–</div>
-      <div class="ww-tide" id="wwTide" style="display:none">🌊 Pegel Wedel: <b id="wwPegel">–</b> cm NN</div>
+      <div class="ww-tide" id="wwTide" style="display:none">🌊 Pegel Schulau: <div class="ww-tide-row"><b id="wwPegel">–</b><span id="wwTideSpark"></span></div></div>
     </div>
 
     <div id="detailBackdrop" onclick="closeDetail()"></div>
@@ -1517,6 +1519,50 @@ const WMO_ICONS = {
 const DIR_NAMES = ['N','NNO','NO','ONO','O','OSO','SO','SSO','S','SSW','SW','WSW','W','WNW','NW','NNW'];
 function windDirName(deg) { return DIR_NAMES[Math.round((deg||0)/22.5) % 16]; }
 
+/* ─── Tide Sparkline ─────────────────────────────────────────────────────── */
+function buildTideSparkline(tide) {
+  if (!tide || tide.length < 3) return '';
+  const W = 110, H = 28, PAD = 2;
+  const vals = tide.map(p => p.value);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const range = max - min || 1;
+  const n = tide.length;
+
+  // Polyline-Punkte
+  const pts = tide.map((p, i) => {
+    const x = PAD + (i / (n - 1)) * (W - PAD * 2);
+    const y = PAD + (1 - (p.value - min) / range) * (H - PAD * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+
+  // Letzten Punkt markieren
+  const lp = tide[n - 1];
+  const lx = (PAD + (W - PAD * 2)).toFixed(1);
+  const ly = (PAD + (1 - (lp.value - min) / range) * (H - PAD * 2)).toFixed(1);
+
+  // HW/NW markieren (lokales Hoch- und Niedrigwasser)
+  let hwNwMarkers = '';
+  for (let i = 1; i < n - 1; i++) {
+    const v = tide[i].value, vp = tide[i-1].value, vn = tide[i+1].value;
+    const isHW = v > vp + 5 && v > vn + 5;
+    const isNW = v < vp - 5 && v < vn - 5;
+    if (isHW || isNW) {
+      const mx = (PAD + (i / (n - 1)) * (W - PAD * 2)).toFixed(1);
+      const my = (PAD + (1 - (v - min) / range) * (H - PAD * 2)).toFixed(1);
+      const label = isHW ? 'HW' : 'NW';
+      const col = isHW ? '#4af' : '#fa4';
+      hwNwMarkers += `<circle cx="${mx}" cy="${my}" r="2" fill="${col}" opacity="0.7"/>`;
+    }
+  }
+
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="tide-spark">
+    <polyline points="${pts}" fill="none" stroke="var(--blue,#4af)" stroke-width="1.5"
+      stroke-linejoin="round" stroke-linecap="round"/>
+    ${hwNwMarkers}
+    <circle cx="${lx}" cy="${ly}" r="2.5" fill="var(--blue,#4af)"/>
+  </svg>`;
+}
+
 async function loadWeather() {
   try {
     const d = await apiFetch('/api/weather').then(r => r.json());
@@ -1542,9 +1588,9 @@ async function loadWeather() {
       const measTime = latest.timestamp ? new Date(latest.timestamp).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : '';
       $('wwPegel').textContent = `${val} cm ${trend}`;
       if (measTime) $('wwPegel').title = `Messung um ${measTime}`;
+      $('wwTideSpark').innerHTML = buildTideSparkline(tide);
       $('wwTide').style.display = 'block';
     } else {
-      // Pegel nicht verfügbar - Widget trotzdem anzeigen, Pegel-Zeile weglassen
       $('wwTide').style.display = 'none';
     }
   } catch(e) { $('weatherWidget').classList.remove('loading'); }

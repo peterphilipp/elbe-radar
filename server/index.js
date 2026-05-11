@@ -220,40 +220,29 @@ app.get('/api/weather', authMiddleware, async (req, res) => {
       });
       r.on('error', reject); r.setTimeout(8000, () => { r.destroy(); reject(new Error('timeout')); });
     });
-    // Pegelonline WSV – Station Wedel an der Elbe
-    // Stationsname: WEDEL (ELBE) – Pegelonline shortname ist case-sensitive URL-encoded
+    // Pegelonline WSV – Pegel Schulau (bei Wedel/Willkomm-Höft)
+    // Korrekte API-Basis: rest-api/v2 (nicht rest/v2)
     let tide = null;
-    const pegelStations = [
-      'WEDEL%20(ELBE)',   // vollständiger Name
-      'WEDEL',            // Kurzname als Fallback
-      'SCHULAU',          // Backup: Schulau liegt ebenfalls bei Wedel
-    ];
-    for (const station of pegelStations) {
-      try {
-        const tideRaw = await new Promise((resolve, reject) => {
-          const url = `https://www.pegelonline.wsv.de/webservices/rest/v2/stations/${station}/W/measurements.json?start=PT6H`;
-          const tr = https.get(url, { headers: { 'User-Agent': 'ElbeRadar/0.4' } }, resp => {
-            let d = ''; resp.on('data', c => d += c);
-            resp.on('end', () => {
-              try {
-                const parsed = JSON.parse(d);
-                resolve(parsed);
-              } catch(e) { resolve(null); }
-            });
+    try {
+      const tideRaw = await new Promise((resolve) => {
+        const url = `https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/SCHULAU/W/measurements.json?start=PT12H`;
+        const tr = https.get(url, { headers: { 'User-Agent': 'ElbeRadar/0.4' } }, resp => {
+          let d = ''; resp.on('data', c => d += c);
+          resp.on('end', () => {
+            try { resolve(JSON.parse(d)); } catch(e) { resolve(null); }
           });
-          tr.on('error', () => resolve(null));
-          tr.setTimeout(6000, () => { tr.destroy(); resolve(null); });
         });
-        if (Array.isArray(tideRaw) && tideRaw.length > 0) {
-          tide = tideRaw;
-          console.log(`[Pegel] Station ${station}: ${tideRaw.length} Messpunkte, letzter Wert: ${tideRaw[tideRaw.length-1]?.value} cm`);
-          break;
-        } else {
-          console.log(`[Pegel] Station ${station}: keine Daten (${JSON.stringify(tideRaw)?.slice(0,80)})`);
-        }
-      } catch(e) {
-        console.log(`[Pegel] Station ${station}: Fehler: ${e.message}`);
+        tr.on('error', () => resolve(null));
+        tr.setTimeout(6000, () => { tr.destroy(); resolve(null); });
+      });
+      if (Array.isArray(tideRaw) && tideRaw.length > 0) {
+        tide = tideRaw;
+        console.log(`[Pegel] SCHULAU: ${tideRaw.length} Messpunkte, letzter Wert: ${tideRaw[tideRaw.length-1]?.value} cm`);
+      } else {
+        console.log(`[Pegel] SCHULAU: keine Daten (${JSON.stringify(tideRaw)?.slice(0,80)})`);
       }
+    } catch(e) {
+      console.log(`[Pegel] SCHULAU: Fehler: ${e.message}`);
     }
     weatherCache = { weather: data, tide, fetchedAt: Date.now() };
     weatherCacheTs = Date.now();
