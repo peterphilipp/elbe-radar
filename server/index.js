@@ -323,6 +323,45 @@ app.get('/api/ship/:mmsi/type', authMiddleware, (req, res) => {
 
 // ── SHIP PHOTO PROXY (umgeht CORS & Referer-Check) ────────────────────────────
 // ── WEATHER & TIDE PROXY ──────────────────────────────────────────────────────
+// ── Synthetische Gezeitenvorhersage (Fallback wenn kein TRM verfügbar) ────────
+function extrapolateTide(measurements, horizonSec = 9 * 3600) {
+  if (!measurements || measurements.length < 60) return [];
+  const pts = measurements.map(m => ({
+    t: new Date(m.timestamp).getTime(), v: m.value,
+  })).sort((a, b) => a.t - b.t);
+  // Lokale Extrema (Fenster ±5 Punkte)
+  const extrema = [];
+  for (let i = 5; i < pts.length - 5; i++) {
+    const win = pts.slice(i-5, i+6).map(p => p.v);
+    const v = pts[i].v;
+    if (v === Math.max(...win) && v > pts[i-1].v + 5) extrema.push({t:pts[i].t, v, isHW:true});
+    if (v === Math.min(...win) && v < pts[i-1].v - 5) extrema.push({t:pts[i].t, v, isHW:false});
+  }
+  if (extrema.length < 2) return [];
+  // Mittlere Halbperiode
+  let halfPeriodSum = 0;
+  for (let i = 1; i < extrema.length; i++) halfPeriodSum += extrema[i].t - extrema[i-1].t;
+  const halfPeriodMs = halfPeriodSum / (extrema.length - 1);
+  const periodMs     = halfPeriodMs * 2;
+  // Amplitude + Mittelwert
+  const hwVals = extrema.filter(e => e.isHW).map(e => e.v);
+  const nwVals = extrema.filter(e => !e.isHW).map(e => e.v);
+  const hw = hwVals.length ? hwVals.reduce((a,b)=>a+b)/hwVals.length : 700;
+  const nw = nwVals.length ? nwVals.reduce((a,b)=>a+b)/nwVals.length : 350;
+  const amp = (hw - nw) / 2, mid = (hw + nw) / 2;
+  const lastEx = extrema[extrema.length - 1];
+  const phaseOffset = lastEx.isHW ? 0 : Math.PI;
+  // Extrapolation alle 5min
+  const nowTs = pts[pts.length-1].t;
+  const result = [];
+  for (let dt = 5*60*1000; dt <= horizonSec*1000; dt += 5*60*1000) {
+    const t = nowTs + dt;
+    const phi = ((t - lastEx.t) / periodMs) * 2 * Math.PI + phaseOffset;
+    result.push({ timestamp: new Date(t).toISOString(), value: Math.round((mid + amp * Math.cos(phi)) * 10) / 10, synthetic: true });
+  }
+  return result;
+}
+
 // Open-Meteo: kostenlos, kein Key, HTTPS
 let weatherCache = null, weatherCacheTs = 0;
 // Cache beim Start leer, damit neue Stationsnamen sofort ausprobiert werden
@@ -385,6 +424,16 @@ app.get('/api/weather', async (req, res) => {
           console.log(`[Pegel] TRM Vorhersage: ${trmRaw.length} Punkte`);
         }
       } catch(e) { /* kein TRM für diese Station */ }
+
+      // Fallback: Wenn kein TRM, synthetische Gezeitenvorhersage aus Messkurve extrapolieren
+      // Findet letzte HW/NW in den Messdaten und extrapoliert Sinusoidalverlauf
+      if (!tideForecast && tide && tide.length > 60) {
+        try {
+          tideForecast = extrapolateTide(tide, 9 * 3600); // 9h voraus
+          if (tideForecast.length > 0)
+            console.log(`[Pegel] Synthetischer Forecast: ${tideForecast.length} Punkte`);
+        } catch(e) { console.log(`[Pegel] Extrapolation fehlgeschlagen: ${e.message}`); }
+      }
     } catch(e) {
       console.log(`[Pegel] Fehler: ${e.message}`);
     }
@@ -612,11 +661,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.5.6',
+  uptime: Math.floor(process.uptime()), version:'0.5.7',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.5.6' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.5.7' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));

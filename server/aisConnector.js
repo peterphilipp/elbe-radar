@@ -4,13 +4,26 @@ const { calcETA, DEFAULT_REF } = require('./etaCalculator');
 const { checkAlerts }= require('./telegramBot');
 const { saveShip, getSetting, recordPassage } = require('./db');
 
-function shipType(code, name='') {
+function shipType(code, name='', len=0) {
   const n = (name||'').toLowerCase();
-  if (/(aida|norwegian|costa|carnival|celebrity|mein schiff|tui cruis|princess|cunard|crystal|viking|queen|regent|silver|oceania|europa|columbus)/.test(n)) return 'Cruise';
   const c = +(code||0);
+
+  // AIS-Typcode hat Vorrang – am zuverlässigsten
   if (c>=60&&c<=69) return 'Cruise';
   if (c>=70&&c<=79) return 'Container';
   if (c>=80&&c<=89) return 'Tanker';
+
+  // Namensbasierte Heuristik: nur wenn kein eindeutiger Code vorhanden
+  // und Schiff groß genug (>= 100m) um echtes Kreuzfahrtschiff zu sein
+  if (len >= 100 || len === 0) {
+    // Exakte bekannte Reederei-Präfixe/Suffixe – kein Substring-Match auf kurze Wörter
+    if (/\b(aida|mein schiff|tui cruises?)\b/.test(n)) return 'Cruise';
+    // Bekannte Kreuzfahrtschiff-Namen, aber nur wenn Schiff lang genug
+    if (len >= 150) {
+      if (/(norwegian|costa |carnival|celebrity|cunard|crystal cruise|viking (star|sky|sea|ocean|orion|venus|jupiter|mars)|regent|silver(sea|shadow|spirit|whisper|wind|cloud|muse|nova|moon)|oceania|hanseatic (nature|inspiration|spirit)|columbus|columbus 2|aidanova|aida|queen [a-z]|europa [12]?)/.test(n)) return 'Cruise';
+    }
+  }
+
   return 'Cargo';
 }
 
@@ -73,12 +86,13 @@ class AISConnector {
     if (mtype === 'ShipStaticData') {
       const sd = msg.ShipStaticData||msg, dim = sd.Dimension||{};
       const name = (meta.ShipName||sd.Name||'').trim();
+      const len  = dim.A&&dim.B ? +dim.A + +dim.B : ex.len||0;
       this._upsert({ mmsi,
         lat:  parseFloat(meta.latitude||meta.Latitude||0)||ex.lat,
         lon:  parseFloat(meta.longitude||meta.Longitude||0)||ex.lon,
-        name: name||ex.name||'', type: shipType(sd.Type,name)||ex.type||'Cargo',
+        name: name||ex.name||'', type: shipType(sd.Type, name, len)||ex.type||'Cargo',
         dest: (sd.Destination||'').trim()||ex.dest||'', cs: sd.CallSign||ex.cs||'',
-        len:  dim.A&&dim.B ? +dim.A + +dim.B : ex.len||0,
+        len,
         wid:  dim.C&&dim.D ? +dim.C + +dim.D : ex.wid||0,
         drg:  sd.MaximumStaticDraught ? +sd.MaximumStaticDraught*10 : ex.drg||0,
         sog: ex.sog, cog: ex.cog, heading: ex.heading,
@@ -90,7 +104,7 @@ class AISConnector {
     const pr = msg.PositionReport||msg.StandardClassBPositionReport||msg;
     this._upsert({ mmsi, lat, lon,
       name:    (meta.ShipName||'').trim()||ex.name||'',
-      type:    ex.type||shipType(null,meta.ShipName||'')||'Cargo',
+      type:    ex.type||shipType(null, meta.ShipName||'', ex.len||0)||'Cargo',
       dest:    ex.dest||'', cs: ex.cs||'',
       len:     ex.len||0, wid: ex.wid||0, drg: ex.drg||0,
       sog:     pr.Sog!=null ? +pr.Sog*10 : ex.sog,

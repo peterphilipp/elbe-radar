@@ -497,7 +497,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.5.6</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.5.7</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -621,24 +621,29 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     </div>
     <div class="tabcontent" id="tab-alerts">
       <div class="abwrap">
-        <h3>🔔 Neuer Alert</h3>
-        <div class="abform">
-          <div class="abfield"><label class="ablbl">Name</label>
-            <input class="abinput" id="aName" placeholder="z.B. Große Container"/></div>
-          <div class="abrow2">
-            <div class="abfield"><label class="ablbl">Typ</label>
-              <select class="abinput" id="aType"><option value="">Alle</option>
-                <option>Container</option><option>Cruise</option><option>Tanker</option><option>Cargo</option></select></div>
-            <div class="abfield"><label class="ablbl">Namensteil</label>
-              <input class="abinput" id="aNameF" placeholder="z.B. MSC"/></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none" onclick="const f=$('desktopAlertForm');const open=f.style.display!=='none';f.style.display=open?'none':'';this.querySelector('.alert-toggle').textContent=open?'▼':'▲'">
+          <h3 style="margin-bottom:0">🔔 Neuer Alert</h3>
+          <span class="alert-toggle" style="color:var(--mut);font-size:11px">▼</span>
+        </div>
+        <div id="desktopAlertForm" style="display:none;margin-top:8px">
+          <div class="abform">
+            <div class="abfield"><label class="ablbl">Name</label>
+              <input class="abinput" id="aName" placeholder="z.B. Große Container"/></div>
+            <div class="abrow2">
+              <div class="abfield"><label class="ablbl">Typ</label>
+                <select class="abinput" id="aType"><option value="">Alle</option>
+                  <option>Container</option><option>Cruise</option><option>Tanker</option><option>Cargo</option></select></div>
+              <div class="abfield"><label class="ablbl">Namensteil</label>
+                <input class="abinput" id="aNameF" placeholder="z.B. MSC"/></div>
+            </div>
+            <div class="abrow2">
+              <div class="abfield"><label class="ablbl">Mindestlänge <span class="abhlp">(≥ m)</span></label>
+                <input class="abinput" id="aLenAlert" type="number" min="0" value="150"/></div>
+              <div class="abfield"><label class="ablbl">ETA ≤ Min.</label>
+                <input class="abinput" id="aEta" type="number" min="5" max="720" value="30"/></div>
+            </div>
+            <button class="abbtn" id="aSave">✚ Alert anlegen</button>
           </div>
-          <div class="abrow2">
-            <div class="abfield"><label class="ablbl">Mindestlänge <span class="abhlp">(≥ m)</span></label>
-              <input class="abinput" id="aLenAlert" type="number" min="0" value="150"/></div>
-            <div class="abfield"><label class="ablbl">ETA ≤ Min.</label>
-              <input class="abinput" id="aEta" type="number" min="5" max="720" value="30"/></div>
-          </div>
-          <button class="abbtn" id="aSave">✚ Alert anlegen</button>
         </div>
       </div>
       <div class="pscroll">
@@ -798,7 +803,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.5.6</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.5.7</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -1094,7 +1099,9 @@ let logOpen=false,logTypeF='all',logLenF=0,logDirF='all';
 let currentRefPoint={...DEFAULT_REF};
 const passes=s=>{
   if(!typeFSet.has('all')&&!typeFSet.has(s.type)) return false;
-  if(s.len && lenF && s.len < lenF) return false;  // len=0 = unbekannt → nicht filtern
+  // Schiffe ohne bekannte Länge → gelten als < 50m (werden bei lenF>=50 ausgeblendet)
+  const effectiveLen = s.len || 0;
+  if(lenF > 0 && effectiveLen < lenF) return false;
   return true;
 };
 const passesEta=s=>{
@@ -1766,22 +1773,28 @@ function buildTideSparkline(tide, forecast) {
   const nowLine = `<line x1="${nx.toFixed(1)}" y1="${PT-2}" x2="${nx.toFixed(1)}" y2="${H-PB+2}"
     stroke="var(--mut)" stroke-width="0.8" stroke-dasharray="2,2" opacity="0.5"/>`;
 
-  // Wendepunkte suchen – nur ab "Jetzt" (in Forecast oder im restlichen Past)
+  // Wendepunkte suchen – ab "Jetzt" vorwärts
+  // Priorität: TRM-Forecast, sonst restliche Messpunkte nach nowIdx
   const searchData = fcDs.length > 3
     ? [pastDs[nowIdx], ...fcDs]
-    : allPts.slice(nowIdx);
-  const rawTurning = findTurningPoints(searchData, 8, 5).slice(0, 3);
+    : allPts.slice(Math.max(0, nowIdx));
+  const rawTurning = findTurningPoints(searchData, 8, 5);
+
+  // Nur echte Zukunfts-Zeitstempel
+  const nowTime = new Date(nowPt.timestamp).getTime();
+  const futureTurning = rawTurning
+    .filter(tp => new Date(tp.timestamp).getTime() >= nowTime)
+    .slice(0, 3);
 
   // Marker + Labels für Wendepunkte
   let tpMarkers = '';
-  const turning = rawTurning.map((tp, idx) => {
-    const ptIdx = fcDs.length > 3 ? nowIdx + tp.i : nowIdx + tp.i;
+  const turning = futureTurning.map((tp) => {
+    const ptIdx = nowIdx + tp.i;
     const cappedIdx = Math.min(ptIdx, allPts.length - 1);
     const x = toX(cappedIdx), y = toY(tp.value);
     const col = tp.isHW ? 'var(--blue,#4af)' : '#f0a050';
     const lbl = tp.isHW ? 'HW' : 'NW';
     const timeStr = new Date(tp.timestamp).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-    // Linie vom Punkt nach oben/unten zum Label
     const labelY = tp.isHW ? PT - 1 : H - PB + 1;
     const anchor  = cappedIdx < allPts.length * 0.8 ? 'middle' : 'end';
     tpMarkers += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" fill="${col}"/>`;
