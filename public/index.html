@@ -55,6 +55,7 @@
   --bg:#f0f4f9;--surf:#fff;--surf2:#f5f8fc;--off:#e8eef6;--brd:#cdd7e5;--div:#dde5f0;
   --txt:#18253a;--mut:#607a96;--fnt:#9aafc6;
   --blue:#1568c8;--bhi:#dbeafe;--tel:#0a7a6a;--red:#b92c38;--map-bg:#d4e4f0;
+  --topbar-h:calc(50px + env(safe-area-inset-top, 0px));
 }
 [data-theme="dark"]{
   --bg:#080f1a;--surf:#0c1828;--surf2:#101e30;--off:#152437;--brd:#1e3350;--div:#192c45;
@@ -90,16 +91,22 @@ input,select{font-family:var(--font);}
 .abinput:focus{outline:none;border-color:var(--blue);background:var(--surf);}
 
 /* ── TOPBAR ──────────────────────────────────────────────────────────────── */
-#topbar{position:fixed;top:0;left:0;right:0;height:50px;
-  background:color-mix(in srgb, var(--surf) 75%, transparent);
-  backdrop-filter:blur(14px) saturate(160%);
-  -webkit-backdrop-filter:blur(14px) saturate(160%);
+#topbar{position:fixed;top:0;left:0;right:0;
+  height:calc(50px + env(safe-area-inset-top, 0px));
+  padding-top:env(safe-area-inset-top, 0px);
+  padding-left:max(14px, env(safe-area-inset-left, 0px));
+  padding-right:max(14px, env(safe-area-inset-right, 0px));
+  background:color-mix(in srgb, var(--surf) 55%, transparent);
+  backdrop-filter:blur(20px) saturate(180%);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
   border-bottom:1px solid color-mix(in srgb, var(--brd) 60%, transparent);
-  display:flex;align-items:center;gap:8px;padding:0 14px;z-index:200;
+  display:flex;align-items:center;gap:8px;z-index:200;
   box-shadow:0 1px 12px rgba(0,0,0,.18);}
-#weatherWidget, #legend, #playbackBar, #mobile-bottom {
-  backdrop-filter:blur(10px) saturate(140%);
-  -webkit-backdrop-filter:blur(10px) saturate(140%);
+
+#weatherWidget, #legend, #playbackBar, #mobile-bottom, #anonBanner {
+  background:color-mix(in srgb, var(--surf) 70%, transparent) !important;
+  backdrop-filter:blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter:blur(16px) saturate(180%) !important;
 }
 .dwatch{background:none;border:none;color:#ffb600;font-size:24px;cursor:pointer;padding:0 8px;
   transition:transform .15s;line-height:1;}
@@ -140,7 +147,7 @@ input,select{font-family:var(--font);}
 .user-pill{background:var(--bhi);color:var(--blue);border-color:var(--blue);font-weight:700;}
 
 /* ── MAIN LAYOUT ─────────────────────────────────────────────────────────── */
-#content{position:fixed;top:50px;left:0;right:0;bottom:0;display:flex;overflow:hidden;}
+#content{position:fixed;top:var(--topbar-h);left:0;right:0;bottom:0;display:flex;overflow:hidden;}
 .panel{width:260px;min-width:260px;background:var(--surf);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden;}
 .panel.right{border-right:none;border-left:1px solid var(--brd);width:265px;min-width:265px;}
 .ph{padding:11px 14px 9px;border-bottom:1px solid var(--div);flex-shrink:0;}
@@ -163,7 +170,7 @@ input,select{font-family:var(--font);}
 input[type=range]{flex:1;accent-color:var(--blue);}
 .slider-val{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--blue);min-width:52px;text-align:right;}
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px 13px;border-bottom:1px solid var(--div);flex-shrink:0;}
-.mob-stat-grid{grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 8px;}
+.mob-stat-grid{grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 8px;flex-shrink:0;border-bottom:1px solid var(--div);}
 .mob-stat-grid .sg-item{padding:5px 4px;}
 .mob-stat-grid .sg-num{font-size:16px;}
 .mob-stat-grid .sg-lbl{font-size:8px;letter-spacing:0;}
@@ -246,7 +253,8 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 #detail{position:absolute;bottom:50px;right:10px;z-index:500;width:min(310px,calc(100vw - 20px));background:var(--surf);border:1px solid var(--brd);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.25);display:none;overflow:hidden;max-height:calc(100vh - 120px);overflow-y:auto;-webkit-overflow-scrolling:touch;}
 #detail.open{display:block;animation:slideup .18s ease both;}
 @keyframes slideup{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.dimg{width:100%;height:120px;object-fit:cover;background:var(--off);display:block;}
+.dimg{width:100%;height:120px;object-fit:cover;background:var(--off);display:block;cursor:zoom-in;transition:opacity .15s;}
+.dimg:hover{opacity:.85;}
 .dimg-ph{width:100%;height:80px;background:linear-gradient(135deg,var(--off),var(--surf2));display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--brd);}
 .dbody{padding:12px 14px;display:grid;gap:9px;}
 .dh{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
@@ -278,7 +286,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
 
 /* ── STATS PAGE ──────────────────────────────────────────────────────────── */
-#statsPage{position:fixed;top:50px;left:0;right:0;bottom:0;z-index:100;background:var(--bg);display:none;flex-direction:column;}
+#statsPage{position:fixed;top:var(--topbar-h);left:0;right:0;bottom:0;z-index:100;background:var(--bg);display:none;flex-direction:column;}
 #statsPage.open{display:flex;animation:fadeIn .15s ease;}
 #statsBar{padding:10px 14px;background:var(--surf);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap;}
 #statsBar h2{font-size:14px;font-weight:800;}
@@ -297,7 +305,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .stats-bar-lbl{font-family:var(--mono);font-size:11px;color:var(--mut);}
 
 /* ── LOG PAGE ────────────────────────────────────────────────────────────── */
-#logPage{position:fixed;top:50px;left:0;right:0;bottom:0;z-index:100;background:var(--bg);display:none;flex-direction:column;}
+#logPage{position:fixed;top:var(--topbar-h);left:0;right:0;bottom:0;z-index:100;background:var(--bg);display:none;flex-direction:column;}
 #logPage.open{display:flex;animation:fadeIn .15s ease;}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 #logBar{padding:10px 14px;background:var(--surf);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.08);}
@@ -329,7 +337,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .li-noeta{color:var(--fnt);font-size:11px;}
 
 /* ── SETTINGS PAGE ───────────────────────────────────────────────────────── */
-#settingsPage{position:fixed;top:50px;right:0;bottom:0;width:min(400px,100vw);z-index:150;
+#settingsPage{position:fixed;top:var(--topbar-h);right:0;bottom:0;width:min(400px,100vw);z-index:150;
   background:var(--surf);border-left:1px solid var(--brd);display:none;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.18);}
 #settingsPage.open{display:flex;animation:slideRight .2s ease;}
 @keyframes slideRight{from{transform:translateX(100%)}to{transform:none}}
@@ -387,7 +395,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   .leaflet-top.leaflet-left{top:4px;}
   .leaflet-control-zoom{margin-top:4px!important;margin-left:8px!important;}
   /* Weather Widget: mobil oben rechts (wie Desktop), nicht mittig */
-  #weatherWidget{top:56px;bottom:auto;right:8px;font-size:10px;min-width:130px;}
+  #weatherWidget{top:calc(var(--topbar-h) + 6px);bottom:auto;right:8px;font-size:10px;min-width:130px;}
   .lr{margin-bottom:1px;}
   /* Buildinfo ausblenden auf mobile */
   #buildinfo{display:none;}
@@ -440,7 +448,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 }
 
 /* ── WETTER WIDGET ───────────────────────────────────────────────────────── */
-#weatherWidget{position:absolute;top:50px;right:10px;z-index:490;background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:7px 11px;font-size:11px;color:var(--txt);box-shadow:0 4px 16px rgba(0,0,0,.2);min-width:190px;cursor:default;}
+#weatherWidget{position:absolute;top:var(--topbar-h);right:10px;z-index:490;background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:7px 11px;font-size:11px;color:var(--txt);box-shadow:0 4px 16px rgba(0,0,0,.2);min-width:190px;cursor:default;}
 #weatherWidget.loading{opacity:.6;}
 .ww-row{display:flex;align-items:center;gap:7px;margin-bottom:3px;}
 .ww-icon{font-size:20px;line-height:1;}
@@ -458,8 +466,6 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .tide-tp-val{font-size:8px;}
 
 /* ── Log Viewer ──────────────────────────────────────────────────────────── */
-#logPage{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;flex-direction:column;}
-#logPage.open{display:flex;}
 #logBody{flex:1;overflow-y:auto;padding:12px;font-family:var(--mono);font-size:11px;line-height:1.6;}
 .log-line{padding:1px 0;border-bottom:1px solid var(--div);white-space:pre-wrap;word-break:break-all;}
 .log-line.error{color:var(--red);}
@@ -476,7 +482,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .ubtn.primary{background:var(--blue);color:#fff;border-color:var(--blue);}
 
 /* ── Anon Banner ─────────────────────────────────────────────────────────── */
-#anonBanner{display:none;position:fixed;top:50px;left:50%;transform:translateX(-50%);z-index:180;
+#anonBanner{display:none;position:fixed;top:var(--topbar-h);left:50%;transform:translateX(-50%);z-index:180;
   background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:8px 16px;
   font-size:12px;color:var(--mut);box-shadow:0 4px 16px rgba(0,0,0,.2);white-space:nowrap;}
 #anonBanner a{color:var(--blue);cursor:pointer;}
@@ -491,7 +497,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .db-stat-card{background:var(--surf2);border:1px solid var(--brd);border-radius:8px;padding:10px 12px;}
 .db-stat-val{font-size:18px;font-weight:700;color:var(--blue);}
 .db-stat-lbl{font-size:10px;color:var(--mut);margin-top:2px;}
-@media(max-width:700px){#weatherWidget{top:56px;bottom:auto;right:8px;font-size:10px;min-width:180px;max-width:200px;}}
+@media(max-width:700px){#weatherWidget{top:calc(var(--topbar-h) + 6px);bottom:auto;right:8px;font-size:10px;min-width:180px;max-width:200px;}}
 #weatherWidget.hidden{display:none;}
 
 /* ── PLAYBACK BAR ────────────────────────────────────────────────────────── */
@@ -614,7 +620,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.1</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.2</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -943,7 +949,11 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.7.1</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.7.2</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
+      <div class="sform" style="margin-top:8px">
+        <button class="sbtn-sec" id="sAppUpdate" style="font-size:11px;width:fit-content">🔄 App-Update prüfen</button>
+        <div class="shint" id="sUpdateStatus" style="font-size:10px;margin-top:4px"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -956,14 +966,15 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     <button class="mob-tab" data-mob="mob-filter">⚙️ Filter <span id="filterBadge" style="display:none;background:var(--blue);color:#fff;border-radius:99px;font-size:9px;padding:1px 5px;margin-left:2px">!</span></button>
     <button class="mob-tab mob-collapse-btn" id="mobCollapseBtn" title="Einklappen">▼</button>
   </div>
+  <!-- Mobile Schiffstypen-Anzeige (immer sichtbar oberhalb des Tab-Inhalts) -->
+  <div class="stat-grid mob-stat-grid">
+    <div class="sg-item sg-filter" data-t="Container" style="border-left-color:#ff8c00"><div class="sg-num" style="color:#ff8c00" id="mStC">0</div><div class="sg-lbl">Container</div></div>
+    <div class="sg-item sg-filter" data-t="Cruise"    style="border-left-color:#ff1493"><div class="sg-num" style="color:#ff1493" id="mStK">0</div><div class="sg-lbl">Kreuzfahrt</div></div>
+    <div class="sg-item sg-filter" data-t="Tanker"    style="border-left-color:#c9aa00"><div class="sg-num" style="color:#c9aa00" id="mStT">0</div><div class="sg-lbl">Tanker</div></div>
+    <div class="sg-item sg-filter" data-t="Cargo"     style="border-left-color:#00cc66"><div class="sg-num" style="color:#00cc66" id="mStF">0</div><div class="sg-lbl">Frachter</div></div>
+  </div>
   <div class="mob-content-wrap">
   <div class="mob-content on" id="mob-eta">
-    <div class="stat-grid mob-stat-grid">
-      <div class="sg-item sg-filter" data-t="Container" style="border-left-color:#ff8c00"><div class="sg-num" style="color:#ff8c00" id="mStC">0</div><div class="sg-lbl">Container</div></div>
-      <div class="sg-item sg-filter" data-t="Cruise"    style="border-left-color:#ff1493"><div class="sg-num" style="color:#ff1493" id="mStK">0</div><div class="sg-lbl">Kreuzfahrt</div></div>
-      <div class="sg-item sg-filter" data-t="Tanker"    style="border-left-color:#c9aa00"><div class="sg-num" style="color:#c9aa00" id="mStT">0</div><div class="sg-lbl">Tanker</div></div>
-      <div class="sg-item sg-filter" data-t="Cargo"     style="border-left-color:#00cc66"><div class="sg-num" style="color:#00cc66" id="mStF">0</div><div class="sg-lbl">Frachter</div></div>
-    </div>
     <ul class="slist" id="mobFutureList"></ul>
     <div class="empty" id="mobFutureEmpty">Noch keine Prognosen.</div>
   </div>
@@ -1163,7 +1174,7 @@ async function checkAuth() {
     $('loginVersion').textContent = 'Server nicht erreichbar';
   }
   // Splash früh ausblenden wenn Login-Screen erscheint
-  const sp = $('splash'); if (sp) setTimeout(() => sp.classList.add('hide'), 600);
+  const sp = $('splash'); if (sp) setTimeout(() => sp.classList.add("hide"), 1200);
 
   // Prüfen ob überhaupt User existieren
   let info;
@@ -1230,16 +1241,33 @@ const latFmt=v => v.toFixed(4)+(v>=0?'°N':'°S');
 const lonFmt=v => v.toFixed(4)+(v>=0?'°E':'°W');
 const hashS =s => `${s.name}|${s.type}|${s.sog}|${s.cog}|${s.len}|${s.dest}|${Math.floor((s.seen||0)/5000)}`;
 
-// Client-side ETA (gleiche Logik wie Server, für persönlichen Referenzpunkt)
+// Client-side ETA mit Haversine + Bearing-Check (gleiche Logik wie Server)
+function _distNm(la1, lo1, la2, lo2) {
+  const R=6371, rad=x=>x*Math.PI/180;
+  const dLa=rad(la2-la1), dLo=rad(lo2-lo1);
+  const a=Math.sin(dLa/2)**2 + Math.cos(rad(la1))*Math.cos(rad(la2))*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a)) / 1.852;
+}
+function _bearing(la1, lo1, la2, lo2) {
+  const rad=x=>x*Math.PI/180;
+  const dLo=rad(lo2-lo1);
+  const y=Math.sin(dLo)*Math.cos(rad(la2));
+  const x=Math.cos(rad(la1))*Math.sin(rad(la2)) - Math.sin(rad(la1))*Math.cos(rad(la2))*Math.cos(dLo);
+  return (Math.atan2(y,x)*180/Math.PI + 360) % 360;
+}
+function _angDiff(a,b) { const d=Math.abs(a-b)%360; return d>180?360-d:d; }
+
 function calcETA(ship, ref) {
-  const R=ref||DEFAULT_REF;
-  if(!ship.lon||!ship.sog||ship.sog<15) return null;
-  const kn=ship.sog/10, h=ship.cog??0, toHH=h>=30&&h<=200;
-  const approaching=(toHH&&ship.lon<R.lon-0.01)||(!toHH&&ship.lon>R.lon+0.01);
-  if(!approaching) return null;
-  const distNm=Math.abs((R.lon-ship.lon)*60*Math.cos(R.lat*Math.PI/180));
-  const hours=distNm/kn;
-  if(hours<0||hours>8) return null;
+  const R = ref || DEFAULT_REF;
+  if (!ship.lat || !ship.lon || !ship.sog || ship.sog < 15) return null;
+  const kn = ship.sog / 10, h = ship.cog ?? 0;
+  const distNm = _distNm(ship.lat, ship.lon, R.lat, R.lon);
+  const brg    = _bearing(ship.lat, ship.lon, R.lat, R.lon);
+  if (_angDiff(h, brg) > 60) return null;  // Schiff fährt nicht zum Referenzpunkt
+  if (distNm > 30) return null;
+  const hours = distNm / kn;
+  if (hours < 0 || hours > 4) return null;
+  const toHH = h >= 60 && h <= 180;
   return { eta:new Date(Date.now()+hours*3600*1000), distNm:+distNm.toFixed(2), direction:toHH?'Hamburg':'Nordsee' };
 }
 
@@ -1618,7 +1646,8 @@ async function openTidePage() {
       }
       html += '</div></div>';
     }
-    html += `<div style="font-size:10px;color:var(--mut);margin-top:18px;text-align:center">Berechnet ${new Date(d.generated).toLocaleTimeString('de-DE')} · synthetische Vorhersage</div>`;
+    const srcLabel = d.source === 'pegelonline-wv' ? 'Pegelonline-Vorhersage (WSV/BfG)' : 'Eigene Extrapolation aus Messdaten';
+    html += `<div style="font-size:10px;color:var(--mut);margin-top:18px;text-align:center">Stand ${new Date(d.generated).toLocaleTimeString('de-DE')} · Quelle: ${srcLabel}</div>`;
     $('tideBody').innerHTML = html;
   } catch(e) {
     $('tideBody').innerHTML = `<div style="color:var(--red);padding:20px">Fehler: ${e.message}</div>`;
@@ -1712,7 +1741,7 @@ function closeLightbox() {
 }
 // Klick auf Schiffsfoto öffnet Lightbox
 document.addEventListener('click', e => {
-  const img = e.target.closest('#dphoto img');
+  const img = e.target.closest('#dimgwrap img.dimg, .dimg');
   if (img && img.src && !img.src.includes('data:')) {
     e.stopPropagation();
     openLightbox(img.src);
@@ -2009,7 +2038,7 @@ function startApp(){
       dbg(`${data.length} Schiffe initial geladen (REST)`);
     }
     // Splash ausblenden sobald Daten da sind
-    const sp = $('splash'); if (sp) setTimeout(() => sp.classList.add('hide'), 400);
+    const sp = $('splash'); if (sp) setTimeout(() => sp.classList.add("hide"), 1200);
   }).catch(e => {
     dbg('Initialer Schiffsabruf fehlgeschlagen: '+e.message);
     const sp = $('splash'); if (sp) sp.classList.add('hide');
@@ -2303,13 +2332,73 @@ const HOME_VIEW = { lat: 53.570, lon: 9.730, zoom: 12 };
 })();
 
 /* ─── Service Worker registrieren ───────────────────────────────────────── */
+let _swReg = null;
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('[SW] Registriert:', reg.scope))
+      .then(reg => {
+        _swReg = reg;
+        console.log('[SW] Registriert:', reg.scope);
+        // Auto-Update-Check alle 30 min
+        setInterval(() => reg.update().catch(()=>{}), 30 * 60 * 1000);
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // Neue Version verfügbar – Banner zeigen
+                showUpdateBanner();
+              }
+            });
+          }
+        });
+      })
       .catch(err => console.warn('[SW] Fehler:', err));
   });
 }
+
+function showUpdateBanner() {
+  if ($('updateBanner')) return;
+  const b = document.createElement('div');
+  b.id = 'updateBanner';
+  b.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:9999;background:var(--blue);color:#fff;padding:10px 16px;border-radius:8px;font-size:12px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;';
+  b.innerHTML = '🔄 Neue Version verfügbar – jetzt aktualisieren';
+  b.onclick = doAppUpdate;
+  document.body.appendChild(b);
+}
+
+async function doAppUpdate() {
+  try {
+    if (_swReg) {
+      // Warte auf eventuelle pending SW, dann skipWaiting + reload
+      if (_swReg.waiting) _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      await _swReg.update();
+    }
+    // Alle Caches löschen
+    if (window.caches) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    // Reload mit Cache-Bust
+    location.reload();
+  } catch(e) { alert('Update fehlgeschlagen: '+e.message); }
+}
+
+if ($('sAppUpdate')) $('sAppUpdate').onclick = async () => {
+  $('sUpdateStatus').textContent = 'Prüfe…';
+  $('sAppUpdate').disabled = true;
+  try {
+    if (_swReg) await _swReg.update();
+    const v = await fetch('/api/version?_=' + Date.now()).then(r => r.json());
+    const localV = $('sVersion').textContent.trim();
+    if (v.version && v.version !== localV) {
+      $('sUpdateStatus').innerHTML = `✨ Neue Version <b>${v.version}</b> verfügbar! <a onclick="doAppUpdate()" style="color:var(--blue);cursor:pointer">Jetzt aktualisieren</a>`;
+    } else {
+      $('sUpdateStatus').textContent = '✓ Du hast die neueste Version (' + localV + ')';
+    }
+  } catch(e) { $('sUpdateStatus').textContent = 'Fehler: '+e.message; }
+  $('sAppUpdate').disabled = false;
+};
 
 
 /* ─── Wetter Widget ─────────────────────────────────────────────────────── */
@@ -2645,7 +2734,12 @@ async function loadServerLogs(full = false) {
 }
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-if ($('slogClose'))     $('slogClose').onclick     = closeServerLog;
+// Robustere Handler via Event-Delegation (funktionieren auch wenn DOM später da ist)
+document.addEventListener('click', (e) => {
+  if (e.target && (e.target.id === 'slogClose' || e.target.closest('#slogClose'))) {
+    closeServerLog();
+  }
+});
 if ($('slogRefresh'))   $('slogRefresh').onclick   = () => loadServerLogs(true);
 if ($('openServerLogBtn')) $('openServerLogBtn').onclick = openServerLog;
 if ($('slogAutoRefresh')) {
@@ -2811,9 +2905,9 @@ async function pbSeek(ts) {
     {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
   const data = await apiFetch(`/api/playback?ts=${ts}`).then(r => r.json()).catch(() => null);
   if (!data) return;
-  // Nur Schiffe anzeigen deren Datenpunkt max. 4 Minuten vom Zielzeitpunkt entfernt ist
-  // → verhindert "Teleportations"-Artefakte bei großen Zeitlücken
-  const MAX_DIFF_MS = 4 * 60 * 1000;
+  // Schiffe mit Datenpunkt max. 6 Min vom Zielzeitpunkt anzeigen
+  // (bei 1-min Speicherintervall sollten alle relevanten Schiffe in der Nähe sein)
+  const MAX_DIFF_MS = 6 * 60 * 1000;
   pbShips = new Map(
     data.ships
       .filter(s => (s.diff ?? Infinity) <= MAX_DIFF_MS)

@@ -2,7 +2,7 @@
  * Strategie: Shell (HTML/CSS/JS/Leaflet) aus Cache, API-Calls immer live.
  * Version: muss bei jedem Deploy erhöht werden damit der SW sich aktualisiert.
  */
-const CACHE   = 'elbe-radar-v0.7.1';
+const CACHE   = 'elbe-radar-v0.7.2';
 const SHELL   = [
   '/',
   '/manifest.json',
@@ -75,6 +75,10 @@ self.addEventListener('fetch', e => {
              new Response('Offline – bitte App neu starten', { status: 503 });
     })
   );
+});
+
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 /* ── Push Notifications ───────────────────────────────────────────────────── */

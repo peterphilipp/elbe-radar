@@ -173,7 +173,7 @@ const deleteSessStmt = db.prepare(`DELETE FROM sessions WHERE token=?`);
 const getUserSettStmt= db.prepare(`SELECT value FROM user_settings WHERE user_id=? AND key=?`);
 const setUserSettStmt= db.prepare(`INSERT OR REPLACE INTO user_settings (user_id,key,value) VALUES (?,?,?)`);
 
-const HISTORY_INTERVAL = 5 * 60 * 1000;
+const HISTORY_INTERVAL = 60 * 1000; // 1 Minute – häufigere Snapshots für flüssiges Playback
 
 // ── Password helpers ──────────────────────────────────────────────────────────
 function hashPassword(password) {

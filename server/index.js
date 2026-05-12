@@ -145,16 +145,12 @@ function legacyAuth(req, res, next) {
 }
 
 // ── AIS ──────────────────────────────────────────────────────────────────────
-const ais = new AISConnector(ships => broadcast(ships));
-ais.start();
-
 const SHIP_TTL_MS    = 30 * 60 * 1000; // 30 Minuten – Schiffe bleiben länger sichtbar
-const BROADCAST_RATE = 3 * 1000;       // max alle 3s broadcasten (statt bei jedem AIS-Update)
+const BROADCAST_RATE = 3 * 1000;       // max alle 3s broadcasten
 
 let lastBroadcast = 0, broadcastPending = null;
 function broadcast(ships) {
   const now = Date.now();
-  // Rate-Limiting: zu schnelle aufeinanderfolgende Broadcasts unterdrücken
   if (now - lastBroadcast < BROADCAST_RATE) {
     if (broadcastPending) return;
     broadcastPending = setTimeout(() => {
@@ -170,6 +166,9 @@ function broadcast(ships) {
   for (const c of wss.clients) if (c.readyState===WebSocket.OPEN) c.send(payload);
 }
 
+const ais = new AISConnector(ships => broadcast(ships));
+ais.start();
+
 // Alte Schiffe aus In-Memory-Map entfernen und Clients informieren
 setInterval(() => {
   const cutoff = Date.now() - SHIP_TTL_MS;
@@ -181,7 +180,7 @@ setInterval(() => {
     console.log(`[AIS] ${removed} abgelaufene Schiffe (>30 Min) entfernt`);
     broadcast(ais.ships);
   }
-}, 5 * 60 * 1000); // alle 5 Minuten cleanup
+}, 5 * 60 * 1000);
 
 wss.on('connection', (ws, req) => {
   // WebSocket-Authentifizierung via Query-Parameter; anonym erlaubt (eingeschränkt)
@@ -600,34 +599,60 @@ app.get('/api/weather', async (req, res) => {
 // ── TIDE FORECAST (mehrtägige HW/NW-Vorhersage) ───────────────────────────────
 app.get('/api/tide-forecast', async (req, res) => {
   try {
-    // Aktuelle Messdaten holen (12h Vergangenheit)
-    const tideRaw = await new Promise((resolve) => {
-      const url = `https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/SCHULAU/W/measurements.json?start=PT12H`;
-      const tr = https.get(url, { headers: { 'User-Agent': 'ElbeRadar/0.6' } }, resp => {
+    // Pegelonline bietet für SCHULAU eine WV-Zeitreihe (Wasserstandsvorhersage)
+    // mit echten Vorhersagedaten der WSV/BfG.
+    const fetchUrl = (url, timeoutMs = 6000) => new Promise(resolve => {
+      const tr = https.get(url, { headers: { 'User-Agent': 'ElbeRadar/0.7' } }, resp => {
         let d = ''; resp.on('data', c => d += c);
         resp.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { resolve(null); } });
       });
       tr.on('error', () => resolve(null));
-      tr.setTimeout(6000, () => { tr.destroy(); resolve(null); });
+      tr.setTimeout(timeoutMs, () => { tr.destroy(); resolve(null); });
     });
-    if (!Array.isArray(tideRaw) || tideRaw.length < 60) {
-      return res.json({ error: 'Keine Messdaten verfügbar', extremes: [] });
+
+    // 1) Echte Vorhersage (WV) versuchen - 72h ab jetzt
+    let extremes = [];
+    let source = 'extrapolation';
+    const wvUrl = `https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/SCHULAU/WV/measurements.json?start=P0D&end=P3D`;
+    const wvRaw = await fetchUrl(wvUrl);
+
+    let forecastSeries = null;
+    if (Array.isArray(wvRaw) && wvRaw.length > 20) {
+      forecastSeries = wvRaw;
+      source = 'pegelonline-wv';
+      console.log(`[Tide] Echte WV-Vorhersage: ${wvRaw.length} Punkte`);
+    } else {
+      // 2) Fallback: Messdaten + extrapolieren
+      const wRaw = await fetchUrl(`https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/SCHULAU/W/measurements.json?start=PT24H`);
+      if (Array.isArray(wRaw) && wRaw.length >= 60) {
+        forecastSeries = extrapolateTide(wRaw, 72 * 3600);
+        source = 'extrapolation';
+        console.log(`[Tide] Extrapoliert aus ${wRaw.length} Messpunkten`);
+      }
     }
-    // 3 Tage = 72h voraus extrapolieren
-    const forecast = extrapolateTide(tideRaw, 72 * 3600);
-    // HW/NW-Wendepunkte finden
-    const extremes = [];
-    let lastEx = null;
-    for (let i = 1; i < forecast.length - 1; i++) {
-      const v = forecast[i].value, vp = forecast[i-1].value, vn = forecast[i+1].value;
-      const isHW = v > vp && v > vn;
-      const isNW = v < vp && v < vn;
+
+    if (!forecastSeries || forecastSeries.length < 5) {
+      return res.json({ error: 'Keine Daten verfügbar', extremes: [], source: 'none' });
+    }
+
+    // Wendepunkte mit ordentlichem Mindestabstand (4h)
+    const MIN_GAP_MS = 4 * 3600 * 1000;
+    let lastExT = 0, lastIsHW = null;
+    for (let i = 2; i < forecastSeries.length - 2; i++) {
+      const t = new Date(forecastSeries[i].timestamp).getTime();
+      if (t - lastExT < MIN_GAP_MS) continue;
+      const v   = forecastSeries[i].value;
+      const vp1 = forecastSeries[i-1].value, vp2 = forecastSeries[i-2].value;
+      const vn1 = forecastSeries[i+1].value, vn2 = forecastSeries[i+2].value;
+      const isHW = v > vp1 && v > vn1 && v >= vp2 && v >= vn2;
+      const isNW = v < vp1 && v < vn1 && v <= vp2 && v <= vn2;
       if (!isHW && !isNW) continue;
-      if (lastEx && lastEx.isHW === isHW) continue;
-      extremes.push({ time: forecast[i].timestamp, value: Math.round(v), isHW });
-      lastEx = extremes[extremes.length - 1];
+      if (lastIsHW === isHW) continue; // muss alternieren
+      extremes.push({ time: forecastSeries[i].timestamp, value: Math.round(v), isHW });
+      lastExT = t; lastIsHW = isHW;
     }
-    res.json({ extremes, generated: new Date().toISOString() });
+
+    res.json({ extremes, source, generated: new Date().toISOString() });
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
@@ -869,11 +894,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.7.1',
+  uptime: Math.floor(process.uptime()), version:'0.7.2',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.7.1' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.7.2' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));
