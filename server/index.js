@@ -107,12 +107,25 @@ function legacyAuth(req, res, next) {
 const ais = new AISConnector(ships => broadcast(ships));
 ais.start();
 
-const SHIP_TTL_MS = 10 * 60 * 1000; // 10 Minuten
+const SHIP_TTL_MS    = 30 * 60 * 1000; // 30 Minuten – Schiffe bleiben länger sichtbar
+const BROADCAST_RATE = 3 * 1000;       // max alle 3s broadcasten (statt bei jedem AIS-Update)
 
+let lastBroadcast = 0, broadcastPending = null;
 function broadcast(ships) {
-  const cutoff = Date.now() - SHIP_TTL_MS;
+  const now = Date.now();
+  // Rate-Limiting: zu schnelle aufeinanderfolgende Broadcasts unterdrücken
+  if (now - lastBroadcast < BROADCAST_RATE) {
+    if (broadcastPending) return;
+    broadcastPending = setTimeout(() => {
+      broadcastPending = null;
+      broadcast(ships);
+    }, BROADCAST_RATE - (now - lastBroadcast));
+    return;
+  }
+  lastBroadcast = now;
+  const cutoff = now - SHIP_TTL_MS;
   const active = [...ships.values()].filter(s => (s.seen || 0) >= cutoff);
-  const payload = JSON.stringify({ type:'ships', data: active, ts: Date.now() });
+  const payload = JSON.stringify({ type:'ships', data: active, ts: now });
   for (const c of wss.clients) if (c.readyState===WebSocket.OPEN) c.send(payload);
 }
 
@@ -124,10 +137,10 @@ setInterval(() => {
     if ((s.seen || 0) < cutoff) { ais.ships.delete(mmsi); removed++; }
   }
   if (removed > 0) {
-    console.log(`[AIS] ${removed} abgelaufene Schiffe aus Memory entfernt`);
-    broadcast(ais.ships); // Clients über Entfernung informieren
+    console.log(`[AIS] ${removed} abgelaufene Schiffe (>30 Min) entfernt`);
+    broadcast(ais.ships);
   }
-}, 60 * 1000);
+}, 5 * 60 * 1000); // alle 5 Minuten cleanup
 
 wss.on('connection', (ws, req) => {
   // WebSocket-Authentifizierung via Query-Parameter; anonym erlaubt (eingeschränkt)
@@ -714,11 +727,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.6.4',
+  uptime: Math.floor(process.uptime()), version:'0.6.5',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.6.4' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.6.5' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));

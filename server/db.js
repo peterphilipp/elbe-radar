@@ -191,7 +191,7 @@ function saveShip(ship) {
 function cleanup() {
   const cutoff = Date.now() - RETAIN_DAYS * 24 * 3600 * 1000;
   const r1 = db.prepare(`DELETE FROM history WHERE ts < ?`).run(cutoff);
-  const r2 = db.prepare(`DELETE FROM ships WHERE seen < ?`).run(Date.now() - 20*60*1000);
+  const r2 = db.prepare(`DELETE FROM ships WHERE seen < ?`).run(Date.now() - 60*60*1000);
   db.prepare(`DELETE FROM alerted WHERE ts < ?`).run(Date.now() - 7*24*3600*1000);
   db.prepare(`DELETE FROM sessions WHERE expires_at < ?`).run(Date.now());
   console.log(`[DB] Cleanup: ${r1.changes} History, ${r2.changes} Schiffe`);

@@ -101,6 +101,23 @@ input,select{font-family:var(--font);}
 input[type=range]{flex:1;accent-color:var(--blue);}
 .slider-val{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--blue);min-width:52px;text-align:right;}
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px 13px;border-bottom:1px solid var(--div);flex-shrink:0;}
+.mob-stat-grid{grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 8px;}
+.mob-stat-grid .sg-item{padding:5px 4px;}
+.mob-stat-grid .sg-num{font-size:16px;}
+.mob-stat-grid .sg-lbl{font-size:8px;letter-spacing:0;}
+
+/* ── Ship Peek (mobile Track-First Card) ────────────────────────────── */
+#shipPeek{display:none;position:fixed;left:8px;right:8px;bottom:50px;z-index:75;
+  background:var(--surf);border:1px solid var(--brd);border-radius:12px;padding:10px 12px;
+  box-shadow:0 6px 24px rgba(0,0,0,.35);animation:peekIn .2s ease;}
+@keyframes peekIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.peek-row{display:flex;align-items:center;gap:8px;}
+.peek-name{flex:1;font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.peek-close{background:none;border:none;color:var(--mut);font-size:22px;cursor:pointer;padding:0 4px;line-height:1;}
+.peek-meta{display:flex;gap:10px;font-size:11px;color:var(--mut);margin:6px 0 4px;flex-wrap:wrap;}
+.peek-details{width:100%;background:var(--blue);color:#fff;border:none;border-radius:8px;
+  padding:7px;font-weight:700;font-size:12px;cursor:pointer;margin-top:4px;}
+.peek-details:hover{filter:brightness(1.15);}
 .sg-item{background:var(--surf2);border:1px solid var(--div);border-left-width:3px;border-radius:8px;padding:8px 10px;text-align:center;}
 .sg-filter{cursor:pointer;transition:opacity .15s,box-shadow .15s;}
 .sg-filter:hover{opacity:.85;}
@@ -503,7 +520,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.6.4</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.6.5</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -806,7 +823,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.6.4</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.6.5</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -821,6 +838,12 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   </div>
   <div class="mob-content-wrap">
   <div class="mob-content on" id="mob-eta">
+    <div class="stat-grid mob-stat-grid">
+      <div class="sg-item sg-filter" data-t="Container" style="border-left-color:#ff8c00"><div class="sg-num" style="color:#ff8c00" id="mStC">0</div><div class="sg-lbl">Container</div></div>
+      <div class="sg-item sg-filter" data-t="Cruise"    style="border-left-color:#ff1493"><div class="sg-num" style="color:#ff1493" id="mStK">0</div><div class="sg-lbl">Kreuzfahrt</div></div>
+      <div class="sg-item sg-filter" data-t="Tanker"    style="border-left-color:#c9aa00"><div class="sg-num" style="color:#c9aa00" id="mStT">0</div><div class="sg-lbl">Tanker</div></div>
+      <div class="sg-item sg-filter" data-t="Cargo"     style="border-left-color:#00cc66"><div class="sg-num" style="color:#00cc66" id="mStF">0</div><div class="sg-lbl">Frachter</div></div>
+    </div>
     <ul class="slist" id="mobFutureList"></ul>
     <div class="empty" id="mobFutureEmpty">Noch keine Prognosen.</div>
   </div>
@@ -1236,29 +1259,72 @@ function loadShipImage(mmsi){
 }
 
 /* ─── FAB Position helper (defined early, used by selectShip) ────────────── */
-function selectShip(mmsi){
-  selMmsi=mmsi;const s=ships.get(mmsi);if(!s)return;
-  loadShipImage(mmsi);
-  $('dname').textContent=s.name||'Unbekannt';
-  $('dbadge').innerHTML=`<span class="badge ${bcls(s.type)}">${s.type}</span> <span style="font-size:11px;color:var(--mut)">${dirLbl(s.cog)}</span>`;
-  // ETA mit persönlichem Referenzpunkt neu berechnen
-  const eta=calcETA(s,currentRefPoint);
-  $('dgrid').innerHTML=[
-    ['Geschw.',kn(s.sog)],['Kurs',s.cog!=null?s.cog+'°':'–'],
-    ['Länge',mt(s.len)],['Breite',mt(s.wid)],
-    ['Tiefgang',drf(s.drg)],['Rufzeichen',s.cs||'–'],
-    ['Ziel',s.dest||'–'],['ETA '+currentRefPoint.name, eta?etaSt(eta.eta):(s.eta_ts?etaSt(s.eta_ts):'–')],
-  ].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
-  $('dtime').textContent='Zuletzt '+hm(s.seen);
-  $('dlink').href=`https://www.marinetraffic.com/en/ais/home/centerx:${s.lon.toFixed(3)}/centery:${s.lat.toFixed(3)}/zoom:14`;
-  $('detail').classList.add('open');
-  if(window.innerWidth<=700){
-    $('detailBackdrop').classList.add('on');
-    $('detailHandle').style.display='block';
+function selectShip(mmsi, forceDetail = false){
+  const wasSelected = (selMmsi === mmsi);
+  selMmsi = mmsi;
+  const s = ships.get(mmsi); if(!s) return;
+  // Mobile: erster Klick = nur Track + Mini-Card, zweiter Klick = volle Details
+  const mobile = window.innerWidth <= 700;
+  const openDetail = !mobile || forceDetail || wasSelected;
+
+  if (openDetail) {
+    loadShipImage(mmsi);
+    $('dname').textContent=s.name||'Unbekannt';
+    $('dbadge').innerHTML=`<span class="badge ${bcls(s.type)}">${s.type}</span> <span style="font-size:11px;color:var(--mut)">${dirLbl(s.cog)}</span>`;
+    const eta=calcETA(s,currentRefPoint);
+    $('dgrid').innerHTML=[
+      ['Geschw.',kn(s.sog)],['Kurs',s.cog!=null?s.cog+'°':'–'],
+      ['Länge',mt(s.len)],['Breite',mt(s.wid)],
+      ['Tiefgang',drf(s.drg)],['Rufzeichen',s.cs||'–'],
+      ['Ziel',s.dest||'–'],['ETA '+currentRefPoint.name, eta?etaSt(eta.eta):(s.eta_ts?etaSt(s.eta_ts):'–')],
+    ].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+    $('dtime').textContent='Zuletzt '+hm(s.seen);
+    $('dlink').href=`https://www.marinetraffic.com/en/ais/home/centerx:${s.lon.toFixed(3)}/centery:${s.lat.toFixed(3)}/zoom:14`;
+    $('detail').classList.add('open');
+    if(mobile){
+      $('detailBackdrop').classList.add('on');
+      $('detailHandle').style.display='block';
+      $('mobile-bottom').classList.add('collapsed');
+      hideShipPeek();
+    }
+  } else {
+    // Mobile Track-First: nur Track zeigen + kompakte Peek-Card
+    showShipPeek(s);
     $('mobile-bottom').classList.add('collapsed');
+    updateLegendPos();
   }
   if(s.lat&&s.lon)map.panTo([s.lat,s.lon],{animate:true,duration:.6});
   drawTrack(mmsi);redraw();
+}
+
+function showShipPeek(s) {
+  let peek = $('shipPeek');
+  if (!peek) {
+    peek = document.createElement('div');
+    peek.id = 'shipPeek';
+    document.body.appendChild(peek);
+  }
+  const eta = calcETA(s, currentRefPoint);
+  const etaTs = eta ? new Date(eta.eta).getTime() : s.eta_ts;
+  peek.innerHTML = `
+    <div class="peek-row">
+      <span class="badge ${bcls(s.type)}">${s.type}</span>
+      <b class="peek-name">${s.name || '?'}</b>
+      <button class="peek-close" onclick="hideShipPeek();selMmsi=null;clearTrackLayers();redraw()" title="Schließen">×</button>
+    </div>
+    <div class="peek-meta">
+      <span>${mt(s.len)}</span>
+      <span>${kn(s.sog)}</span>
+      <span>${dirLbl(s.cog)}</span>
+      ${etaTs ? `<span style="color:var(--blue,#4af)">ETA ${etaSt(etaTs)}</span>` : ''}
+    </div>
+    <button class="peek-details" onclick="selectShip('${s.mmsi}', true)">Details ›</button>
+  `;
+  peek.style.display = 'block';
+}
+function hideShipPeek() {
+  const p = $('shipPeek');
+  if (p) p.style.display = 'none';
 }
 
 function buildFiHtml(s){
@@ -1280,10 +1346,17 @@ function updateStats(){
   $('shipNum').textContent=playbackMode ? pbShips.size : ships.size;
   // Zähler: gleicher Längenfilter wie Karte, aber ohne Typfilter
   const byLen=[...ships.values()].filter(passesByLen);
-  $('stC').textContent=byLen.filter(s=>s.type==='Container').length;
-  $('stK').textContent=byLen.filter(s=>s.type==='Cruise').length;
-  $('stT').textContent=byLen.filter(s=>s.type==='Tanker').length;
-  $('stF').textContent=byLen.filter(s=>s.type==='Cargo').length;
+  const cnt = {
+    Container: byLen.filter(s=>s.type==='Container').length,
+    Cruise:    byLen.filter(s=>s.type==='Cruise').length,
+    Tanker:    byLen.filter(s=>s.type==='Tanker').length,
+    Cargo:     byLen.filter(s=>s.type==='Cargo').length,
+  };
+  $('stC').textContent=cnt.Container; $('stK').textContent=cnt.Cruise;
+  $('stT').textContent=cnt.Tanker;    $('stF').textContent=cnt.Cargo;
+  // Mobile
+  if($('mStC')) { $('mStC').textContent=cnt.Container; $('mStK').textContent=cnt.Cruise;
+    $('mStT').textContent=cnt.Tanker;  $('mStF').textContent=cnt.Cargo; }
   // Aktiven Filter auf Cards spiegeln (mehrere können aktiv sein)
   const typeFiltered = !typeFSet.has('all');
   document.querySelectorAll('.sg-filter').forEach(el =>
@@ -1425,7 +1498,7 @@ function setLenFilter(v) {
 }
 $('lenChips').onclick = e => { const c=e.target.closest('.chip'); if(c) setLenFilter(+c.dataset.len); };
 $('dclose').onclick=()=>closeDetail();
-function closeDetail(){$('detail').classList.remove('open');$('detailBackdrop').classList.remove('on');$('mobile-bottom').classList.remove('collapsed');selMmsi=null;clearTrackLayers();redraw();updateFabPos();updateLegendPos();}
+function closeDetail(){$('detail').classList.remove('open');$('detailBackdrop').classList.remove('on');$('mobile-bottom').classList.remove('collapsed');hideShipPeek();selMmsi=null;clearTrackLayers();redraw();updateFabPos();updateLegendPos();}
 // Show drag handle on mobile
 if(window.innerWidth<=700){$('detailHandle').style.display='block';}
 $('themeBtn').onclick=()=>{theme=theme==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',theme);$('themeBtn').textContent=theme==='dark'?'🌙':'☀️';};
@@ -1441,13 +1514,13 @@ function connectBackend(){
     try{
       const d=JSON.parse(ev.data);
       if(d.type==='ships'){
-        // Merge: neue Daten überschreiben, aber bestehende Einträge bleiben bis Timeout
+        // Merge: neue Daten überschreiben, bestehende bleiben bis Timeout
         d.data.forEach(s=>ships.set(s.mmsi,s));
-        // Schiffe entfernen die vom Server nicht mehr gesendet werden UND älter als 10min sind
+        // Schiffe entfernen die nicht im Update sind UND > 30min alt
         if(d.data.length > 0) {
           const inMsg = new Set(d.data.map(s=>s.mmsi));
           for(const [mmsi,s] of ships){
-            if(!inMsg.has(mmsi) && (Date.now()-(s.seen||0)) > 10*60*1000) ships.delete(mmsi);
+            if(!inMsg.has(mmsi) && (Date.now()-(s.seen||0)) > 30*60*1000) ships.delete(mmsi);
           }
         }
         if(!playbackMode){redraw();dbg(`${ships.size} Schiffe (${d.data.length} Update) · ${new Date(d.ts).toLocaleTimeString('de-DE')}`);}
@@ -1473,15 +1546,15 @@ function startApp(){
   loadAlerts();
   loadWeather();
   setInterval(loadWeather, 15 * 60 * 1000);
-  // Schiffe die seit > 10 Min kein Update hatten von der Karte entfernen
+  // Schiffe die seit > 30 Min kein Update hatten von der Karte entfernen
   setInterval(() => {
-    const cutoff = Date.now() - 10 * 60 * 1000;
+    const cutoff = Date.now() - 30 * 60 * 1000;
     let removed = 0;
     for (const [mmsi, s] of ships) {
       if ((s.seen || 0) < cutoff) { ships.delete(mmsi); removed++; }
     }
     if (removed > 0) { redraw(); dbg(`${removed} abgelaufene Schiffe entfernt`); }
-  }, 60 * 1000);
+  }, 5 * 60 * 1000); // alle 5 Min checken
   // Anon-Modus: eingeschränkte UI
   if (anonMode) {
     if ($('alertsTabBtn')) {
@@ -1539,20 +1612,23 @@ function updateLegendPos() {
   const leg = $('legend');
   if (!leg || window.innerWidth > 700) return;
   const mb = $('mobile-bottom');
-  const collapsed = mb.classList.contains('collapsed');
-  if (collapsed) {
-    leg.style.bottom = '44px';
-  } else {
-    // Tatsächliche Panel-Höhe messen statt feste vh-Werte
-    const panelH = mb.getBoundingClientRect().height;
-    leg.style.bottom = (panelH + 8) + 'px';
-  }
+  if (!mb) return;
+  const panelH = mb.getBoundingClientRect().height;
+  // Fallback wenn Panel noch nicht gerendert: minimal 44px (Tab-Leiste)
+  leg.style.bottom = Math.max(44, Math.round(panelH) + 8) + 'px';
+}
+
+// Observer: reagiert auf jede Höhenänderung des Mobile-Panels (Collapse, Tab-Switch mit anderem Content, etc.)
+if (window.ResizeObserver && $('mobile-bottom')) {
+  const ro = new ResizeObserver(() => updateLegendPos());
+  ro.observe($('mobile-bottom'));
 }
 if (mobCollapseBtn) {
   mobCollapseBtn.onclick = (e) => {
     e.stopPropagation();
     $('mobile-bottom').classList.toggle('collapsed');
-    updateLegendPos();
+    // ResizeObserver feuert auch, aber zur Sicherheit explizit:
+    setTimeout(updateLegendPos, 260); // nach CSS-Transition (.25s)
   };
 }
 
