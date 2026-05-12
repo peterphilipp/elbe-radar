@@ -7,6 +7,8 @@ const WebSocket    = require('ws');
 const path         = require('path');
 const fs           = require('fs');
 const nodemailer   = require('nodemailer');
+let webpush = null;
+try { webpush = require('web-push'); } catch(e) { console.log('[Push] web-push nicht installiert'); }
 const AISConnector = require('./aisConnector');
 const db           = require('./db');
 const { sendTestMessage, invalidateUserCache } = require('./telegramBot');
@@ -49,6 +51,45 @@ const app    = express();
 const server = http.createServer(app);
 const wss    = new WebSocket.Server({ server });
 app.use(express.json());
+
+// ── Web Push (VAPID) ──────────────────────────────────────────────────────────
+let VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY  || '';
+let VAPID_PRIV   = process.env.VAPID_PRIVATE_KEY || '';
+const VAPID_SUBJ = process.env.VAPID_SUBJECT     || 'mailto:admin@elberadar.local';
+if (webpush) {
+  if (!VAPID_PUBLIC || !VAPID_PRIV) {
+    const k = webpush.generateVAPIDKeys();
+    VAPID_PUBLIC = k.publicKey; VAPID_PRIV = k.privateKey;
+    console.log('[Push] Neue VAPID-Keys generiert (nur diesen Run gültig!).');
+    console.log('[Push] Für Persistenz in .env setzen:');
+    console.log(`  VAPID_PUBLIC_KEY=${VAPID_PUBLIC}`);
+    console.log(`  VAPID_PRIVATE_KEY=${VAPID_PRIV}`);
+  }
+  try {
+    webpush.setVapidDetails(VAPID_SUBJ, VAPID_PUBLIC, VAPID_PRIV);
+    console.log('[Push] VAPID konfiguriert');
+  } catch(e) { console.error('[Push] VAPID-Fehler:', e.message); webpush = null; }
+}
+
+async function sendPushToUser(userId, payload) {
+  if (!webpush) return 0;
+  const subs = db.getUserPushSubscriptions(userId);
+  let sent = 0;
+  for (const s of subs) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+        JSON.stringify(payload)
+      );
+      sent++;
+    } catch(e) {
+      if (e.statusCode === 410 || e.statusCode === 404) {
+        db.removePushSubscription(s.endpoint);
+      }
+    }
+  }
+  return sent;
+}
 
 const BUILD_SHA  = process.env.BUILD_SHA  || 'dev';
 const BUILD_TIME = process.env.BUILD_TIME || new Date().toISOString();
@@ -366,76 +407,81 @@ function extrapolateTide(measurements, horizonSec = 10 * 3600) {
     t: new Date(m.timestamp).getTime(), v: m.value,
   })).sort((a, b) => a.t - b.t);
 
-  // Glättung: gleitender Durchschnitt ±15 Punkte
-  const W_SMOOTH = 15;
-  const smooth = pts.map((p, i) => {
-    const s = Math.max(0, i - W_SMOOTH), e = Math.min(pts.length - 1, i + W_SMOOTH);
+  // M2-Hauptmondtide für Nordsee/Elbe – wissenschaftlicher Wert
+  const M2_PERIOD_MS = 12.4206 * 3600 * 1000; // 12h 25min 14s
+  const M2_HALF_MS   = M2_PERIOD_MS / 2;
+
+  // Glättung mit 11-Punkte-Fenster (bei 1-min Daten = 11min)
+  const smoothed = pts.map((p, i) => {
+    const W = 11, s = Math.max(0, i - W), e = Math.min(pts.length - 1, i + W);
     const slice = pts.slice(s, e + 1);
     return { t: p.t, v: slice.reduce((a, x) => a + x.v, 0) / slice.length };
   });
 
-  // Extrema suchen: Fenster ±30 Punkte (reicht bei 1-min Auflösung)
-  // Mindestabstand 2.5h zwischen Extrema
-  const WIN        = Math.min(30, Math.floor(smooth.length / 6));
-  const MIN_GAP_MS = 2.5 * 3600 * 1000;
-  const extrema    = [];
-  let lastExT      = 0;
-
-  for (let i = WIN; i < smooth.length - WIN; i++) {
-    if (smooth[i].t - lastExT < MIN_GAP_MS) continue;
-    const win = smooth.slice(i - WIN, i + WIN + 1).map(p => p.v);
-    const v   = smooth[i].v;
+  // Extrema mit großem Fenster ±90 Punkte (=1.5h bei 1min)
+  // Mindestabstand zwischen Extrema: 4h (Halbperiode minus Toleranz)
+  const WIN = 90;
+  const MIN_GAP_MS = 4 * 3600 * 1000;
+  const extrema = [];
+  let lastT = -MIN_GAP_MS;
+  for (let i = WIN; i < smoothed.length - WIN; i++) {
+    if (smoothed[i].t - lastT < MIN_GAP_MS) continue;
+    const win = smoothed.slice(i - WIN, i + WIN + 1).map(p => p.v);
+    const v = smoothed[i].v;
     const isHW = v === Math.max(...win);
     const isNW = v === Math.min(...win);
     if (!isHW && !isNW) continue;
-    // Keine zwei gleichen hintereinander
     if (extrema.length > 0 && extrema[extrema.length - 1].isHW === isHW) continue;
-    extrema.push({ t: pts[i].t, v: pts[i].v, isHW });
-    lastExT = smooth[i].t;
+    // Exakteren Zeitpunkt im Original suchen (Mittelpunkt mehrerer gleich-extremer)
+    const winStart = Math.max(0, i - WIN), winEnd = Math.min(pts.length - 1, i + WIN);
+    let bestIdx = i, bestV = pts[i].v;
+    for (let j = winStart; j <= winEnd; j++) {
+      if (isHW && pts[j].v > bestV)  { bestV = pts[j].v; bestIdx = j; }
+      if (isNW && pts[j].v < bestV || bestV === pts[i].v && pts[j].v < bestV) {
+        if (isNW) { bestV = pts[j].v; bestIdx = j; }
+      }
+    }
+    extrema.push({ t: pts[bestIdx].t, v: pts[bestIdx].v, isHW });
+    lastT = smoothed[i].t;
   }
 
-  // Nordsee/Elbe Tide-Periode: 12h 25min = 745 min (M2-Tide)
-  const ELBE_PERIOD_MS = 745 * 60 * 1000;
-
-  // Periode aus Extrema schätzen wenn möglich, sonst Elbe-Default
-  let periodMs = ELBE_PERIOD_MS;
+  // Periode aus erkannten Extrema, sonst M2-Fallback
+  let periodMs = M2_PERIOD_MS;
   if (extrema.length >= 2) {
     const halfPeriods = [];
     for (let i = 1; i < extrema.length; i++) halfPeriods.push(extrema[i].t - extrema[i-1].t);
     const avgHalf = halfPeriods.reduce((a,b)=>a+b,0) / halfPeriods.length;
-    // Sanity-Check: Halbperiode zwischen 4h und 8h
-    if (avgHalf > 4*3600*1000 && avgHalf < 8*3600*1000) {
-      periodMs = avgHalf * 2;
-    }
+    // Plausibilität: 5h ≤ Halbperiode ≤ 7h (Elbe ≈ 6h 12min)
+    if (avgHalf > 5*3600*1000 && avgHalf < 7*3600*1000) periodMs = avgHalf * 2;
   }
 
-  // Mindestens 1 Extremum nötig für Phasenbestimmung
-  // Wenn keins gefunden: globales Max/Min der letzten 6h als Näherung nutzen
+  // Bei 0 Extrema: globales Max/Min als Phase-Referenz
   if (extrema.length === 0) {
-    const last6h = pts.filter(p => p.t >= pts[pts.length-1].t - 6*3600*1000);
-    if (last6h.length < 10) return [];
-    const maxV = Math.max(...last6h.map(p=>p.v));
-    const minV = Math.min(...last6h.map(p=>p.v));
-    const maxPt = last6h.find(p=>p.v === maxV);
-    const minPt = last6h.find(p=>p.v === minV);
-    // Nehme das zeitlich jüngere der beiden
-    const ref = (maxPt.t > minPt.t) ? {t:maxPt.t,v:maxV,isHW:true} : {t:minPt.t,v:minV,isHW:false};
+    const maxV = Math.max(...pts.map(p=>p.v));
+    const minV = Math.min(...pts.map(p=>p.v));
+    const maxPt = pts.reduce((a,b) => b.v > a.v ? b : a);
+    const minPt = pts.reduce((a,b) => b.v < a.v ? b : a);
+    // Nehme das jüngere Extremum als Referenz
+    const ref = maxPt.t > minPt.t
+      ? { t: maxPt.t, v: maxV, isHW: true }
+      : { t: minPt.t, v: minV, isHW: false };
     extrema.push(ref);
-    console.log(`[Tide] Kein Extremum gefunden, nutze Fallback: ${ref.isHW?'HW':'NW'} um ${new Date(ref.t).toLocaleTimeString('de-DE')}`);
+    console.log(`[Tide] Kein Extremum, Fallback: ${ref.isHW?'HW':'NW'} ${new Date(ref.t).toLocaleTimeString('de-DE')}`);
   }
 
-  // Amplitude aus Gesamtdaten
-  const allVals = pts.map(p=>p.v);
-  const hw = Math.max(...allVals);
-  const nw = Math.min(...allVals);
+  // Amplitude aus den letzten 12h
+  const last12h = pts.filter(p => p.t >= pts[pts.length-1].t - 12*3600*1000);
+  const hw = Math.max(...last12h.map(p=>p.v));
+  const nw = Math.min(...last12h.map(p=>p.v));
   const amp = (hw - nw) / 2;
   const mid = (hw + nw) / 2;
 
+  // Wichtigste Stelle: Phase aus dem JÜNGSTEN Extremum
   const lastEx = extrema[extrema.length - 1];
   const phaseOffset = lastEx.isHW ? 0 : Math.PI;
   const nowTs = pts[pts.length - 1].t;
 
-  // Extrapolation alle 10 Minuten
+  // Extrapolation alle 10min
   const result = [];
   for (let dt = 10*60*1000; dt <= horizonSec*1000; dt += 10*60*1000) {
     const t   = nowTs + dt;
@@ -446,7 +492,7 @@ function extrapolateTide(measurements, horizonSec = 10 * 3600) {
       synthetic: true,
     });
   }
-  console.log(`[Tide] Extrapolation: ${extrema.length} Extrema, Periode ${(periodMs/3600000).toFixed(2)}h, Amp=±${Math.round(amp)}cm, Mitte=${Math.round(mid)}cm, ${result.length} Punkte`);
+  console.log(`[Tide] ${extrema.length} Extrema, Periode ${(periodMs/3600000).toFixed(2)}h, Phase=${lastEx.isHW?'HW':'NW'}@${new Date(lastEx.t).toLocaleTimeString('de-DE')}, Amp±${Math.round(amp)}cm, Mitte=${Math.round(mid)}cm`);
   return result;
 }
 
@@ -525,7 +571,24 @@ app.get('/api/weather', async (req, res) => {
     } catch(e) {
       console.log(`[Pegel] Fehler: ${e.message}`);
     }
-    weatherCache = { weather: data, tide, tideForecast, fetchedAt: Date.now() };
+    // Strömungsabschätzung aus Pegeländerung (steigend = Flut = landeinwärts)
+    let current = null;
+    if (tide && tide.length > 10) {
+      const last = tide[tide.length - 1];
+      const prev10 = tide[tide.length - 11]; // ~10 min zurück
+      const dt_min = (new Date(last.timestamp).getTime() - new Date(prev10.timestamp).getTime()) / 60000;
+      const dv     = last.value - prev10.value; // cm
+      const rateCmPerH = dt_min > 0 ? (dv / dt_min) * 60 : 0;
+      // Heuristik für Elbe: ~25 cm/h Pegeländerung ≈ 1.5 kn Stromgeschwindigkeit
+      // Stromkenterung etwa bei Wendepunkt → bei sehr kleinem dv ist Strömung minimal
+      const knots = Math.min(3.5, Math.abs(rateCmPerH) / 25 * 1.5);
+      current = {
+        rate_cm_h: Math.round(rateCmPerH),
+        knots:     +knots.toFixed(1),
+        direction: rateCmPerH > 1 ? 'flut' : rateCmPerH < -1 ? 'ebbe' : 'stau',
+      };
+    }
+    weatherCache = { weather: data, tide, tideForecast, current, fetchedAt: Date.now() };
     weatherCacheTs = Date.now();
     res.json(weatherCache);
   } catch(e) {
@@ -568,6 +631,30 @@ app.get('/api/tide-forecast', async (req, res) => {
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// ── PUSH NOTIFICATIONS ────────────────────────────────────────────────────────
+app.get('/api/push/vapid-key', (req, res) => {
+  res.json({ key: VAPID_PUBLIC, enabled: !!webpush });
+});
+app.post('/api/push/subscribe', authMiddleware, (req, res) => {
+  const { endpoint, keys } = req.body || {};
+  if (!endpoint || !keys?.p256dh || !keys?.auth) return res.status(400).json({ error: 'Invalid' });
+  db.addPushSubscription(req.userId, endpoint, keys.p256dh, keys.auth);
+  res.json({ ok: true });
+});
+app.post('/api/push/unsubscribe', authMiddleware, (req, res) => {
+  const { endpoint } = req.body || {};
+  if (endpoint) db.removePushSubscription(endpoint);
+  res.json({ ok: true });
+});
+app.post('/api/push/test', authMiddleware, async (req, res) => {
+  const sent = await sendPushToUser(req.userId, {
+    title: '🚢 Elbe Radar – Test',
+    body:  'Push funktioniert! 🎉',
+    tag:   'elbr-test',
+  });
+  res.json({ ok: true, sent });
 });
 
 // ── WATCHLIST ─────────────────────────────────────────────────────────────────
@@ -782,11 +869,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.7.0',
+  uptime: Math.floor(process.uptime()), version:'0.7.1',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.7.0' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.7.1' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));

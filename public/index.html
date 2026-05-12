@@ -19,6 +19,37 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
+/* ── Splash-Screen ─────────────────────────────────────────────────────── */
+#splash{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
+  background:#0c1828;transition:opacity .5s ease,visibility .5s;overflow:hidden;}
+#splash.hide{opacity:0;visibility:hidden;pointer-events:none;}
+#splash svg{position:absolute;inset:0;width:100%;height:100%;}
+#splash .wave{animation:waveMove 6s ease-in-out infinite;transform-origin:center;}
+#splash .wave2{animation-duration:8s;animation-direction:reverse;}
+#splash .wave3{animation-duration:10s;}
+@keyframes waveMove {
+  0%,100% { transform: translateX(0); }
+  50%     { transform: translateX(-30px); }
+}
+.splash-content{position:relative;text-align:center;z-index:2;}
+.splash-logo{font-size:72px;animation:splashBounce 2s ease-in-out infinite;}
+@keyframes splashBounce {
+  0%,100% { transform: translateY(0) rotate(-3deg); }
+  50%     { transform: translateY(-14px) rotate(3deg); }
+}
+.splash-title{font-size:32px;font-weight:800;color:#fff;letter-spacing:-.02em;margin-top:8px;
+  text-shadow:0 2px 16px rgba(74,170,255,.3);}
+.splash-sub{font-size:13px;color:rgba(255,255,255,.65);margin-top:6px;font-weight:500;}
+.splash-loader{display:flex;gap:8px;justify-content:center;margin-top:24px;}
+.splash-loader div{width:8px;height:8px;border-radius:50%;background:#4af;
+  animation:splashPulse 1.4s ease-in-out infinite both;}
+.splash-loader div:nth-child(2){animation-delay:.2s;}
+.splash-loader div:nth-child(3){animation-delay:.4s;}
+@keyframes splashPulse {
+  0%,80%,100% { opacity:.3; transform:scale(.7); }
+  40%         { opacity:1;  transform:scale(1); }
+}
+
 :root{
   --font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;
   --bg:#f0f4f9;--surf:#fff;--surf2:#f5f8fc;--off:#e8eef6;--brd:#cdd7e5;--div:#dde5f0;
@@ -476,6 +507,32 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 </style>
 </head>
 <body>
+<!-- SPLASH-SCREEN -->
+<div id="splash">
+  <svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice">
+    <defs>
+      <linearGradient id="splashGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#0c1828"/>
+        <stop offset="100%" stop-color="#1a3550"/>
+      </linearGradient>
+      <linearGradient id="splashWave" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#4af" stop-opacity="0.4"/>
+        <stop offset="100%" stop-color="#4af" stop-opacity="0.05"/>
+      </linearGradient>
+    </defs>
+    <rect width="800" height="600" fill="url(#splashGrad)"/>
+    <!-- 3 Wellen mit unterschiedlicher Geschwindigkeit -->
+    <path class="wave wave1" d="M0,400 Q200,360 400,400 T800,400 V600 H0 Z" fill="url(#splashWave)"/>
+    <path class="wave wave2" d="M0,440 Q200,400 400,440 T800,440 V600 H0 Z" fill="url(#splashWave)" opacity="0.7"/>
+    <path class="wave wave3" d="M0,480 Q200,440 400,480 T800,480 V600 H0 Z" fill="url(#splashWave)" opacity="0.5"/>
+  </svg>
+  <div class="splash-content">
+    <div class="splash-logo">🚢</div>
+    <div class="splash-title">Elbe Radar</div>
+    <div class="splash-sub">Schiffsverfolgung auf der Elbe</div>
+    <div class="splash-loader"><div></div><div></div><div></div></div>
+  </div>
+</div>
 
 <!-- ── LOGIN OVERLAY ──────────────────────────────────────────────────────── -->
 <div id="loginOverlay">
@@ -557,7 +614,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.0</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.1</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -775,6 +832,23 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <div class="wl-list" id="watchlistList"><div class="shint">Lade…</div></div>
     </div>
 
+    <div class="ssec" id="pushSection">
+      <h3>🔔 Push-Benachrichtigungen</h3>
+      <p class="shint">PWA-Push direkt aufs Gerät (iOS 16.4+: App vorher zum Home-Bildschirm hinzufügen).</p>
+      <div class="sform">
+        <button class="sbtn-sec" id="pushSubBtn">🔔 Push aktivieren</button>
+        <button class="sbtn-sec" id="pushTestBtn" style="display:none">🧪 Test senden</button>
+        <button class="sbtn-sec sbtn-danger" id="pushUnsubBtn" style="display:none">🔕 Deaktivieren</button>
+        <div class="shint" id="pushStatus" style="margin-top:6px"></div>
+
+        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer">
+          <input type="checkbox" id="audioHornEnabled"/>
+          <span style="font-size:12px">🎺 Schiffshorn-Sound bei Watchlist-Alert</span>
+        </label>
+        <button class="sbtn-sec" id="audioHornTest" style="font-size:11px;width:fit-content">▶ Horn-Sound testen</button>
+      </div>
+    </div>
+
     <div class="ssec">
       <h3>📍 Referenzpunkt</h3>
       <p class="shint">Messpunkt für ETA-Berechnung und Karten-Marker. Persönlich gespeichert.</p>
@@ -869,7 +943,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.7.0</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.7.1</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -1076,6 +1150,9 @@ $('userBtn').onclick = () => {
 };
 
 /* ─── Init: Auth prüfen ──────────────────────────────────────────────────── */
+// Fallback: Splash spätestens nach 5s ausblenden
+setTimeout(() => { const sp = $('splash'); if (sp) sp.classList.add('hide'); }, 5000);
+
 async function checkAuth() {
   // Version laden und anzeigen
   try {
@@ -1085,6 +1162,8 @@ async function checkAuth() {
   } catch(e) {
     $('loginVersion').textContent = 'Server nicht erreichbar';
   }
+  // Splash früh ausblenden wenn Login-Screen erscheint
+  const sp = $('splash'); if (sp) setTimeout(() => sp.classList.add('hide'), 600);
 
   // Prüfen ob überhaupt User existieren
   let info;
@@ -1366,7 +1445,147 @@ function loadShipImage(mmsi){
 }
 
 /* ─── FAB Position helper (defined early, used by selectShip) ────────────── */
-/* ─── Tide-Übersicht (3-Tage HW/NW) ─────────────────────────────────────── */
+/* ─── PWA Push + Audio Schiffshorn ──────────────────────────────────────── */
+function urlBase64ToUint8Array(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const base64 = (b64 + pad).replace(/-/g,'+').replace(/_/g,'/');
+  const raw = atob(base64); const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+async function refreshPushUI() {
+  try {
+    const info = await fetch('/api/push/vapid-key').then(r => r.json());
+    if (!info.enabled) {
+      $('pushStatus').textContent = '⚠ Server-seitig nicht konfiguriert';
+      $('pushSubBtn').disabled = true; return;
+    }
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      $('pushStatus').textContent = '⚠ Browser unterstützt keine Push-Notifications';
+      $('pushSubBtn').disabled = true; return;
+    }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      $('pushStatus').textContent = '✓ Push aktiviert';
+      $('pushSubBtn').style.display   = 'none';
+      $('pushTestBtn').style.display  = '';
+      $('pushUnsubBtn').style.display = '';
+    } else {
+      $('pushStatus').textContent = Notification.permission === 'denied'
+        ? '✗ Erlaubnis verweigert – in Browsereinstellungen erlauben'
+        : 'Nicht aktiviert';
+      $('pushSubBtn').style.display   = '';
+      $('pushTestBtn').style.display  = 'none';
+      $('pushUnsubBtn').style.display = 'none';
+    }
+  } catch(e) { $('pushStatus').textContent = 'Fehler: '+e.message; }
+}
+
+async function subscribePush() {
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { $('pushStatus').textContent = '✗ Erlaubnis verweigert'; return; }
+    const info = await fetch('/api/push/vapid-key').then(r => r.json());
+    const reg  = await navigator.serviceWorker.ready;
+    const sub  = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(info.key),
+    });
+    await apiFetch('/api/push/subscribe', { method:'POST', body: JSON.stringify(sub) });
+    refreshPushUI();
+  } catch(e) { $('pushStatus').textContent = 'Fehler: '+e.message; }
+}
+
+async function unsubscribePush() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      await apiFetch('/api/push/unsubscribe', { method:'POST', body: JSON.stringify({ endpoint: sub.endpoint }) });
+      await sub.unsubscribe();
+    }
+    refreshPushUI();
+  } catch(e) {}
+}
+
+if ($('pushSubBtn'))   $('pushSubBtn').onclick   = subscribePush;
+if ($('pushUnsubBtn')) $('pushUnsubBtn').onclick = unsubscribePush;
+if ($('pushTestBtn'))  $('pushTestBtn').onclick  = async () => {
+  $('pushTestBtn').disabled = true; $('pushTestBtn').textContent = '⏳ Sende…';
+  try { await apiFetch('/api/push/test', { method:'POST' }); } catch(e) {}
+  setTimeout(() => { $('pushTestBtn').disabled = false; $('pushTestBtn').textContent = '🧪 Test senden'; }, 2000);
+};
+
+/* ─── Audio: Synthetisches Schiffshorn (Web Audio API) ───────────────────── */
+let audioCtx = null;
+function getAudioContext() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e) { console.error('Web Audio nicht verfügbar:', e); }
+  }
+  return audioCtx;
+}
+function playShipHorn() {
+  const ctx = getAudioContext(); if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume();
+  const now = ctx.currentTime;
+  // Schiffshorn: tiefer Ton (110 Hz) mit Obertönen, langer Sustain, leichtes Tremolo
+  // 2 lange Töne nacheinander wie ein echtes Nebelhorn
+  const playTone = (start, duration) => {
+    const fundamental = ctx.createOscillator();
+    const harmonic2   = ctx.createOscillator();
+    const harmonic3   = ctx.createOscillator();
+    const gain        = ctx.createGain();
+    const filter      = ctx.createBiquadFilter();
+    fundamental.type = 'sawtooth'; fundamental.frequency.value = 110;
+    harmonic2.type   = 'sine';     harmonic2.frequency.value   = 165;
+    harmonic3.type   = 'sine';     harmonic3.frequency.value   = 220;
+    filter.type = 'lowpass'; filter.frequency.value = 800; filter.Q.value = 5;
+    const g2 = ctx.createGain(); g2.gain.value = 0.3;
+    const g3 = ctx.createGain(); g3.gain.value = 0.15;
+    fundamental.connect(filter); harmonic2.connect(g2).connect(filter); harmonic3.connect(g3).connect(filter);
+    filter.connect(gain).connect(ctx.destination);
+    // Attack/Sustain/Release envelope
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(0.35, start + 0.08);
+    gain.gain.setValueAtTime(0.35, start + duration - 0.15);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+    fundamental.start(start); harmonic2.start(start); harmonic3.start(start);
+    fundamental.stop(start + duration); harmonic2.stop(start + duration); harmonic3.stop(start + duration);
+  };
+  playTone(now, 1.2);
+  playTone(now + 1.5, 1.5);
+}
+
+if ($('audioHornTest')) $('audioHornTest').onclick = playShipHorn;
+if ($('audioHornEnabled')) {
+  $('audioHornEnabled').checked = localStorage.getItem('elbr_horn') === '1';
+  $('audioHornEnabled').onchange = e => localStorage.setItem('elbr_horn', e.target.checked ? '1' : '0');
+}
+
+// Watchlist-Alert: Wenn Schiff der Watchlist sich dem Referenzpunkt nähert (< 1km)
+const watchAlertCooldown = new Map(); // mmsi -> timestamp
+function checkWatchlistAlerts() {
+  if (localStorage.getItem('elbr_horn') !== '1') return;
+  if (!watchlist || watchlist.size === 0) return;
+  const now = Date.now();
+  for (const mmsi of watchlist) {
+    const s = ships.get(mmsi); if (!s || !s.lat || !s.lon) continue;
+    const last = watchAlertCooldown.get(mmsi) || 0;
+    if (now - last < 10*60*1000) continue; // 10 min Cooldown
+    const dLat = s.lat - currentRefPoint.lat, dLon = s.lon - currentRefPoint.lon;
+    const dist = Math.sqrt(dLat*dLat + dLon*dLon) * 111; // grob km
+    if (dist < 1.0) {
+      watchAlertCooldown.set(mmsi, now);
+      playShipHorn();
+      dbg(`🎺 Horn: ${s.name} bei Referenzpunkt`);
+    }
+  }
+}
+setInterval(checkWatchlistAlerts, 30 * 1000);
+
 async function openTidePage() {
   $('tidePage').style.display = 'flex';
   $('tideBody').innerHTML = '<div style="color:var(--mut);padding:20px;text-align:center">Lade Gezeitenvorhersage…</div>';
@@ -1789,7 +2008,12 @@ function startApp(){
       redraw(); updateStats(); renderETA();
       dbg(`${data.length} Schiffe initial geladen (REST)`);
     }
-  }).catch(e => dbg('Initialer Schiffsabruf fehlgeschlagen: '+e.message));
+    // Splash ausblenden sobald Daten da sind
+    const sp = $('splash'); if (sp) setTimeout(() => sp.classList.add('hide'), 400);
+  }).catch(e => {
+    dbg('Initialer Schiffsabruf fehlgeschlagen: '+e.message);
+    const sp = $('splash'); if (sp) sp.classList.add('hide');
+  });
   connectBackend();
   loadBuildInfo();
   apiFetch('/api/status').then(r=>r.json()).then(s=>{$('backendStatus').textContent=s.demo?'⚠ Demo':'✓ Live';$('histInfo').textContent=s.retainDays+' Tage';}).catch(()=>{});
@@ -1814,7 +2038,8 @@ function startApp(){
       $('alertsTabBtn').onclick = e => { e.preventDefault(); exitAnonMode(); };
     }
     document.querySelectorAll('.ssec').forEach(s => {
-      if (s.innerHTML.includes('Telegram') || s.innerHTML.includes('Alerts') || s.id === 'watchlistSection') {
+      if (s.innerHTML.includes('Telegram') || s.innerHTML.includes('Alerts')
+          || s.id === 'watchlistSection' || s.id === 'pushSection') {
         s.style.opacity='0.4'; s.style.pointerEvents='none';
         s.insertAdjacentHTML('afterbegin','<div style="font-size:11px;color:var(--mut);margin-bottom:6px">🔒 Login erforderlich</div>');
       }
@@ -2098,7 +2323,6 @@ const DIR_NAMES = ['N','NNO','NO','ONO','O','OSO','SO','SSO','S','SSW','SW','WSW
 function windDirName(deg) { return DIR_NAMES[Math.round((deg||0)/22.5) % 16]; }
 
 /* ─── Tide Sparkline ─────────────────────────────────────────────────────── */
-/* ─── Tide Sparkline ─────────────────────────────────────────────────────── */
 // Findet Wendepunkte (HW/NW) in einem Daten-Array
 function findTurningPoints(data, minGapPts=8, minDelta=5) {
   const pts = [];
@@ -2329,7 +2553,12 @@ async function loadWeather(force=false) {
       const stateText  = rising === true ? '🌊 Flut' : rising === false ? '🌊 Ebbe' : '🌊 Pegel';
 
       $('wwTideState').textContent = stateText + ' · Schulau';
-      $('wwPegel').textContent = `${val} cm ${trendArrow}`;
+      // Pegelhöhe + Strömungsschätzung
+      let pegelTxt = `${val} cm ${trendArrow}`;
+      if (d.current && Math.abs(d.current.rate_cm_h) > 1) {
+        pegelTxt += ` <span style="font-size:9px;color:var(--mut);margin-left:4px">~${d.current.knots} kn</span>`;
+      }
+      $('wwPegel').innerHTML = pegelTxt;
 
       const { svg, turning } = buildTideSparkline(tide, d.tideForecast);
       $('wwTideSpark').innerHTML = svg;
@@ -2535,6 +2764,8 @@ openSettings = function() {
     if ($('adminSection'))  { $('adminSection').style.display='';  loadAdminUsers(); }
     if ($('dbStatsSection')){ $('dbStatsSection').style.display=''; loadDbStats(); }
   }
+  // Push-Status aktualisieren
+  if (typeof refreshPushUI === 'function' && !anonMode) refreshPushUI();
 };
 
 /* ─── Playback ──────────────────────────────────────────────────────────── */

@@ -2,26 +2,28 @@
 const WebSocket      = require('ws');
 const { calcETA, DEFAULT_REF } = require('./etaCalculator');
 const { checkAlerts }= require('./telegramBot');
-const { saveShip, getSetting, recordPassage } = require('./db');
+const { saveShip, getSetting, recordPassage, getActiveShips } = require('./db');
+
+// Bekannte Cruise-Reedereien und einzigartige Schiffsnamen (Wortgrenzen!)
+// Diese Regex matcht NUR ganze Wörter – kein "norwegian" in "norwegianforest"
+const CRUISE_BRANDS = /\b(aida|aidanova|aidabella|aidaprima|aidaperla|aidamar|aidasol|aidadiva|aidaluna|aidablu|aidastella|aidacara|aidamira|aidacosma|norwegian|costa|carnival|celebrity|cunard|crystal|regent|oceania|hanseatic|columbus|princess cruises|royal caribbean|holland america|msc cruises|mein schiff|tui cruises?|queen mary|queen elizabeth|queen victoria|queen anne|silver(?:sea|shadow|spirit|whisper|wind|cloud|muse|nova|moon|dawn|ray|origin)|viking (?:sky|sea|star|ocean|orion|venus|mars|jupiter|saturn|polaris|sun|aton|neptune)|europa ?[12]?|disney (?:magic|wonder|dream|fantasy|wish|treasure))\b/i;
 
 function shipType(code, name='', len=0) {
   const n = (name||'').toLowerCase();
   const c = +(code||0);
 
-  // AIS-Typcode hat Vorrang – am zuverlässigsten
+  // AIS-Typcode hat absolut Vorrang – zuverlässigste Quelle
   if (c>=60&&c<=69) return 'Cruise';
   if (c>=70&&c<=79) return 'Container';
   if (c>=80&&c<=89) return 'Tanker';
+  if (c===30||c===31||c===32) return 'Cargo'; // Fishing/Towing
 
-  // Namensbasierte Heuristik: nur wenn kein eindeutiger Code vorhanden
-  // und Schiff groß genug (>= 100m) um echtes Kreuzfahrtschiff zu sein
-  if (len >= 100 || len === 0) {
-    // Exakte bekannte Reederei-Präfixe/Suffixe – kein Substring-Match auf kurze Wörter
-    if (/\b(aida|mein schiff|tui cruises?)\b/.test(n)) return 'Cruise';
-    // Bekannte Kreuzfahrtschiff-Namen, aber nur wenn Schiff lang genug
-    if (len >= 150) {
-      if (/(norwegian|costa |carnival|celebrity|cunard|crystal cruise|viking (star|sky|sea|ocean|orion|venus|jupiter|mars)|regent|silver(sea|shadow|spirit|whisper|wind|cloud|muse|nova|moon)|oceania|hanseatic (nature|inspiration|spirit)|columbus|columbus 2|aidanova|aida|queen [a-z]|europa [12]?)/.test(n)) return 'Cruise';
-    }
+  // Namensbasierte Cruise-Erkennung: greift bei bekannten Marken
+  // auch wenn Länge unbekannt (len=0) – viele im Hafen liegende Schiffe haben len=0
+  if (CRUISE_BRANDS.test(n)) {
+    // Sicherheitsnetz gegen Falsch-Positive bei sehr kleinen Schiffen
+    if (len > 0 && len < 80) return 'Cargo'; // <80m kann kein Kreuzfahrtschiff sein
+    return 'Cruise';
   }
 
   return 'Cargo';
@@ -42,7 +44,7 @@ class AISConnector {
   start() {
     // Beim Start sofort Schiffe aus DB laden – letzte 30 Min (passt zu SHIP_TTL_MS)
     try {
-      const stored = db.getActiveShips(30 * 60 * 1000);
+      const stored = getActiveShips(30 * 60 * 1000);
       for (const s of stored) this.ships.set(String(s.mmsi), s);
       if (stored.length > 0) {
         console.log(`[AIS] ${stored.length} Schiffe aus DB (letzte 30 Min) geladen`);
@@ -115,9 +117,13 @@ class AISConnector {
     const lon = parseFloat(meta.longitude||meta.Longitude||0);
     if (!lat||!lon) return;
     const pr = msg.PositionReport||msg.StandardClassBPositionReport||msg;
+    // Type immer neu evaluieren, wenn ein Name verfügbar ist (auch wenn nur in DB)
+    const updateName = (meta.ShipName||'').trim() || ex.name || '';
+    const reEvalType = updateName ? shipType(null, updateName, ex.len||0) : null;
     this._upsert({ mmsi, lat, lon,
-      name:    (meta.ShipName||'').trim()||ex.name||'',
-      type:    ex.type||shipType(null, meta.ShipName||'', ex.len||0)||'Cargo',
+      name:    updateName,
+      // Reevaluiere Type wenn Name+Länge da sind, sonst bestehenden Type behalten
+      type:    (reEvalType==='Cruise') ? 'Cruise' : (ex.type || reEvalType || 'Cargo'),
       dest:    ex.dest||'', cs: ex.cs||'',
       len:     ex.len||0, wid: ex.wid||0, drg: ex.drg||0,
       sog:     pr.Sog!=null ? +pr.Sog*10 : ex.sog,

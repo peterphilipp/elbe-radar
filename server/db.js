@@ -105,6 +105,16 @@ db.exec(`
     added_at INTEGER NOT NULL,
     PRIMARY KEY (user_id, mmsi)
   );
+
+  CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL,
+    endpoint    TEXT NOT NULL UNIQUE,
+    p256dh      TEXT NOT NULL,
+    auth        TEXT NOT NULL,
+    created_at  INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(user_id);
 `);
 
 // ── Passages helpers ──────────────────────────────────────────────────────────
@@ -287,6 +297,14 @@ module.exports = {
   getWatchlist:    userId => db.prepare(`SELECT mmsi, name, added_at FROM watchlist WHERE user_id=? ORDER BY added_at DESC`).all(userId),
   addToWatchlist:  (userId, mmsi, name) => db.prepare(`INSERT OR REPLACE INTO watchlist (user_id,mmsi,name,added_at) VALUES (?,?,?,?)`).run(userId, mmsi, name||'', Date.now()),
   removeFromWatchlist: (userId, mmsi) => db.prepare(`DELETE FROM watchlist WHERE user_id=? AND mmsi=?`).run(userId, mmsi),
+
+  // Push-Subscriptions
+  addPushSubscription: (userId, endpoint, p256dh, auth) => db.prepare(
+    `INSERT OR REPLACE INTO push_subscriptions (user_id,endpoint,p256dh,auth,created_at) VALUES (?,?,?,?,?)`
+  ).run(userId, endpoint, p256dh, auth, Date.now()),
+  removePushSubscription: (endpoint) => db.prepare(`DELETE FROM push_subscriptions WHERE endpoint=?`).run(endpoint),
+  getUserPushSubscriptions: (userId) => db.prepare(`SELECT * FROM push_subscriptions WHERE user_id=?`).all(userId),
+  getAllPushSubscriptions: () => db.prepare(`SELECT * FROM push_subscriptions`).all(),
 
   // DB-Stats
   getDbStats: () => ({

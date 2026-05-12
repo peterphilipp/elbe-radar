@@ -2,7 +2,7 @@
  * Strategie: Shell (HTML/CSS/JS/Leaflet) aus Cache, API-Calls immer live.
  * Version: muss bei jedem Deploy erhöht werden damit der SW sich aktualisiert.
  */
-const CACHE   = 'elbe-radar-v0.7.0';
+const CACHE   = 'elbe-radar-v0.7.1';
 const SHELL   = [
   '/',
   '/manifest.json',
@@ -73,6 +73,39 @@ self.addEventListener('fetch', e => {
         .catch(() => null);
       return cached || await fetchPromise ||
              new Response('Offline – bitte App neu starten', { status: 503 });
+    })
+  );
+});
+
+/* ── Push Notifications ───────────────────────────────────────────────────── */
+self.addEventListener('push', event => {
+  let data = { title: '🚢 Elbe Radar', body: 'Neue Benachrichtigung' };
+  try { if (event.data) data = event.data.json(); } catch(e) {}
+  event.waitUntil(
+    self.registration.showNotification(data.title || '🚢 Elbe Radar', {
+      body: data.body || '',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      tag:  data.tag || 'elbr',
+      data: data.url ? { url: data.url } : {},
+      vibrate: [200, 100, 200],
+      requireInteraction: false,
+    })
+  );
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const c of list) {
+        if (c.url.includes(self.location.origin) && 'focus' in c) {
+          c.postMessage({ type: 'notification-click', url });
+          return c.focus();
+        }
+      }
+      if (clients.openWindow) return clients.openWindow(url);
     })
   );
 });
