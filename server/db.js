@@ -97,6 +97,14 @@ db.exec(`
     used       INTEGER DEFAULT 0
   );
   CREATE INDEX IF NOT EXISTS idx_prt_user ON password_reset_tokens(user_id);
+
+  CREATE TABLE IF NOT EXISTS watchlist (
+    user_id  INTEGER NOT NULL,
+    mmsi     TEXT NOT NULL,
+    name     TEXT,
+    added_at INTEGER NOT NULL,
+    PRIMARY KEY (user_id, mmsi)
+  );
 `);
 
 // ── Passages helpers ──────────────────────────────────────────────────────────
@@ -274,6 +282,11 @@ module.exports = {
   deleteUserSessions: id => db.prepare(`DELETE FROM sessions WHERE user_id=?`).run(id),
   setUserAdmin:     (id, v) => db.prepare(`UPDATE users SET is_admin=? WHERE id=?`).run(v?1:0, id),
   resetUserPassword: (id, pw) => db.prepare(`UPDATE users SET password_hash=? WHERE id=?`).run(hashPassword(pw), id),
+
+  // Watchlist
+  getWatchlist:    userId => db.prepare(`SELECT mmsi, name, added_at FROM watchlist WHERE user_id=? ORDER BY added_at DESC`).all(userId),
+  addToWatchlist:  (userId, mmsi, name) => db.prepare(`INSERT OR REPLACE INTO watchlist (user_id,mmsi,name,added_at) VALUES (?,?,?,?)`).run(userId, mmsi, name||'', Date.now()),
+  removeFromWatchlist: (userId, mmsi) => db.prepare(`DELETE FROM watchlist WHERE user_id=? AND mmsi=?`).run(userId, mmsi),
 
   // DB-Stats
   getDbStats: () => ({

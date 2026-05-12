@@ -59,9 +59,40 @@ input,select{font-family:var(--font);}
 .abinput:focus{outline:none;border-color:var(--blue);background:var(--surf);}
 
 /* ── TOPBAR ──────────────────────────────────────────────────────────────── */
-#topbar{position:fixed;top:0;left:0;right:0;height:50px;background:var(--surf);
-  border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:8px;
-  padding:0 14px;z-index:200;box-shadow:0 1px 8px rgba(0,0,0,.12);}
+#topbar{position:fixed;top:0;left:0;right:0;height:50px;
+  background:color-mix(in srgb, var(--surf) 75%, transparent);
+  backdrop-filter:blur(14px) saturate(160%);
+  -webkit-backdrop-filter:blur(14px) saturate(160%);
+  border-bottom:1px solid color-mix(in srgb, var(--brd) 60%, transparent);
+  display:flex;align-items:center;gap:8px;padding:0 14px;z-index:200;
+  box-shadow:0 1px 12px rgba(0,0,0,.18);}
+#weatherWidget, #legend, #playbackBar, #mobile-bottom {
+  backdrop-filter:blur(10px) saturate(140%);
+  -webkit-backdrop-filter:blur(10px) saturate(140%);
+}
+.dwatch{background:none;border:none;color:#ffb600;font-size:24px;cursor:pointer;padding:0 8px;
+  transition:transform .15s;line-height:1;}
+.dwatch:hover{transform:scale(1.2);}
+.dwatch.active{color:#ffd700;text-shadow:0 0 8px rgba(255,215,0,.6);}
+
+/* ── Watchlist im Settings ──────────────────────────────────────────────── */
+.wl-list{display:flex;flex-direction:column;gap:4px;margin-top:6px;}
+.wl-item{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surf2);
+  border-radius:6px;font-size:12px;cursor:pointer;transition:background .15s;}
+.wl-item:hover{background:var(--surf);}
+.wl-name{flex:1;font-weight:600;}
+.wl-rm{background:none;border:none;color:var(--red);cursor:pointer;padding:2px 6px;}
+
+/* ── Lightbox für Schiffsfoto ───────────────────────────────────────────── */
+#lightbox{display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.92);
+  align-items:center;justify-content:center;cursor:zoom-out;animation:fadeIn .2s;}
+#lightbox.on{display:flex;}
+#lightbox img{max-width:96vw;max-height:96vh;border-radius:6px;
+  box-shadow:0 20px 60px rgba(0,0,0,.7);}
+#lightboxClose{position:absolute;top:16px;right:20px;background:none;border:none;
+  color:#fff;font-size:32px;cursor:pointer;line-height:1;opacity:.7;}
+#lightboxClose:hover{opacity:1;}
+
 .brand{font-weight:800;font-size:15px;letter-spacing:-.02em;display:flex;align-items:center;gap:7px;white-space:nowrap;}
 .brand-sub{font-weight:500;font-size:12px;color:var(--mut);}
 .topbar-r{display:flex;align-items:center;gap:6px;margin-left:auto;}
@@ -483,6 +514,12 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
 <div id="anonBanner">👁 Anonymer Modus – <a onclick="exitAnonMode()" style="cursor:pointer">Jetzt anmelden</a></div>
 
+<!-- LIGHTBOX für Schiffsfotos -->
+<div id="lightbox" onclick="closeLightbox()">
+  <button id="lightboxClose" onclick="event.stopPropagation();closeLightbox()">✕</button>
+  <img id="lightboxImg" alt="" onclick="event.stopPropagation()"/>
+</div>
+
 <!-- PASSWORT VERGESSEN OVERLAY -->
 <div id="forgotOverlay" style="display:none;position:fixed;inset:0;z-index:1000;background:var(--bg);align-items:center;justify-content:center;">
   <div class="login-box-inner">
@@ -520,7 +557,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.6.5</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.0</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -610,7 +647,10 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <div style="display:none" class="mob-drag-handle" id="detailHandle"><div style="width:36px;height:4px;background:var(--brd);border-radius:99px;margin:8px auto 4px;"></div></div>
       <div id="dimgwrap"></div>
       <div class="dbody">
-        <div class="dh"><div class="dname" id="dname">–</div><button class="dx" id="dclose">✕</button></div>
+        <div class="dh"><div class="dname" id="dname">–</div>
+          <button class="dwatch" id="dwatch" title="Zur Watchlist hinzufügen">☆</button>
+          <button class="dx" id="dclose">✕</button>
+        </div>
         <div id="dbadge"></div>
         <div class="dgrid" id="dgrid"></div>
         <div class="dsec">🛤 Track (letzte 24 h)</div>
@@ -729,6 +769,12 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       </div>
     </div>
 
+    <div class="ssec" id="watchlistSection">
+      <h3>⭐ Watchlist</h3>
+      <p class="shint">Lieblings-Schiffe – auf der Karte mit Stern markiert.</p>
+      <div class="wl-list" id="watchlistList"><div class="shint">Lade…</div></div>
+    </div>
+
     <div class="ssec">
       <h3>📍 Referenzpunkt</h3>
       <p class="shint">Messpunkt für ETA-Berechnung und Karten-Marker. Persönlich gespeichert.</p>
@@ -823,7 +869,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.6.5</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.7.0</b><br>History-Intervall: 5 Minuten<br>AIS-Quelle: aisstream.io</p>
     </div>
   </div>
 </div>
@@ -1159,8 +1205,16 @@ function makeIcon(s,sel=false,zoom=12){
   const c=col(s.type),rot=+(s.heading??s.cog??0);const{h,bw}=shipIconSize(s.len,s.wid,zoom);
   const w=bw,mid=w*0.5,heck=w*0.42;
   const path=[`M${w/2} 1`,`L${w/2+mid} ${h*0.3}`,`L${w/2+heck} ${h-1}`,`L${w/2-heck} ${h-1}`,`L${w/2-mid} ${h*0.3}`,'Z'].join(' ');
-  const glow=sel?`drop-shadow(0 0 6px ${c}) drop-shadow(0 0 2px #fff)`:`drop-shadow(0 1px 3px rgba(0,0,0,.8))`;
-  return L.divIcon({className:'',iconSize:[w,h],iconAnchor:[w/2,h*0.3],html:`<div style="transform:rotate(${rot}deg);filter:${glow}"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none"><path d="${path}" fill="${c}" stroke="rgba(0,0,0,.55)" stroke-width="0.8" stroke-linejoin="round"/></svg></div>`});
+  const isWatched = watchlist.has(s.mmsi);
+  const glow = sel
+    ? `drop-shadow(0 0 6px ${c}) drop-shadow(0 0 2px #fff)`
+    : isWatched
+      ? `drop-shadow(0 0 5px #ffd700) drop-shadow(0 1px 2px rgba(0,0,0,.6))`
+      : `drop-shadow(0 1px 3px rgba(0,0,0,.8))`;
+  const stroke = isWatched ? '#ffd700' : 'rgba(0,0,0,.55)';
+  const strokeW = isWatched ? '1.4' : '0.8';
+  return L.divIcon({className:'',iconSize:[w,h],iconAnchor:[w/2,h*0.3],
+    html:`<div style="transform:rotate(${rot}deg);filter:${glow}"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none"><path d="${path}" fill="${c}" stroke="${stroke}" stroke-width="${strokeW}" stroke-linejoin="round"/></svg></div>`});
 }
 
 function initMap(){
@@ -1230,9 +1284,62 @@ function drawTrack(mmsi){
   }).catch(()=>{$('dtrack').textContent='Keine History verfügbar';$('dextrap').textContent='–';});
 }
 
+// Smooth animation: tracks previous lat/lon per marker for interpolation
+const markerLastPos = new Map(); // mmsi -> {lat, lon, ts}
+const markerAnim    = new Map(); // mmsi -> animation state
+const ANIM_DURATION = 800; // ms
+
+function animateMarker(mmsi, fromLat, fromLon, toLat, toLon) {
+  const existing = markerAnim.get(mmsi);
+  if (existing) cancelAnimationFrame(existing.frame);
+  const startTs = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - startTs) / ANIM_DURATION);
+    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+    const lat = fromLat + (toLat - fromLat) * ease;
+    const lon = fromLon + (toLon - fromLon) * ease;
+    const mk = markers.get(mmsi);
+    if (mk) mk.setLatLng([lat, lon]);
+    if (t < 1) {
+      markerAnim.set(mmsi, { frame: requestAnimationFrame(step) });
+    } else {
+      markerAnim.delete(mmsi);
+    }
+  };
+  markerAnim.set(mmsi, { frame: requestAnimationFrame(step) });
+}
+
 function syncMarkers(){
-  for(const[mmsi,s]of ships){if(!s.lat||!s.lon)continue;const show=passes(s),mk=markers.get(mmsi);if(!show){if(mk){mk.unbindTooltip();map.removeLayer(mk);markers.delete(mmsi);labelShown.delete(mmsi);}continue;}const ic=makeIcon(s,selMmsi===mmsi,currentZoom);if(mk){mk.setLatLng([s.lat,s.lon]);mk.setIcon(ic);}else{const m2=L.marker([s.lat,s.lon],{icon:ic}).addTo(map);if(!isMobile())m2.bindTooltip(`<b>${s.name||'?'}</b> · ${kn(s.sog)} · ${dirLbl(s.cog)}`,{direction:'top',offset:[0,-8]});m2.on('click',e=>{L.DomEvent.stopPropagation(e);selectShip(mmsi);});markers.set(mmsi,m2);}}
-  for(const[mmsi,mk]of markers){if(!ships.has(mmsi)||!passes(ships.get(mmsi))){mk.unbindTooltip();map.removeLayer(mk);markers.delete(mmsi);labelShown.delete(mmsi);}}
+  for(const[mmsi,s]of ships){
+    if(!s.lat||!s.lon)continue;
+    const show=passes(s),mk=markers.get(mmsi);
+    if(!show){
+      if(mk){mk.unbindTooltip();map.removeLayer(mk);markers.delete(mmsi);labelShown.delete(mmsi);markerLastPos.delete(mmsi);}
+      continue;
+    }
+    const ic=makeIcon(s,selMmsi===mmsi,currentZoom);
+    if(mk){
+      mk.setIcon(ic);
+      // Smooth animation falls Position sich geändert hat
+      const last = markerLastPos.get(mmsi);
+      if (last && (last.lat !== s.lat || last.lon !== s.lon)
+          && !playbackMode
+          && Math.abs(last.lat - s.lat) < 0.5  // keine Teleports
+          && Math.abs(last.lon - s.lon) < 0.5) {
+        animateMarker(mmsi, last.lat, last.lon, s.lat, s.lon);
+      } else {
+        mk.setLatLng([s.lat, s.lon]);
+      }
+      markerLastPos.set(mmsi, { lat: s.lat, lon: s.lon });
+    } else {
+      const m2=L.marker([s.lat,s.lon],{icon:ic}).addTo(map);
+      if(!isMobile())m2.bindTooltip(`<b>${s.name||'?'}</b> · ${kn(s.sog)} · ${dirLbl(s.cog)}`,{direction:'top',offset:[0,-8]});
+      m2.on('click',e=>{L.DomEvent.stopPropagation(e);selectShip(mmsi);});
+      markers.set(mmsi,m2);
+      markerLastPos.set(mmsi, { lat: s.lat, lon: s.lon });
+    }
+  }
+  for(const[mmsi,mk]of markers){if(!ships.has(mmsi)||!passes(ships.get(mmsi))){mk.unbindTooltip();map.removeLayer(mk);markers.delete(mmsi);labelShown.delete(mmsi);markerLastPos.delete(mmsi);}}
   updateAllLabels();
 }
 function updateAllLabels(){const show=currentZoom>=ZOOM_LABEL;for(const[mmsi,mk]of markers){const s=ships.get(mmsi);if(!s)continue;if(show&&!labelShown.has(mmsi)){mk.unbindTooltip();mk.bindTooltip(s.name||'?',{permanent:true,direction:'right',offset:[shipIconSize(s.len,s.wid,currentZoom).bw/2+4,0],className:'ship-label'});labelShown.add(mmsi);}else if(!show&&labelShown.has(mmsi)){mk.unbindTooltip();if(!isMobile())mk.bindTooltip(`<b>${s.name||'?'}</b> · ${kn(s.sog)} · ${dirLbl(s.cog)}`,{direction:'top',offset:[0,-8]});labelShown.delete(mmsi);}}}
@@ -1259,6 +1366,140 @@ function loadShipImage(mmsi){
 }
 
 /* ─── FAB Position helper (defined early, used by selectShip) ────────────── */
+/* ─── Tide-Übersicht (3-Tage HW/NW) ─────────────────────────────────────── */
+async function openTidePage() {
+  $('tidePage').style.display = 'flex';
+  $('tideBody').innerHTML = '<div style="color:var(--mut);padding:20px;text-align:center">Lade Gezeitenvorhersage…</div>';
+  try {
+    const d = await fetch('/api/tide-forecast').then(r => r.json());
+    if (!d.extremes || d.extremes.length === 0) {
+      $('tideBody').innerHTML = '<div style="color:var(--mut);padding:20px">Keine Vorhersage verfügbar.</div>';
+      return;
+    }
+    // Nach Tagen gruppieren
+    const byDay = new Map();
+    for (const ex of d.extremes) {
+      const day = new Date(ex.time).toLocaleDateString('de-DE', {weekday:'long', day:'2-digit', month:'2-digit'});
+      if (!byDay.has(day)) byDay.set(day, []);
+      byDay.get(day).push(ex);
+    }
+    let html = '';
+    for (const [day, exs] of byDay) {
+      html += `<div style="margin-bottom:18px"><h3 style="font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;border-bottom:1px solid var(--div);padding-bottom:4px">${day}</h3>`;
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px">';
+      for (const ex of exs) {
+        const t = new Date(ex.time).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+        const col = ex.isHW ? 'var(--blue,#4af)' : '#f0a050';
+        const lbl = ex.isHW ? '▲ Hochwasser' : '▽ Niedrigwasser';
+        html += `<div style="padding:10px;background:var(--surf);border:1px solid var(--brd);border-radius:8px;border-left:3px solid ${col}">
+          <div style="font-size:11px;color:${col};font-weight:700;margin-bottom:3px">${lbl}</div>
+          <div style="font-size:18px;font-weight:700">${t}</div>
+          <div style="font-size:11px;color:var(--mut);margin-top:2px">${ex.value} cm</div>
+        </div>`;
+      }
+      html += '</div></div>';
+    }
+    html += `<div style="font-size:10px;color:var(--mut);margin-top:18px;text-align:center">Berechnet ${new Date(d.generated).toLocaleTimeString('de-DE')} · synthetische Vorhersage</div>`;
+    $('tideBody').innerHTML = html;
+  } catch(e) {
+    $('tideBody').innerHTML = `<div style="color:var(--red);padding:20px">Fehler: ${e.message}</div>`;
+  }
+}
+if ($('tideRefresh')) $('tideRefresh').onclick = openTidePage;
+
+// Long-press auf Wetter-Widget öffnet Tide-Übersicht
+let weatherLongPressTimer = null;
+const ww = $('weatherWidget');
+if (ww) {
+  ww.addEventListener('pointerdown', () => {
+    weatherLongPressTimer = setTimeout(() => {
+      weatherLongPressTimer = null;
+      openTidePage();
+    }, 600);
+  });
+  ww.addEventListener('pointerup',     () => { if (weatherLongPressTimer) clearTimeout(weatherLongPressTimer); });
+  ww.addEventListener('pointerleave',  () => { if (weatherLongPressTimer) clearTimeout(weatherLongPressTimer); });
+  // Doppelklick als Alternative
+  ww.addEventListener('dblclick', e => { e.preventDefault(); openTidePage(); });
+}
+let watchlist = new Set(); // mmsis
+
+async function loadWatchlist() {
+  if (!authToken || anonMode) return;
+  try {
+    const data = await apiFetch('/api/watchlist').then(r => r.json());
+    if (Array.isArray(data)) {
+      watchlist = new Set(data.map(w => w.mmsi));
+      renderWatchlistUI(data);
+      redraw();
+    }
+  } catch(e) {}
+}
+
+function renderWatchlistUI(items) {
+  const el = $('watchlistList');
+  if (!el) return;
+  if (!items || items.length === 0) {
+    el.innerHTML = '<div class="shint">Noch keine Schiffe auf der Watchlist. Klicke auf das ⭐ im Schiffsdetail.</div>';
+    return;
+  }
+  el.innerHTML = items.map(w => `
+    <div class="wl-item" onclick="selectShip('${w.mmsi}', true)">
+      <span class="wl-name">${escHtml(w.name || w.mmsi)}</span>
+      <button class="wl-rm" onclick="event.stopPropagation();toggleWatch('${w.mmsi}','${escHtml(w.name||'')}',false)" title="Entfernen">✕</button>
+    </div>
+  `).join('');
+}
+
+async function toggleWatch(mmsi, name, add) {
+  if (!authToken || anonMode) {
+    alert('Watchlist erfordert Anmeldung'); return;
+  }
+  if (add) {
+    await apiFetch(`/api/watchlist/${mmsi}`, {method:'POST', body:JSON.stringify({name})});
+    watchlist.add(mmsi);
+  } else {
+    await apiFetch(`/api/watchlist/${mmsi}`, {method:'DELETE'});
+    watchlist.delete(mmsi);
+  }
+  updateWatchButton(mmsi);
+  loadWatchlist();
+  redraw();
+}
+
+function updateWatchButton(mmsi) {
+  const btn = $('dwatch');
+  if (!btn) return;
+  const inList = watchlist.has(mmsi);
+  btn.textContent = inList ? '★' : '☆';
+  btn.classList.toggle('active', inList);
+  btn.title = inList ? 'Von Watchlist entfernen' : 'Zur Watchlist hinzufügen';
+}
+
+if ($('dwatch')) $('dwatch').onclick = () => {
+  if (!selMmsi) return;
+  const s = ships.get(selMmsi);
+  toggleWatch(selMmsi, s?.name || '', !watchlist.has(selMmsi));
+};
+
+/* ─── Lightbox ──────────────────────────────────────────────────────────── */
+function openLightbox(src) {
+  $('lightboxImg').src = src;
+  $('lightbox').classList.add('on');
+}
+function closeLightbox() {
+  $('lightbox').classList.remove('on');
+  $('lightboxImg').src = '';
+}
+// Klick auf Schiffsfoto öffnet Lightbox
+document.addEventListener('click', e => {
+  const img = e.target.closest('#dphoto img');
+  if (img && img.src && !img.src.includes('data:')) {
+    e.stopPropagation();
+    openLightbox(img.src);
+  }
+});
+
 function selectShip(mmsi, forceDetail = false){
   const wasSelected = (selMmsi === mmsi);
   selMmsi = mmsi;
@@ -1281,6 +1522,7 @@ function selectShip(mmsi, forceDetail = false){
     $('dtime').textContent='Zuletzt '+hm(s.seen);
     $('dlink').href=`https://www.marinetraffic.com/en/ais/home/centerx:${s.lon.toFixed(3)}/centery:${s.lat.toFixed(3)}/zoom:14`;
     $('detail').classList.add('open');
+    updateWatchButton(mmsi);
     if(mobile){
       $('detailBackdrop').classList.add('on');
       $('detailHandle').style.display='block';
@@ -1406,7 +1648,7 @@ $('logLenSlider').oninput=e=>{logLenF=+e.target.value;$('logLenVal').textContent
 $('logSearch').oninput=()=>renderLog();
 
 // Settings
-function openSettings(){$('settingsPage').classList.add('open');$('settingsBtn').classList.add('active');loadTelegramSettings();loadEmailSetting();}
+function openSettings(){$('settingsPage').classList.add('open');$('settingsBtn').classList.add('active');loadTelegramSettings();loadEmailSetting();loadWatchlist();}
 function closeSettings(){$('settingsPage').classList.remove('open');$('settingsBtn').classList.remove('active');}
 $('settingsBtn').onclick=()=>$('settingsPage').classList.contains('open')?closeSettings():openSettings();
 $('settingsClose').onclick=()=>closeSettings();
@@ -1540,11 +1782,20 @@ function startApp(){
   setTimeout(()=>{if(map)map.invalidateSize();}, 100);
   setTimeout(()=>{if(map)map.invalidateSize();}, 500);
   loadRefPoint();
+  // SOFORT Schiffe aus DB laden, ohne auf WebSocket zu warten
+  fetch('/api/ships').then(r => r.json()).then(data => {
+    if (Array.isArray(data)) {
+      data.forEach(s => ships.set(s.mmsi, s));
+      redraw(); updateStats(); renderETA();
+      dbg(`${data.length} Schiffe initial geladen (REST)`);
+    }
+  }).catch(e => dbg('Initialer Schiffsabruf fehlgeschlagen: '+e.message));
   connectBackend();
   loadBuildInfo();
   apiFetch('/api/status').then(r=>r.json()).then(s=>{$('backendStatus').textContent=s.demo?'⚠ Demo':'✓ Live';$('histInfo').textContent=s.retainDays+' Tage';}).catch(()=>{});
   loadAlerts();
   loadWeather();
+  loadWatchlist();
   setInterval(loadWeather, 15 * 60 * 1000);
   // Schiffe die seit > 30 Min kein Update hatten von der Karte entfernen
   setInterval(() => {
@@ -1563,7 +1814,7 @@ function startApp(){
       $('alertsTabBtn').onclick = e => { e.preventDefault(); exitAnonMode(); };
     }
     document.querySelectorAll('.ssec').forEach(s => {
-      if (s.innerHTML.includes('Telegram') || s.innerHTML.includes('Alerts')) {
+      if (s.innerHTML.includes('Telegram') || s.innerHTML.includes('Alerts') || s.id === 'watchlistSection') {
         s.style.opacity='0.4'; s.style.pointerEvents='none';
         s.insertAdjacentHTML('afterbegin','<div style="font-size:11px;color:var(--mut);margin-bottom:6px">🔒 Login erforderlich</div>');
       }
@@ -2473,6 +2724,16 @@ checkAuth();
     <table id="statsTable" style="display:none;width:100%;border-collapse:collapse;font-size:12px"></table>
     <div id="statsChart" style="padding:16px"></div>
   </div>
+</div>
+
+<!-- TIDE FORECAST PAGE -->
+<div id="tidePage" style="display:none;position:fixed;inset:0;z-index:210;background:var(--bg);flex-direction:column;">
+  <div class="sbar" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--brd);">
+    <h2 style="flex:1">🌊 Gezeiten Schulau · 3 Tage</h2>
+    <button id="tideRefresh" class="sbtn-sec" style="font-size:12px">🔄</button>
+    <button onclick="$('tidePage').style.display='none'" class="ibtn">✕</button>
+  </div>
+  <div id="tideBody" style="flex:1;overflow-y:auto;padding:14px 18px;"></div>
 </div>
 
 <!-- SERVER LOG PAGE -->

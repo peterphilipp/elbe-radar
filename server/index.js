@@ -534,6 +534,55 @@ app.get('/api/weather', async (req, res) => {
   }
 });
 
+// ── TIDE FORECAST (mehrtägige HW/NW-Vorhersage) ───────────────────────────────
+app.get('/api/tide-forecast', async (req, res) => {
+  try {
+    // Aktuelle Messdaten holen (12h Vergangenheit)
+    const tideRaw = await new Promise((resolve) => {
+      const url = `https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/SCHULAU/W/measurements.json?start=PT12H`;
+      const tr = https.get(url, { headers: { 'User-Agent': 'ElbeRadar/0.6' } }, resp => {
+        let d = ''; resp.on('data', c => d += c);
+        resp.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { resolve(null); } });
+      });
+      tr.on('error', () => resolve(null));
+      tr.setTimeout(6000, () => { tr.destroy(); resolve(null); });
+    });
+    if (!Array.isArray(tideRaw) || tideRaw.length < 60) {
+      return res.json({ error: 'Keine Messdaten verfügbar', extremes: [] });
+    }
+    // 3 Tage = 72h voraus extrapolieren
+    const forecast = extrapolateTide(tideRaw, 72 * 3600);
+    // HW/NW-Wendepunkte finden
+    const extremes = [];
+    let lastEx = null;
+    for (let i = 1; i < forecast.length - 1; i++) {
+      const v = forecast[i].value, vp = forecast[i-1].value, vn = forecast[i+1].value;
+      const isHW = v > vp && v > vn;
+      const isNW = v < vp && v < vn;
+      if (!isHW && !isNW) continue;
+      if (lastEx && lastEx.isHW === isHW) continue;
+      extremes.push({ time: forecast[i].timestamp, value: Math.round(v), isHW });
+      lastEx = extremes[extremes.length - 1];
+    }
+    res.json({ extremes, generated: new Date().toISOString() });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── WATCHLIST ─────────────────────────────────────────────────────────────────
+app.get('/api/watchlist', authMiddleware, (req, res) => {
+  res.json(db.getWatchlist(req.userId));
+});
+app.post('/api/watchlist/:mmsi', authMiddleware, (req, res) => {
+  db.addToWatchlist(req.userId, req.params.mmsi, req.body?.name || '');
+  res.json({ ok: true });
+});
+app.delete('/api/watchlist/:mmsi', authMiddleware, (req, res) => {
+  db.removeFromWatchlist(req.userId, req.params.mmsi);
+  res.json({ ok: true });
+});
+
 // ── LOG VIEWER ────────────────────────────────────────────────────────────────
 app.get('/api/logs', adminMiddleware, (req, res) => {
   const since = +(req.query.since || 0);
@@ -722,16 +771,22 @@ function fetchJsonHTTPS(url) {
 
 
 // ── AIS STATUS ────────────────────────────────────────────────────────────────
-app.get('/api/ships',            authMiddleware, (req,res) => res.json(db.getActiveShips()));
+// /api/ships – sofort verfügbar beim Seitenaufbau (statt auf WebSocket zu warten)
+// Liefert die gleiche Daten wie der initiale WebSocket-Send
+app.get('/api/ships', (req, res) => {
+  const cutoff = Date.now() - SHIP_TTL_MS;
+  const active = [...ais.ships.values()].filter(s => (s.seen || 0) >= cutoff);
+  res.json(active);
+});
 app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHistory(+(req.query.days||1))));
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.6.5',
+  uptime: Math.floor(process.uptime()), version:'0.7.0',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.6.5' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.7.0' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));
