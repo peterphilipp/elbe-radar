@@ -389,13 +389,11 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     border-bottom:none!important;
   }
   /* Legende: mobil unten rechts */
-  #legend{bottom:calc(40vh + 8px);left:auto;right:8px;top:auto;padding:5px 9px;}
+  #legend{bottom:44px;left:auto;right:8px;top:auto;padding:5px 9px;}
   #legend h4{display:none;}
   /* Leaflet zoom oben links bleibt */
   .leaflet-top.leaflet-left{top:4px;}
-  .leaflet-control-zoom{margin-top:4px!important;margin-left:8px!important;}
-  /* Weather Widget: mobil oben rechts (wie Desktop), nicht mittig */
-  #weatherWidget{top:calc(var(--topbar-h) + 6px);bottom:auto;right:8px;font-size:10px;min-width:130px;}
+  .leaflet-control-zoom{display:none!important;}
   .lr{margin-bottom:1px;}
   /* Buildinfo ausblenden auf mobile */
   #buildinfo{display:none;}
@@ -448,13 +446,20 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 }
 
 /* ── WETTER WIDGET ───────────────────────────────────────────────────────── */
-#weatherWidget{position:absolute;top:var(--topbar-h);right:10px;z-index:490;background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:7px 11px;font-size:11px;color:var(--txt);box-shadow:0 4px 16px rgba(0,0,0,.2);min-width:190px;cursor:default;}
+#weatherWidget{position:absolute;top:var(--topbar-h);left:0;right:0;z-index:490;background:var(--surf);border-bottom:1px solid var(--brd);padding:0;font-size:11px;color:var(--txt);box-shadow:0 2px 12px rgba(0,0,0,.15);cursor:default;overflow:hidden;transition:max-height .25s ease;}
 #weatherWidget.loading{opacity:.6;}
+#weatherWidget.ww-collapsed{max-height:0!important;border-bottom:none;}
+.ww-toggle{position:absolute;top:var(--topbar-h);right:10px;z-index:491;width:28px;height:22px;border-radius:0 0 7px 7px;background:var(--surf);border:1px solid var(--brd);border-top:none;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--mut);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.12);transition:transform .2s;}
+.ww-toggle.rotated{transform:rotate(180deg);}
+.ww-bar{display:flex;align-items:center;gap:10px;padding:7px 14px;flex-wrap:wrap;}
+.ww-bar-section{display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.ww-bar-divider{width:1px;height:22px;background:var(--div);flex-shrink:0;}
+.ww-wind-arrow{display:inline-block;font-size:16px;line-height:1;transition:transform .3s;}
 .ww-row{display:flex;align-items:center;gap:7px;margin-bottom:3px;}
 .ww-icon{font-size:20px;line-height:1;}
 .ww-main{font-size:16px;font-weight:700;}
 .ww-sub{font-size:10px;color:var(--mut);}
-.ww-tide{margin-top:4px;padding-top:4px;border-top:1px solid var(--div);font-size:10px;color:var(--mut);}
+.ww-tide{padding:4px 14px 7px;border-top:1px solid var(--div);font-size:10px;color:var(--mut);}
 .ww-tide-header{display:flex;align-items:baseline;gap:6px;margin-bottom:3px;}
 .ww-tide-header b{font-size:13px;color:var(--txt);font-weight:700;}
 .ww-tide-header span{font-size:10px;}
@@ -497,10 +502,24 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .db-stat-card{background:var(--surf2);border:1px solid var(--brd);border-radius:8px;padding:10px 12px;}
 .db-stat-val{font-size:18px;font-weight:700;color:var(--blue);}
 .db-stat-lbl{font-size:10px;color:var(--mut);margin-top:2px;}
-@media(max-width:700px){#weatherWidget{top:calc(var(--topbar-h) + 6px);bottom:auto;right:8px;font-size:10px;min-width:180px;max-width:200px;}}
+@media(max-width:700px){#weatherWidget{font-size:10px;}.ww-bar{padding:5px 10px;gap:8px;}.ww-tide{padding:3px 10px 5px;}}
 #weatherWidget.hidden{display:none;}
 
 /* ── PLAYBACK BAR ────────────────────────────────────────────────────────── */
+/* ── LOGOUT DIALOG ──────────────────────────────────────────────────────── */
+.logout-overlay{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);align-items:center;justify-content:center;}
+.logout-overlay.open{display:flex;}
+.logout-dialog{background:var(--surf);border:1px solid var(--brd);border-radius:16px;padding:28px 24px 22px;width:min(340px,calc(100vw - 40px));text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);animation:logoutIn .2s ease;}
+@keyframes logoutIn{from{opacity:0;transform:scale(.92) translateY(10px);}to{opacity:1;transform:none;}}
+.logout-icon{font-size:40px;margin-bottom:8px;}
+.logout-title{font-size:18px;font-weight:800;margin-bottom:6px;}
+.logout-msg{font-size:13px;color:var(--mut);margin-bottom:20px;line-height:1.5;}
+.logout-btns{display:flex;gap:10px;}
+.logout-btn{flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s;}
+.logout-cancel{background:var(--off);border:1px solid var(--brd);color:var(--txt);}
+.logout-cancel:hover{opacity:.8;}
+.logout-confirm{background:var(--red);border:1px solid var(--red);color:#fff;}
+.logout-confirm:hover{opacity:.85;}
 #playbackBar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--surf);border-top:2px solid var(--blue);padding:8px 14px;align-items:center;gap:10px;flex-wrap:wrap;}
 #playbackBar.on{display:flex;}
 .pb-title{font-size:11px;font-weight:700;color:var(--blue);white-space:nowrap;}
@@ -508,8 +527,10 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 #pbTime{font-family:var(--mono);font-size:11px;color:var(--txt);white-space:nowrap;min-width:110px;}
 .pb-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--brd);background:var(--surf2);font-size:11px;font-weight:700;cursor:pointer;color:var(--txt);}
 .pb-btn.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+.pb-datepicker{font-family:var(--mono);font-size:11px;background:var(--surf2);color:var(--txt);border:1px solid var(--brd);border-radius:6px;padding:3px 6px;cursor:pointer;}
+.pb-datepicker::-webkit-calendar-picker-indicator{filter:invert(0.5);cursor:pointer;}
 #pbClose{margin-left:auto;}
-@media(max-width:700px){#playbackBar{bottom:calc(40vh);font-size:10px;padding:6px 10px;gap:6px;}#pbSlider{min-width:80px;}}
+@media(max-width:700px){#playbackBar{bottom:36px;font-size:10px;padding:6px 10px;gap:6px;}#pbSlider{min-width:80px;}}
 </style>
 </head>
 <body>
@@ -620,7 +641,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.2</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.3</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -673,7 +694,6 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     <div id="mapbar">
       <span class="mbt" id="refNameMap">Elbe Radar</span>
       <div class="mstat">⏱ <b id="sP">0</b> ETA</div>
-      <div class="mstat">🔍 <b id="zoomLbl">12</b></div>
       <div class="tile-group">
         <button class="tbt on"  data-tile="dark"    title="Dunkel">🌙</button>
         <button class="tbt"     data-tile="voyager" title="Nautisch">🌊</button>
@@ -692,16 +712,30 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <div class="lr"><div style="width:18px;border-top:2px dashed #f0bc55"></div>Extrapolation</div>
     </div>
     <div id="buildinfo">–</div>
+    <button class="ww-toggle" id="wwToggle" title="Wetter ein-/ausblenden">▼</button>
     <div id="weatherWidget" class="loading" title="Klicken zum Aktualisieren">
-      <div class="ww-row"><span class="ww-icon" id="wwIcon">🌤</span><div><div class="ww-main" id="wwWind">– m/s</div><div class="ww-sub" id="wwTemp">–°C</div></div></div>
-      <div class="ww-sub" id="wwDir">–</div>
-      <div class="ww-tide" id="wwTide" style="display:none">
-        <div class="ww-tide-header">
+      <div class="ww-bar">
+        <div class="ww-bar-section">
+          <span class="ww-icon" id="wwIcon">🌤</span>
+          <b id="wwTemp" style="font-size:16px">–°C</b>
+        </div>
+        <div class="ww-bar-divider"></div>
+        <div class="ww-bar-section">
+          <span class="ww-wind-arrow" id="wwArrow" title="Windrichtung">⬇</span>
+          <span><b id="wwWind">– m/s</b></span>
+          <span class="ww-sub" id="wwDir" style="margin-left:2px">–</span>
+        </div>
+        <div class="ww-bar-divider"></div>
+        <div class="ww-bar-section">
           <span id="wwTideState">🌊</span>
           <b id="wwPegel">– cm</b>
         </div>
+        <div class="ww-bar-section" style="margin-left:auto">
+          <span id="wwTideNext" style="font-size:10px"></span>
+        </div>
+      </div>
+      <div class="ww-tide" id="wwTide" style="display:none">
         <div id="wwTideSpark"></div>
-        <div class="ww-tide-next" id="wwTideNext"></div>
       </div>
     </div>
 
@@ -949,7 +983,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.7.2</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.7.3</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
       <div class="sform" style="margin-top:8px">
         <button class="sbtn-sec" id="sAppUpdate" style="font-size:11px;width:fit-content">🔄 App-Update prüfen</button>
         <div class="shint" id="sUpdateStatus" style="font-size:10px;margin-top:4px"></div>
@@ -959,7 +993,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 </div>
 
 <!-- MOBILE BOTTOM -->
-<div id="mobile-bottom">
+<div id="mobile-bottom" class="collapsed">
   <div class="mob-tabs">
     <button class="mob-tab on" data-mob="mob-eta">ETA <span class="cnt" id="mobFutureCnt">0</span></button>
     <button class="mob-tab" data-mob="mob-alerts">🔔 Alerts</button>
@@ -980,8 +1014,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   </div>
   <div class="mob-content" id="mob-filter">
     <div style="padding:10px 12px;display:grid;gap:10px;">
-      <div>
-        <div class="flbl">Schiffstyp</div>
+      <div id="mTypeChipsWrap" style="display:none">
         <div class="chips" id="mTypeChips">
           <button class="chip on" data-t="all">Alle</button>
           <button class="chip" data-t="Container">Container</button>
@@ -1038,11 +1071,26 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   </div>
   </div><!-- end mob-content-wrap -->
 </div>
+
+<!-- LOGOUT DIALOG -->
+<div id="logoutOverlay" class="logout-overlay">
+  <div class="logout-dialog">
+    <div class="logout-icon">👤</div>
+    <div class="logout-title">Abmelden</div>
+    <div class="logout-msg" id="logoutMsg">Möchtest du dich wirklich abmelden?</div>
+    <div class="logout-btns">
+      <button class="logout-btn logout-cancel" id="logoutCancel">Abbrechen</button>
+      <button class="logout-btn logout-confirm" id="logoutConfirm">Abmelden</button>
+    </div>
+  </div>
+</div>
+
 <div id="playbackBar">
   <span class="pb-title">⏮ Playback</span>
   <button class="pb-btn" id="pbPlay">▶</button>
   <input type="range" id="pbSlider" min="0" max="100" value="0" step="1"/>
   <span id="pbTime">–</span>
+  <input type="datetime-local" id="pbDatePicker" class="pb-datepicker" title="Datum/Uhrzeit wählen"/>
   <button class="pb-btn" id="pbClose">✕ Live</button>
 </div>
 
@@ -1157,8 +1205,20 @@ async function doLogout() {
   location.reload();
 }
 $('userBtn').onclick = () => {
-  if(confirm(`Als "${currentUser?.username}" abmelden?`)) doLogout();
+  showLogoutDialog();
 };
+
+function showLogoutDialog() {
+  const name = currentUser?.username || '?';
+  $('logoutMsg').textContent = `Als "${name}" abmelden?`;
+  $('logoutOverlay').classList.add('open');
+}
+function hideLogoutDialog() {
+  $('logoutOverlay').classList.remove('open');
+}
+$('logoutCancel').onclick = () => hideLogoutDialog();
+$('logoutConfirm').onclick = () => { hideLogoutDialog(); doLogout(); };
+$('logoutOverlay').onclick = (e) => { if (e.target === $('logoutOverlay')) hideLogoutDialog(); };
 
 /* ─── Init: Auth prüfen ──────────────────────────────────────────────────── */
 // Fallback: Splash spätestens nach 5s ausblenden
@@ -1328,7 +1388,7 @@ function initMap(){
   map=L.map('map',{zoomControl:true}).setView([53.570,9.730],12);
   apiFetch('/api/settings/tile').then(r=>r.json()).then(d=>setTile(d.value||'dark')).catch(()=>setTile('dark'));
   map.on('click',()=>{selMmsi=null;$('detail').classList.remove('open');$('detailBackdrop').classList.remove('on');clearTrackLayers();redraw();});
-  map.on('zoomend',()=>{currentZoom=map.getZoom();$('zoomLbl').textContent=currentZoom;sendBoxUpdate();syncMarkers();});
+  map.on('zoomend',()=>{currentZoom=map.getZoom();sendBoxUpdate();syncMarkers();});
   map.on('moveend',()=>{sendBoxUpdate();});
 }
 
@@ -1900,7 +1960,7 @@ function openSettings(){$('settingsPage').classList.add('open');$('settingsBtn')
 function closeSettings(){$('settingsPage').classList.remove('open');$('settingsBtn').classList.remove('active');}
 $('settingsBtn').onclick=()=>$('settingsPage').classList.contains('open')?closeSettings():openSettings();
 $('settingsClose').onclick=()=>closeSettings();
-$('sLogout').onclick=()=>{if(confirm(`Als "${currentUser?.username}" abmelden?`))doLogout();};
+$('sLogout').onclick=()=>{showLogoutDialog();};
 
 $('sRefMapCenter').onclick=()=>{const c=map.getCenter();$('sRefLat').value=c.lat.toFixed(4);$('sRefLon').value=c.lng.toFixed(4);};
 $('sRefSave').onclick=()=>{
@@ -2627,9 +2687,12 @@ async function loadWeather(force=false) {
     const temp = cur.temperature_2m != null ? Math.round(cur.temperature_2m) : null;
     const bft = spdMs<0.3?0:spdMs<1.6?1:spdMs<3.4?2:spdMs<5.5?3:spdMs<8?4:spdMs<10.8?5:spdMs<13.9?6:spdMs<17.2?7:spdMs<20.8?8:9;
     $('wwWind').textContent = `${spdMs} m/s (Bft ${bft})`;
-    $('wwDir').textContent  = `Wind: ${windDirName(dirDeg)} (${dirDeg}°)`;
+    $('wwDir').textContent  = windDirName(dirDeg);
     $('wwTemp').textContent = temp != null ? `${temp}°C` : '–°C';
     $('wwIcon').textContent = WMO_ICONS[cur.weathercode] || '🌤';
+    // Wind arrow: rotate arrow to show wind direction (arrow points where wind comes FROM)
+    $('wwArrow').style.transform = `rotate(${dirDeg}deg)`;
+    $('wwArrow').title = `Wind aus ${windDirName(dirDeg)} (${dirDeg}°)`;
     $('weatherWidget').classList.remove('loading');
     // Pegel mit neuem Chart
     const tide = d.tide;
@@ -2674,7 +2737,13 @@ async function loadWeather(force=false) {
     }
   } catch(e) { $('weatherWidget').classList.remove('loading'); }
 }
-$('weatherWidget').onclick = () => { $('weatherWidget').classList.add('loading'); loadWeather(true); };
+// Weather widget: click bar to refresh, toggle button to collapse/expand
+$('weatherWidget').querySelector('.ww-bar').onclick = () => { $('weatherWidget').classList.add('loading'); loadWeather(true); };
+$('wwToggle').onclick = () => {
+  const ww = $('weatherWidget');
+  ww.classList.toggle('ww-collapsed');
+  $('wwToggle').classList.toggle('rotated', !ww.classList.contains('ww-collapsed'));
+};
 
 /* ─── Anonymer Modus ────────────────────────────────────────────────────── */
 function enterAnonMode() {
@@ -2874,6 +2943,11 @@ async function openPlayback() {
   pbCurrentTs = pbMaxTs;
   const slider = $('pbSlider');
   slider.min = 0; slider.max = 1000; slider.value = 1000;
+  // Date picker init
+  const dp = $('pbDatePicker');
+  dp.min = new Date(pbMinTs - new Date(pbMinTs).getTimezoneOffset()*60000).toISOString().slice(0,16);
+  dp.max = new Date(pbMaxTs - new Date(pbMaxTs).getTimezoneOffset()*60000).toISOString().slice(0,16);
+  dp.value = dp.max;
   playbackMode = true;
   $('playbackBar').classList.add('on');
   $('playbackBtn').classList.add('active');
@@ -2903,6 +2977,9 @@ async function pbSeek(ts) {
   $('pbSlider').value = Math.round(pct);
   $('pbTime').textContent = new Date(ts).toLocaleString('de-DE',
     {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  // Sync datepicker
+  const dp = $('pbDatePicker');
+  if (dp) dp.value = new Date(ts - new Date(ts).getTimezoneOffset()*60000).toISOString().slice(0,16);
   const data = await apiFetch(`/api/playback?ts=${ts}`).then(r => r.json()).catch(() => null);
   if (!data) return;
   // Schiffe mit Datenpunkt max. 6 Min vom Zielzeitpunkt anzeigen
@@ -3000,6 +3077,12 @@ $('pbPlay').onclick = () => {
 
 $('pbClose').onclick = () => closePlayback();
 $('playbackBtn').onclick = () => playbackMode ? closePlayback() : openPlayback();
+$('pbDatePicker').onchange = () => {
+  const val = $('pbDatePicker').value;
+  if (!val || !playbackMode) return;
+  const ts = new Date(val).getTime();
+  if (ts >= pbMinTs && ts <= pbMaxTs) pbSeek(ts);
+};
 
 
 /* ─── Filter-Badge (zeigt aktive Filter an) ─────────────────────────────── */
