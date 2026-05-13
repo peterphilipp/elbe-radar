@@ -57,6 +57,19 @@
   --blue:#1568c8;--bhi:#dbeafe;--tel:#0a7a6a;--red:#b92c38;--map-bg:#d4e4f0;
   --topbar-h:calc(50px + env(safe-area-inset-top, 0px));
 }
+/* ── PWA Standalone (iOS Home Screen / Dynamic Island) ──────────────────── */
+@media (display-mode: standalone) {
+  :root { --topbar-h:calc(50px + env(safe-area-inset-top, 0px)); }
+  #topbar {
+    padding-top:env(safe-area-inset-top, 0px);
+    min-height:var(--topbar-h);
+  }
+  #mobile-bottom { padding-bottom:max(6px, env(safe-area-inset-bottom, 0px)); }
+}
+/* Apple standalone fallback (older WebKit) */
+@media screen and (display-mode: standalone) {
+  #playbackBar { bottom:calc(36px + env(safe-area-inset-bottom, 0px)); }
+}
 [data-theme="dark"]{
   --bg:#080f1a;--surf:#0c1828;--surf2:#101e30;--off:#152437;--brd:#1e3350;--div:#192c45;
   --txt:#bdd0e8;--mut:#6a90b0;--fnt:#2e4a66;
@@ -446,20 +459,20 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 }
 
 /* ── WETTER WIDGET ───────────────────────────────────────────────────────── */
-#weatherWidget{position:absolute;top:var(--topbar-h);left:0;right:0;z-index:490;background:var(--surf);border-bottom:1px solid var(--brd);padding:0;font-size:11px;color:var(--txt);box-shadow:0 2px 12px rgba(0,0,0,.15);cursor:default;overflow:hidden;transition:max-height .25s ease;}
+#weatherWidget{position:absolute;top:var(--topbar-h);right:10px;z-index:490;background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:0;font-size:11px;color:var(--txt);box-shadow:0 4px 16px rgba(0,0,0,.2);cursor:default;overflow:hidden;transition:max-height .25s ease;min-width:220px;}
 #weatherWidget.loading{opacity:.6;}
-#weatherWidget.ww-collapsed{max-height:0!important;border-bottom:none;}
+#weatherWidget.ww-collapsed{max-height:0!important;border:none;box-shadow:none;}
 .ww-toggle{position:absolute;top:var(--topbar-h);right:10px;z-index:491;width:28px;height:22px;border-radius:0 0 7px 7px;background:var(--surf);border:1px solid var(--brd);border-top:none;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--mut);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.12);transition:transform .2s;}
 .ww-toggle.rotated{transform:rotate(180deg);}
-.ww-bar{display:flex;align-items:center;gap:10px;padding:7px 14px;flex-wrap:wrap;}
-.ww-bar-section{display:flex;align-items:center;gap:6px;white-space:nowrap;}
-.ww-bar-divider{width:1px;height:22px;background:var(--div);flex-shrink:0;}
+.ww-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;flex-wrap:wrap;}
+.ww-bar-section{display:flex;align-items:center;gap:5px;white-space:nowrap;}
+.ww-bar-divider{width:1px;height:18px;background:var(--div);flex-shrink:0;}
 .ww-wind-arrow{display:inline-block;font-size:16px;line-height:1;transition:transform .3s;}
 .ww-row{display:flex;align-items:center;gap:7px;margin-bottom:3px;}
-.ww-icon{font-size:20px;line-height:1;}
+.ww-icon{font-size:18px;line-height:1;}
 .ww-main{font-size:16px;font-weight:700;}
 .ww-sub{font-size:10px;color:var(--mut);}
-.ww-tide{padding:4px 14px 7px;border-top:1px solid var(--div);font-size:10px;color:var(--mut);}
+.ww-tide{padding:5px 12px 7px;border-top:1px solid var(--div);font-size:10px;color:var(--mut);}
 .ww-tide-header{display:flex;align-items:baseline;gap:6px;margin-bottom:3px;}
 .ww-tide-header b{font-size:13px;color:var(--txt);font-weight:700;}
 .ww-tide-header span{font-size:10px;}
@@ -469,6 +482,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .tide-tp-lbl{font-weight:700;font-size:9px;}
 .tide-tp-time{color:var(--mut);font-size:8px;}
 .tide-tp-val{font-size:8px;}
+.ww-hwnw{font-size:10px;padding:4px 12px 6px;border-top:1px solid var(--div);display:flex;gap:10px;flex-wrap:wrap;}
 
 /* ── Log Viewer ──────────────────────────────────────────────────────────── */
 #logBody{flex:1;overflow-y:auto;padding:12px;font-family:var(--mono);font-size:11px;line-height:1.6;}
@@ -502,7 +516,19 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .db-stat-card{background:var(--surf2);border:1px solid var(--brd);border-radius:8px;padding:10px 12px;}
 .db-stat-val{font-size:18px;font-weight:700;color:var(--blue);}
 .db-stat-lbl{font-size:10px;color:var(--mut);margin-top:2px;}
-@media(max-width:700px){#weatherWidget{font-size:10px;}.ww-bar{padding:5px 10px;gap:8px;}.ww-tide{padding:3px 10px 5px;}}
+@media(max-width:700px){
+  #weatherWidget{right:0;left:0;border-radius:0;min-width:auto;border:none;border-bottom:1px solid var(--brd);box-shadow:0 2px 8px rgba(0,0,0,.12);font-size:10px;}
+  #weatherWidget .ww-bar{padding:5px 10px;gap:6px;flex-wrap:nowrap;overflow-x:auto;}
+  #weatherWidget .ww-bar-section{gap:3px;}
+  #weatherWidget .ww-icon{font-size:14px;}
+  #weatherWidget .ww-bar b{font-size:12px;}
+  #weatherWidget .ww-bar .ww-sub{font-size:9px;}
+  #weatherWidget .ww-bar .ww-wind-arrow{font-size:13px;}
+  #weatherWidget .ww-bar-divider{height:16px;}
+  #weatherWidget .ww-tide{padding:3px 10px 5px;}
+  #weatherWidget .ww-hwnw{padding:3px 10px 5px;font-size:9px;gap:8px;}
+  .ww-toggle{right:6px;}
+}
 #weatherWidget.hidden{display:none;}
 
 /* ── PLAYBACK BAR ────────────────────────────────────────────────────────── */
@@ -641,7 +667,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.3</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.4</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -730,10 +756,12 @@ input[type=range]{flex:1;accent-color:var(--blue);}
           <span id="wwTideState">🌊</span>
           <b id="wwPegel">– cm</b>
         </div>
-        <div class="ww-bar-section" style="margin-left:auto">
+        <div class="ww-bar-divider"></div>
+        <div class="ww-bar-section">
           <span id="wwTideNext" style="font-size:10px"></span>
         </div>
       </div>
+      <div class="ww-hwnw" id="wwHWNW"></div>
       <div class="ww-tide" id="wwTide" style="display:none">
         <div id="wwTideSpark"></div>
       </div>
@@ -983,7 +1011,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.7.3</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.7.4</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
       <div class="sform" style="margin-top:8px">
         <button class="sbtn-sec" id="sAppUpdate" style="font-size:11px;width:fit-content">🔄 App-Update prüfen</button>
         <div class="shint" id="sUpdateStatus" style="font-size:10px;margin-top:4px"></div>
@@ -2715,20 +2743,33 @@ async function loadWeather(force=false) {
       const { svg, turning } = buildTideSparkline(tide, d.tideForecast);
       $('wwTideSpark').innerHTML = svg;
 
-      // Nächste HW/NW als kompakter Text
+      // Nächste HW/NW als kompakter Text in bar
       if (turning.length > 0) {
         const next = turning[0];
         const col  = next.isHW ? 'var(--blue,#4af)' : '#f0a050';
-        const lbl  = next.isHW ? '▲ HW' : '▽ NW';
+        const lbl  = next.isHW ? '▲HW' : '▽NW';
         let txt = `<span style="font-weight:700;color:${col}">${lbl} ${next.time}</span>`;
         if (turning.length > 1) {
           const t2 = turning[1];
           const c2 = t2.isHW ? 'var(--blue,#4af)' : '#f0a050';
-          txt += `<span style="margin-left:8px;color:${c2}">${t2.isHW?'▲ HW':'▽ NW'} ${t2.time}</span>`;
+          txt += `<span style="margin-left:6px;color:${c2}">${t2.isHW?'▲HW':'▽NW'} ${t2.time}</span>`;
         }
         $('wwTideNext').innerHTML = txt;
       } else {
         $('wwTideNext').innerHTML = '';
+      }
+
+      // Dedicated HW/NW section: show next HW and next NW separately
+      if (turning.length > 0) {
+        const nextHW = turning.find(t => t.isHW);
+        const nextNW = turning.find(t => !t.isHW);
+        let hwnwHtml = '';
+        if (nextHW) hwnwHtml += `<span style="color:var(--blue,#4af);font-weight:700">▲ Hochwasser ${nextHW.time}</span>`;
+        if (nextNW) hwnwHtml += `<span style="color:#f0a050;font-weight:700">▽ Niedrigwasser ${nextNW.time}</span>`;
+        $('wwHWNW').innerHTML = hwnwHtml;
+        $('wwHWNW').style.display = hwnwHtml ? '' : 'none';
+      } else {
+        $('wwHWNW').style.display = 'none';
       }
 
       $('wwTide').style.display = 'block';
@@ -2934,6 +2975,7 @@ openSettings = function() {
 /* ─── Playback ──────────────────────────────────────────────────────────── */
 let playbackMode = false, pbTimer = null, pbShips = new Map();
 let pbMinTs = 0, pbMaxTs = 0, pbCurrentTs = 0;
+let pbSeeking = false; // prevent concurrent seeks
 
 async function openPlayback() {
   const range = await apiFetch('/api/playback/range').then(r => r.json()).catch(() => null);
@@ -2949,6 +2991,8 @@ async function openPlayback() {
   dp.max = new Date(pbMaxTs - new Date(pbMaxTs).getTimezoneOffset()*60000).toISOString().slice(0,16);
   dp.value = dp.max;
   playbackMode = true;
+  pbShips = new Map();
+  pbPrevPositions.clear();
   $('playbackBar').classList.add('on');
   $('playbackBtn').classList.add('active');
   $('dot').style.background = '#f0bc55';
@@ -2958,9 +3002,11 @@ async function openPlayback() {
 
 function closePlayback() {
   playbackMode = false;
+  pbSeeking = false;
   if (pbTimer) { clearInterval(pbTimer); pbTimer = null; }
   if (pbAnimFrame) { cancelAnimationFrame(pbAnimFrame); pbAnimFrame = null; }
   pbPrevPositions.clear();
+  pbShips = new Map();
   $('playbackBar').classList.remove('on');
   $('playbackBtn').classList.remove('active');
   $('pbPlay').textContent = '▶';
@@ -2972,25 +3018,41 @@ function closePlayback() {
 }
 
 async function pbSeek(ts) {
-  pbCurrentTs = ts;
-  const pct = pbMaxTs > pbMinTs ? (ts - pbMinTs) / (pbMaxTs - pbMinTs) * 1000 : 0;
-  $('pbSlider').value = Math.round(pct);
-  $('pbTime').textContent = new Date(ts).toLocaleString('de-DE',
-    {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-  // Sync datepicker
-  const dp = $('pbDatePicker');
-  if (dp) dp.value = new Date(ts - new Date(ts).getTimezoneOffset()*60000).toISOString().slice(0,16);
-  const data = await apiFetch(`/api/playback?ts=${ts}`).then(r => r.json()).catch(() => null);
-  if (!data) return;
-  // Schiffe mit Datenpunkt max. 6 Min vom Zielzeitpunkt anzeigen
-  // (bei 1-min Speicherintervall sollten alle relevanten Schiffe in der Nähe sein)
-  const MAX_DIFF_MS = 6 * 60 * 1000;
-  pbShips = new Map(
-    data.ships
-      .filter(s => (s.diff ?? Infinity) <= MAX_DIFF_MS)
-      .map(s => [s.mmsi, { ...s, seen: s.ts }])
-  );
-  renderPlaybackMap(pbShips);
+  if (pbSeeking) return; // prevent concurrent seeks
+  pbSeeking = true;
+  try {
+    pbCurrentTs = ts;
+    const pct = pbMaxTs > pbMinTs ? (ts - pbMinTs) / (pbMaxTs - pbMinTs) * 1000 : 0;
+    $('pbSlider').value = Math.round(pct);
+    $('pbTime').textContent = new Date(ts).toLocaleString('de-DE',
+      {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    // Sync datepicker
+    const dp = $('pbDatePicker');
+    if (dp) dp.value = new Date(ts - new Date(ts).getTimezoneOffset()*60000).toISOString().slice(0,16);
+    const data = await apiFetch(`/api/playback?ts=${ts}`).then(r => r.json()).catch(() => null);
+    if (!data || !playbackMode) { pbSeeking = false; return; }
+    // Wider tolerance (12 min) to bridge server restarts and data gaps
+    const MAX_DIFF_MS = 12 * 60 * 1000;
+    const newShips = new Map(
+      data.ships
+        .filter(s => (s.diff ?? Infinity) <= MAX_DIFF_MS)
+        .map(s => [s.mmsi, { ...s, seen: s.ts }])
+    );
+    // Keep ships from previous frame that aren't in new data (fade-hold for 2 steps = ~2min)
+    // This prevents ships from blinking out during small gaps
+    for (const [mmsi, old] of pbShips) {
+      if (!newShips.has(mmsi)) {
+        const age = (old._holdCount || 0) + 1;
+        if (age <= 3) { // keep for up to 3 seek steps
+          newShips.set(mmsi, { ...old, _holdCount: age });
+        }
+      }
+    }
+    pbShips = newShips;
+    renderPlaybackMap(pbShips);
+  } finally {
+    pbSeeking = false;
+  }
 }
 
 // Speichert die zuletzt gerenderten Positionen für Interpolation
@@ -3069,9 +3131,10 @@ $('pbPlay').onclick = () => {
   } else {
     $('pbPlay').textContent = '⏸'; $('pbPlay').classList.add('active');
     pbTimer = setInterval(() => {
+      if (pbSeeking) return; // wait for current seek to finish
       if (pbCurrentTs >= pbMaxTs) { clearInterval(pbTimer); pbTimer = null; $('pbPlay').textContent='▶'; $('pbPlay').classList.remove('active'); return; }
-      pbSeek(pbCurrentTs + 5 * 60 * 1000); // 5 Min pro Schritt
-    }, 800);
+      pbSeek(pbCurrentTs + 60 * 1000); // 1 min per step (matches history interval)
+    }, 900); // slightly longer than animation (700ms) to ensure smooth transitions
   }
 };
 

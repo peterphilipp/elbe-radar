@@ -746,11 +746,11 @@ app.get('/api/admin/db-stats', adminMiddleware, (req, res) => {
 });
 
 // ── PLAYBACK API ──────────────────────────────────────────────────────────────
-// GET /api/playback?ts=<unix_ms> – Alle Schiffe zum Zeitpunkt ts (±5 Min Fenster)
+// GET /api/playback?ts=<unix_ms> – Alle Schiffe zum Zeitpunkt ts (±10 Min Fenster)
 app.get('/api/playback', authMiddleware, (req, res) => {
   const ts = +(req.query.ts);
   if (!ts || isNaN(ts)) return res.status(400).json({ error: 'ts required' });
-  const window_ms = 5 * 60 * 1000;
+  const window_ms = 10 * 60 * 1000; // 10 min to bridge restart gaps
   // Für jede MMSI den Eintrag mit dem kleinsten Abstand zu ts nehmen
   const rows = db.db.prepare(`
     SELECT h.*, ABS(h.ts - ?) as diff
@@ -894,11 +894,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.7.3',
+  uptime: Math.floor(process.uptime()), version:'0.7.4',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.7.3' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.7.4' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));
