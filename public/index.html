@@ -65,10 +65,16 @@
     min-height:var(--topbar-h);
   }
   #mobile-bottom { padding-bottom:max(6px, env(safe-area-inset-bottom, 0px)); }
-}
-/* Apple standalone fallback (older WebKit) */
-@media screen and (display-mode: standalone) {
   #playbackBar { bottom:calc(36px + env(safe-area-inset-bottom, 0px)); }
+}
+/* Dynamic Island iPhones: safe-area-inset-top ~59px but env() sometimes under-reports in PWA.
+   Force extra top offset when in standalone + high-dpi + tall screen (iPhone 14 Pro+) */
+@media (display-mode: standalone) and (-webkit-min-device-pixel-ratio: 3) and (min-height: 800px) {
+  :root { --topbar-h:calc(50px + max(env(safe-area-inset-top, 0px), 47px)); }
+  #topbar {
+    padding-top:max(env(safe-area-inset-top, 0px), 47px);
+    min-height:var(--topbar-h);
+  }
 }
 [data-theme="dark"]{
   --bg:#080f1a;--surf:#0c1828;--surf2:#101e30;--off:#152437;--brd:#1e3350;--div:#192c45;
@@ -518,15 +524,16 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .db-stat-lbl{font-size:10px;color:var(--mut);margin-top:2px;}
 @media(max-width:700px){
   #weatherWidget{right:0;left:0;border-radius:0;min-width:auto;border:none;border-bottom:1px solid var(--brd);box-shadow:0 2px 8px rgba(0,0,0,.12);font-size:10px;}
-  #weatherWidget .ww-bar{padding:5px 10px;gap:6px;flex-wrap:nowrap;overflow-x:auto;}
+  #weatherWidget .ww-bar{padding:4px 10px;gap:5px;flex-wrap:nowrap;overflow-x:auto;}
   #weatherWidget .ww-bar-section{gap:3px;}
-  #weatherWidget .ww-icon{font-size:14px;}
-  #weatherWidget .ww-bar b{font-size:12px;}
+  #weatherWidget .ww-icon{font-size:13px;}
+  #weatherWidget .ww-bar b{font-size:11px;}
   #weatherWidget .ww-bar .ww-sub{font-size:9px;}
-  #weatherWidget .ww-bar .ww-wind-arrow{font-size:13px;}
-  #weatherWidget .ww-bar-divider{height:16px;}
-  #weatherWidget .ww-tide{padding:3px 10px 5px;}
-  #weatherWidget .ww-hwnw{padding:3px 10px 5px;font-size:9px;gap:8px;}
+  #weatherWidget .ww-bar .ww-wind-arrow{font-size:12px;}
+  #weatherWidget .ww-bar-divider{height:14px;}
+  /* Hide detailed tide sparkline on mobile – bar shows HW/NW times already */
+  #weatherWidget .ww-tide{display:none!important;}
+  #weatherWidget .ww-hwnw{padding:2px 10px 4px;font-size:9px;gap:8px;border-top:1px solid var(--div);}
   .ww-toggle{right:6px;}
 }
 #weatherWidget.hidden{display:none;}
@@ -667,7 +674,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.4</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.5</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -778,7 +785,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
         </div>
         <div id="dbadge"></div>
         <div class="dgrid" id="dgrid"></div>
-        <div class="dsec">🛤 Track (letzte 24 h)</div>
+        <div class="dsec">🛤 Track (letzte 18 h)</div>
         <div class="dtrack" id="dtrack">–</div>
         <div class="dsec">📍 Extrapolation +2 h</div>
         <div class="dtrack" id="dextrap">–</div>
@@ -1011,7 +1018,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.7.4</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.7.5</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
       <div class="sform" style="margin-top:8px">
         <button class="sbtn-sec" id="sAppUpdate" style="font-size:11px;width:fit-content">🔄 App-Update prüfen</button>
         <div class="shint" id="sUpdateStatus" style="font-size:10px;margin-top:4px"></div>
@@ -1455,15 +1462,31 @@ function movePoint(lat,lon,cogDeg,distNm){const R=3440.065,d=distNm/R,c=cogDeg*M
 
 function drawTrack(mmsi){
   clearTrackLayers();
-  apiFetch(`/api/ship/${mmsi}/track?hours=24`).then(r=>r.json()).then(histPts=>{
-    const cur=ships.get(mmsi);
+  apiFetch(`/api/ship/${mmsi}/track?hours=18`).then(r=>r.json()).then(histPts=>{
+    const cur = (playbackMode && pbShips.has(mmsi)) ? pbShips.get(mmsi) : ships.get(mmsi);
     if(cur&&cur.lat&&cur.lon) histPts.push({lat:cur.lat,lon:cur.lon,sog:cur.sog,cog:cur.cog,ts:cur.seen||Date.now()});
     if(!histPts.length)return;
     const c=col((cur||{}).type);
     trackLayer=L.featureGroup().addTo(map);
-    buildSegs(histPts).forEach(seg=>L.polyline(seg,{color:c,weight:2.5,opacity:.75}).addTo(trackLayer));
+    // Fade track opacity: newer segments are brighter, older ones are dimmer
+    const now = Date.now();
+    const maxAge = 18 * 3600 * 1000; // 18h
+    const segs = buildSegs(histPts);
+    segs.forEach(seg => {
+      if (seg.length < 2) return;
+      // Use midpoint timestamp for opacity
+      const midIdx = Math.floor(seg.length / 2);
+      // Approximate timestamp from closest history point
+      const midPt = seg[midIdx];
+      const ptTs = histPts.find(p => Math.abs(p.lat - midPt[0]) < 0.0001 && Math.abs(p.lon - midPt[1]) < 0.0001)?.ts || 0;
+      const age = now - ptTs;
+      const opacity = ptTs ? Math.max(0.15, 1 - (age / maxAge) * 0.75) : 0.5;
+      L.polyline(seg, { color: c, weight: 2.5, opacity }).addTo(trackLayer);
+    });
     histPts.slice(0,-1).forEach((p,i)=>{
-      L.circleMarker([p.lat,p.lon],{radius:i===histPts.length-2?4:3,color:c,fillColor:c,fillOpacity:.65,weight:1}).addTo(trackLayer);
+      const age = now - (p.ts || 0);
+      const fillOp = Math.max(0.15, 0.65 - (age / maxAge) * 0.5);
+      L.circleMarker([p.lat,p.lon],{radius:i===histPts.length-2?4:3,color:c,fillColor:c,fillOpacity:fillOp,weight:1}).addTo(trackLayer);
     });
     const base=cur||histPts[histPts.length-1];const sogKn=(base.sog||0)/10;
     if(sogKn>0.5&&base.cog!=null){
@@ -1839,7 +1862,9 @@ document.addEventListener('click', e => {
 function selectShip(mmsi, forceDetail = false){
   const wasSelected = (selMmsi === mmsi);
   selMmsi = mmsi;
-  const s = ships.get(mmsi); if(!s) return;
+  // During playback, use playback ship data; otherwise use live data
+  const s = (playbackMode && pbShips.has(mmsi)) ? pbShips.get(mmsi) : ships.get(mmsi);
+  if(!s) return;
   // Mobile: erster Klick = nur Track + Mini-Card, zweiter Klick = volle Details
   const mobile = window.innerWidth <= 700;
   const openDetail = !mobile || forceDetail || wasSelected;
@@ -2707,9 +2732,15 @@ if ($('sEmailSave')) $('sEmailSave').onclick = async () => {
 async function loadWeather(force=false) {
   try {
     const url = force ? '/api/weather?force=1' : '/api/weather';
-    const d = await apiFetch(url).then(r => r.json());
+    const resp = await apiFetch(url);
+    const d = await resp.json();
     const cur = d.weather?.current;
-    if (!cur) return;
+    if (!cur) {
+      $('weatherWidget').classList.remove('loading');
+      // Show error state but don't hide widget
+      if (d.error) { $('wwTemp').textContent = '–'; $('wwWind').textContent = 'Keine Daten'; }
+      return;
+    }
     const spdMs = +(cur.windspeed_10m || 0).toFixed(1);
     const dirDeg = Math.round(cur.winddirection_10m || 0);
     const temp = cur.temperature_2m != null ? Math.round(cur.temperature_2m) : null;
@@ -2776,7 +2807,14 @@ async function loadWeather(force=false) {
     } else {
       $('wwTide').style.display = 'none';
     }
-  } catch(e) { $('weatherWidget').classList.remove('loading'); }
+  } catch(e) {
+    $('weatherWidget').classList.remove('loading');
+    // Retry once after 30s on network error
+    if (!force && !loadWeather._retried) {
+      loadWeather._retried = true;
+      setTimeout(() => { loadWeather._retried = false; loadWeather(); }, 30000);
+    }
+  }
 }
 // Weather widget: click bar to refresh, toggle button to collapse/expand
 $('weatherWidget').querySelector('.ww-bar').onclick = () => { $('weatherWidget').classList.add('loading'); loadWeather(true); };

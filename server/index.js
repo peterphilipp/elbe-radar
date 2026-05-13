@@ -592,6 +592,11 @@ app.get('/api/weather', async (req, res) => {
     res.json(weatherCache);
   } catch(e) {
     console.error('[Weather] Fehler:', e.message);
+    // Return stale cache if available (better than no data)
+    if (weatherCache) {
+      console.log('[Weather] Sende gecachte Daten (stale) als Fallback');
+      return res.json({ ...weatherCache, stale: true });
+    }
     res.status(502).json({ error: 'Wetterdaten nicht verfügbar', detail: e.message });
   }
 });
@@ -891,14 +896,14 @@ app.get('/api/ships', (req, res) => {
   res.json(active);
 });
 app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHistory(+(req.query.days||1))));
-app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
+app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||18))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.7.4',
+  uptime: Math.floor(process.uptime()), version:'0.7.5',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.7.4' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.7.5' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));
