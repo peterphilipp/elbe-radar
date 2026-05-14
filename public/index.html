@@ -23,13 +23,13 @@
 #splash{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
   background:#0c1828;transition:opacity .5s ease,visibility .5s;overflow:hidden;}
 #splash.hide{opacity:0;visibility:hidden;pointer-events:none;}
-#splash svg{position:absolute;inset:0;width:100%;height:100%;}
-#splash .wave{animation:waveMove 6s ease-in-out infinite;transform-origin:center;}
-#splash .wave2{animation-duration:8s;animation-direction:reverse;}
-#splash .wave3{animation-duration:10s;}
+#splash svg{position:absolute;inset:0;width:100%;height:100%;overflow:hidden;}
+#splash .wave{animation:waveMove 6s ease-in-out infinite alternate;transform-origin:center;}
+#splash .wave2{animation-duration:8s;}
+#splash .wave3{animation-duration:10s;animation-direction:alternate-reverse;}
 @keyframes waveMove {
-  0%,100% { transform: translateX(0); }
-  50%     { transform: translateX(-30px); }
+  0%   { transform: translateX(-40px); }
+  100% { transform: translateX(40px); }
 }
 .splash-content{position:relative;text-align:center;z-index:2;}
 .splash-logo{font-size:72px;animation:splashBounce 2s ease-in-out infinite;}
@@ -57,23 +57,14 @@
   --blue:#1568c8;--bhi:#dbeafe;--tel:#0a7a6a;--red:#b92c38;--map-bg:#d4e4f0;
   --topbar-h:calc(50px + env(safe-area-inset-top, 0px));
 }
-/* ── PWA Standalone (iOS Home Screen / Dynamic Island) ──────────────────── */
+/* PWA standalone-Modus: iOS Dynamic Island bekommt extra Platz */
 @media (display-mode: standalone) {
   :root { --topbar-h:calc(50px + env(safe-area-inset-top, 0px)); }
-  #topbar {
-    padding-top:env(safe-area-inset-top, 0px);
-    min-height:var(--topbar-h);
-  }
-  #mobile-bottom { padding-bottom:max(6px, env(safe-area-inset-bottom, 0px)); }
-  #playbackBar { bottom:calc(36px + env(safe-area-inset-bottom, 0px)); }
 }
-/* Dynamic Island iPhones: safe-area-inset-top ~59px but env() sometimes under-reports in PWA.
-   Force extra top offset when in standalone + high-dpi + tall screen (iPhone 14 Pro+) */
-@media (display-mode: standalone) and (-webkit-min-device-pixel-ratio: 3) and (min-height: 800px) {
-  :root { --topbar-h:calc(50px + max(env(safe-area-inset-top, 0px), 47px)); }
-  #topbar {
-    padding-top:max(env(safe-area-inset-top, 0px), 47px);
-    min-height:var(--topbar-h);
+/* Fallback für ältere iOS: mindestens 50px im standalone */
+@supports not (padding-top: env(safe-area-inset-top)) {
+  @media (display-mode: standalone) {
+    :root { --topbar-h:70px; }
   }
 }
 [data-theme="dark"]{
@@ -111,10 +102,12 @@ input,select{font-family:var(--font);}
 
 /* ── TOPBAR ──────────────────────────────────────────────────────────────── */
 #topbar{position:fixed;top:0;left:0;right:0;
-  height:calc(50px + env(safe-area-inset-top, 0px));
+  height:var(--topbar-h);
   padding-top:env(safe-area-inset-top, 0px);
-  padding-left:max(14px, env(safe-area-inset-left, 0px));
-  padding-right:max(14px, env(safe-area-inset-right, 0px));
+  padding-left:max(14px, env(safe-area-inset-left, 14px));
+  padding-right:max(14px, env(safe-area-inset-right, 14px));
+  /* Mindesthöhe für Dynamic Island iPhones in standalone */
+  box-sizing:border-box;
   background:color-mix(in srgb, var(--surf) 55%, transparent);
   backdrop-filter:blur(20px) saturate(180%);
   -webkit-backdrop-filter:blur(20px) saturate(180%);
@@ -408,11 +401,13 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     border-bottom:none!important;
   }
   /* Legende: mobil unten rechts */
-  #legend{bottom:44px;left:auto;right:8px;top:auto;padding:5px 9px;}
+  #legend{bottom:calc(40vh + 8px);left:auto;right:8px;top:auto;padding:5px 9px;}
   #legend h4{display:none;}
   /* Leaflet zoom oben links bleibt */
   .leaflet-top.leaflet-left{top:4px;}
-  .leaflet-control-zoom{display:none!important;}
+  .leaflet-control-zoom{margin-top:4px!important;margin-left:8px!important;}
+  /* Weather Widget: mobil oben rechts (wie Desktop), nicht mittig */
+  #weatherWidget{top:calc(var(--topbar-h) + 6px);bottom:auto;right:8px;font-size:10px;min-width:130px;}
   .lr{margin-bottom:1px;}
   /* Buildinfo ausblenden auf mobile */
   #buildinfo{display:none;}
@@ -465,30 +460,24 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 }
 
 /* ── WETTER WIDGET ───────────────────────────────────────────────────────── */
-#weatherWidget{position:absolute;top:var(--topbar-h);right:10px;z-index:490;background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:0;font-size:11px;color:var(--txt);box-shadow:0 4px 16px rgba(0,0,0,.2);cursor:default;overflow:hidden;transition:max-height .25s ease;min-width:220px;}
+#weatherWidget{position:fixed;top:var(--topbar-h);right:10px;z-index:490;background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:7px 11px;font-size:11px;color:var(--txt);box-shadow:0 4px 16px rgba(0,0,0,.2);min-width:190px;cursor:default;}
 #weatherWidget.loading{opacity:.6;}
-#weatherWidget.ww-collapsed{max-height:0!important;border:none;box-shadow:none;}
-.ww-toggle{position:absolute;top:var(--topbar-h);right:10px;z-index:491;width:28px;height:22px;border-radius:0 0 7px 7px;background:var(--surf);border:1px solid var(--brd);border-top:none;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--mut);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.12);transition:transform .2s;}
-.ww-toggle.rotated{transform:rotate(180deg);}
-.ww-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;flex-wrap:wrap;}
-.ww-bar-section{display:flex;align-items:center;gap:5px;white-space:nowrap;}
-.ww-bar-divider{width:1px;height:18px;background:var(--div);flex-shrink:0;}
-.ww-wind-arrow{display:inline-block;font-size:16px;line-height:1;transition:transform .3s;}
 .ww-row{display:flex;align-items:center;gap:7px;margin-bottom:3px;}
-.ww-icon{font-size:18px;line-height:1;}
+.ww-icon{font-size:20px;line-height:1;}
 .ww-main{font-size:16px;font-weight:700;}
 .ww-sub{font-size:10px;color:var(--mut);}
-.ww-tide{padding:5px 12px 7px;border-top:1px solid var(--div);font-size:10px;color:var(--mut);}
-.ww-tide-header{display:flex;align-items:baseline;gap:6px;margin-bottom:3px;}
-.ww-tide-header b{font-size:13px;color:var(--txt);font-weight:700;}
-.ww-tide-header span{font-size:10px;}
+.ww-wind-circle{flex-shrink:0;width:30px;height:30px;}
+.ww-tide{margin-top:4px;padding-top:4px;border-top:1px solid var(--div);font-size:10px;color:var(--mut);}
+.ww-tide-info{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:3px;}
+.ww-tide-level{display:flex;align-items:baseline;gap:5px;}
+.ww-tide-level b{font-size:14px;color:var(--txt);font-weight:700;}
+.ww-tide-phase{font-size:10px;font-weight:600;white-space:nowrap;}
 .tide-spark{display:block;overflow:visible;}
-.ww-tide-next{display:flex;gap:6px;flex-wrap:wrap;margin-top:3px;}
+.ww-tide-next{display:flex;gap:6px;flex-wrap:wrap;}
 .tide-tp{font-size:9px;display:flex;flex-direction:column;align-items:center;gap:1px;}
 .tide-tp-lbl{font-weight:700;font-size:9px;}
 .tide-tp-time{color:var(--mut);font-size:8px;}
 .tide-tp-val{font-size:8px;}
-.ww-hwnw{font-size:10px;padding:4px 12px 6px;border-top:1px solid var(--div);display:flex;gap:10px;flex-wrap:wrap;}
 
 /* ── Log Viewer ──────────────────────────────────────────────────────────── */
 #logBody{flex:1;overflow-y:auto;padding:12px;font-family:var(--mono);font-size:11px;line-height:1.6;}
@@ -522,48 +511,23 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .db-stat-card{background:var(--surf2);border:1px solid var(--brd);border-radius:8px;padding:10px 12px;}
 .db-stat-val{font-size:18px;font-weight:700;color:var(--blue);}
 .db-stat-lbl{font-size:10px;color:var(--mut);margin-top:2px;}
-@media(max-width:700px){
-  #weatherWidget{right:0;left:0;border-radius:0;min-width:auto;border:none;border-bottom:1px solid var(--brd);box-shadow:0 2px 8px rgba(0,0,0,.12);font-size:10px;}
-  #weatherWidget .ww-bar{padding:4px 10px;gap:5px;flex-wrap:nowrap;overflow-x:auto;}
-  #weatherWidget .ww-bar-section{gap:3px;}
-  #weatherWidget .ww-icon{font-size:13px;}
-  #weatherWidget .ww-bar b{font-size:11px;}
-  #weatherWidget .ww-bar .ww-sub{font-size:9px;}
-  #weatherWidget .ww-bar .ww-wind-arrow{font-size:12px;}
-  #weatherWidget .ww-bar-divider{height:14px;}
-  /* Hide detailed tide sparkline on mobile – bar shows HW/NW times already */
-  #weatherWidget .ww-tide{display:none!important;}
-  #weatherWidget .ww-hwnw{padding:2px 10px 4px;font-size:9px;gap:8px;border-top:1px solid var(--div);}
-  .ww-toggle{right:6px;}
-}
+@media(max-width:700px){#weatherWidget{top:calc(var(--topbar-h) + 6px);bottom:auto;right:8px;font-size:10px;min-width:180px;max-width:200px;}}
 #weatherWidget.hidden{display:none;}
 
 /* ── PLAYBACK BAR ────────────────────────────────────────────────────────── */
-/* ── LOGOUT DIALOG ──────────────────────────────────────────────────────── */
-.logout-overlay{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);align-items:center;justify-content:center;}
-.logout-overlay.open{display:flex;}
-.logout-dialog{background:var(--surf);border:1px solid var(--brd);border-radius:16px;padding:28px 24px 22px;width:min(340px,calc(100vw - 40px));text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);animation:logoutIn .2s ease;}
-@keyframes logoutIn{from{opacity:0;transform:scale(.92) translateY(10px);}to{opacity:1;transform:none;}}
-.logout-icon{font-size:40px;margin-bottom:8px;}
-.logout-title{font-size:18px;font-weight:800;margin-bottom:6px;}
-.logout-msg{font-size:13px;color:var(--mut);margin-bottom:20px;line-height:1.5;}
-.logout-btns{display:flex;gap:10px;}
-.logout-btn{flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s;}
-.logout-cancel{background:var(--off);border:1px solid var(--brd);color:var(--txt);}
-.logout-cancel:hover{opacity:.8;}
-.logout-confirm{background:var(--red);border:1px solid var(--red);color:#fff;}
-.logout-confirm:hover{opacity:.85;}
-#playbackBar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--surf);border-top:2px solid var(--blue);padding:8px 14px;align-items:center;gap:10px;flex-wrap:wrap;}
+#playbackBar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--surf);border-top:2px solid var(--blue);padding:8px 14px;align-items:center;gap:8px;flex-wrap:nowrap;}
 #playbackBar.on{display:flex;}
 .pb-title{font-size:11px;font-weight:700;color:var(--blue);white-space:nowrap;}
-#pbSlider{flex:1;min-width:120px;accent-color:var(--blue);}
-#pbTime{font-family:var(--mono);font-size:11px;color:var(--txt);white-space:nowrap;min-width:110px;}
+.pb-slider-wrap{flex:1;min-width:80px;position:relative;}
+#pbSlider{width:100%;accent-color:var(--blue);}
+.pb-ticks{display:flex;justify-content:space-between;padding:0 2px;margin-top:-2px;}
+.pb-tick{font-size:7px;color:var(--mut);text-align:center;line-height:1;}
+#pbTime{font-family:var(--mono);font-size:11px;color:var(--txt);white-space:nowrap;min-width:100px;}
 .pb-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--brd);background:var(--surf2);font-size:11px;font-weight:700;cursor:pointer;color:var(--txt);}
 .pb-btn.active{background:var(--blue);color:#fff;border-color:var(--blue);}
-.pb-datepicker{font-family:var(--mono);font-size:11px;background:var(--surf2);color:var(--txt);border:1px solid var(--brd);border-radius:6px;padding:3px 6px;cursor:pointer;}
-.pb-datepicker::-webkit-calendar-picker-indicator{filter:invert(0.5);cursor:pointer;}
+.pb-speed{min-width:30px;text-align:center;font-family:var(--mono);font-size:10px;}
 #pbClose{margin-left:auto;}
-@media(max-width:700px){#playbackBar{bottom:36px;font-size:10px;padding:6px 10px;gap:6px;}#pbSlider{min-width:80px;}}
+@media(max-width:700px){#playbackBar{bottom:calc(40vh);font-size:10px;padding:6px 8px;gap:4px;}.pb-title{display:none;}.pb-slider-wrap{min-width:60px;}}
 </style>
 </head>
 <body>
@@ -582,9 +546,10 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     </defs>
     <rect width="800" height="600" fill="url(#splashGrad)"/>
     <!-- 3 Wellen mit unterschiedlicher Geschwindigkeit -->
-    <path class="wave wave1" d="M0,400 Q200,360 400,400 T800,400 V600 H0 Z" fill="url(#splashWave)"/>
-    <path class="wave wave2" d="M0,440 Q200,400 400,440 T800,440 V600 H0 Z" fill="url(#splashWave)" opacity="0.7"/>
-    <path class="wave wave3" d="M0,480 Q200,440 400,480 T800,480 V600 H0 Z" fill="url(#splashWave)" opacity="0.5"/>
+    <!-- 3 Wellen breiter als ViewBox, symmetrisch animiert -->
+    <path class="wave wave1" d="M-200,400 Q0,360 200,400 Q400,440 600,400 Q800,360 1000,400 V600 H-200 Z" fill="url(#splashWave)"/>
+    <path class="wave wave2" d="M-200,440 Q0,400 200,440 Q400,480 600,440 Q800,400 1000,440 V600 H-200 Z" fill="url(#splashWave)" opacity="0.7"/>
+    <path class="wave wave3" d="M-200,480 Q0,440 200,480 Q400,520 600,480 Q800,440 1000,480 V600 H-200 Z" fill="url(#splashWave)" opacity="0.5"/>
   </svg>
   <div class="splash-content">
     <div class="splash-logo">🚢</div>
@@ -674,7 +639,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.5</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.3</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -727,6 +692,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
     <div id="mapbar">
       <span class="mbt" id="refNameMap">Elbe Radar</span>
       <div class="mstat">⏱ <b id="sP">0</b> ETA</div>
+      <div class="mstat">🔍 <b id="zoomLbl">12</b></div>
       <div class="tile-group">
         <button class="tbt on"  data-tile="dark"    title="Dunkel">🌙</button>
         <button class="tbt"     data-tile="voyager" title="Nautisch">🌊</button>
@@ -745,32 +711,34 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       <div class="lr"><div style="width:18px;border-top:2px dashed #f0bc55"></div>Extrapolation</div>
     </div>
     <div id="buildinfo">–</div>
-    <button class="ww-toggle" id="wwToggle" title="Wetter ein-/ausblenden">▼</button>
     <div id="weatherWidget" class="loading" title="Klicken zum Aktualisieren">
-      <div class="ww-bar">
-        <div class="ww-bar-section">
+      <!-- Wind: Pfeil im Kreis + Text -->
+      <div class="ww-row">
+        <div class="ww-wind-circle" id="wwWindCircle">
+          <svg width="30" height="30" viewBox="0 0 30 30">
+            <circle cx="15" cy="15" r="13" fill="none" stroke="var(--brd)" stroke-width="1.5"/>
+            <path id="wwArrow" d="M15 4 L18 22 L15 18 L12 22 Z" fill="var(--blue)" transform="rotate(0 15 15)"/>
+          </svg>
+        </div>
+        <div>
+          <div class="ww-main" id="wwWind">– m/s</div>
+          <div class="ww-sub" id="wwDir">–</div>
+        </div>
+        <div style="margin-left:auto;text-align:right">
           <span class="ww-icon" id="wwIcon">🌤</span>
-          <b id="wwTemp" style="font-size:16px">–°C</b>
-        </div>
-        <div class="ww-bar-divider"></div>
-        <div class="ww-bar-section">
-          <span class="ww-wind-arrow" id="wwArrow" title="Windrichtung">⬇</span>
-          <span><b id="wwWind">– m/s</b></span>
-          <span class="ww-sub" id="wwDir" style="margin-left:2px">–</span>
-        </div>
-        <div class="ww-bar-divider"></div>
-        <div class="ww-bar-section">
-          <span id="wwTideState">🌊</span>
-          <b id="wwPegel">– cm</b>
-        </div>
-        <div class="ww-bar-divider"></div>
-        <div class="ww-bar-section">
-          <span id="wwTideNext" style="font-size:10px"></span>
+          <div class="ww-sub" id="wwTemp">–°C</div>
         </div>
       </div>
-      <div class="ww-hwnw" id="wwHWNW"></div>
+      <!-- Tide: klar strukturiert -->
       <div class="ww-tide" id="wwTide" style="display:none">
         <div id="wwTideSpark"></div>
+        <div class="ww-tide-info">
+          <div class="ww-tide-level">
+            <span class="ww-tide-phase" id="wwTidePhase">–</span>
+            <b id="wwPegel">– cm</b>
+          </div>
+          <div class="ww-tide-next" id="wwTideNext"></div>
+        </div>
       </div>
     </div>
 
@@ -785,7 +753,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
         </div>
         <div id="dbadge"></div>
         <div class="dgrid" id="dgrid"></div>
-        <div class="dsec">🛤 Track (letzte 18 h)</div>
+        <div class="dsec">🛤 Track (letzte 24 h)</div>
         <div class="dtrack" id="dtrack">–</div>
         <div class="dsec">📍 Extrapolation +2 h</div>
         <div class="dtrack" id="dextrap">–</div>
@@ -1018,7 +986,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.7.5</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.7.3</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
       <div class="sform" style="margin-top:8px">
         <button class="sbtn-sec" id="sAppUpdate" style="font-size:11px;width:fit-content">🔄 App-Update prüfen</button>
         <div class="shint" id="sUpdateStatus" style="font-size:10px;margin-top:4px"></div>
@@ -1028,7 +996,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 </div>
 
 <!-- MOBILE BOTTOM -->
-<div id="mobile-bottom" class="collapsed">
+<div id="mobile-bottom">
   <div class="mob-tabs">
     <button class="mob-tab on" data-mob="mob-eta">ETA <span class="cnt" id="mobFutureCnt">0</span></button>
     <button class="mob-tab" data-mob="mob-alerts">🔔 Alerts</button>
@@ -1049,7 +1017,8 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   </div>
   <div class="mob-content" id="mob-filter">
     <div style="padding:10px 12px;display:grid;gap:10px;">
-      <div id="mTypeChipsWrap" style="display:none">
+      <div>
+        <div class="flbl">Schiffstyp</div>
         <div class="chips" id="mTypeChips">
           <button class="chip on" data-t="all">Alle</button>
           <button class="chip" data-t="Container">Container</button>
@@ -1106,26 +1075,16 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   </div>
   </div><!-- end mob-content-wrap -->
 </div>
-
-<!-- LOGOUT DIALOG -->
-<div id="logoutOverlay" class="logout-overlay">
-  <div class="logout-dialog">
-    <div class="logout-icon">👤</div>
-    <div class="logout-title">Abmelden</div>
-    <div class="logout-msg" id="logoutMsg">Möchtest du dich wirklich abmelden?</div>
-    <div class="logout-btns">
-      <button class="logout-btn logout-cancel" id="logoutCancel">Abbrechen</button>
-      <button class="logout-btn logout-confirm" id="logoutConfirm">Abmelden</button>
-    </div>
-  </div>
-</div>
-
 <div id="playbackBar">
   <span class="pb-title">⏮ Playback</span>
-  <button class="pb-btn" id="pbPlay">▶</button>
-  <input type="range" id="pbSlider" min="0" max="100" value="0" step="1"/>
-  <span id="pbTime">–</span>
-  <input type="datetime-local" id="pbDatePicker" class="pb-datepicker" title="Datum/Uhrzeit wählen"/>
+  <button class="pb-btn" id="pbRewind" title="Zurückspulen">⏪</button>
+  <button class="pb-btn" id="pbPlay" title="Abspielen/Pause">▶</button>
+  <button class="pb-btn pb-speed" id="pbSpeed" title="Geschwindigkeit">1×</button>
+  <div class="pb-slider-wrap">
+    <input type="range" id="pbSlider" min="0" max="1000" value="0" step="1"/>
+    <div class="pb-ticks" id="pbTicks"></div>
+  </div>
+  <span id="pbTime" style="white-space:nowrap">–</span>
   <button class="pb-btn" id="pbClose">✕ Live</button>
 </div>
 
@@ -1240,20 +1199,8 @@ async function doLogout() {
   location.reload();
 }
 $('userBtn').onclick = () => {
-  showLogoutDialog();
+  if(confirm(`Als "${currentUser?.username}" abmelden?`)) doLogout();
 };
-
-function showLogoutDialog() {
-  const name = currentUser?.username || '?';
-  $('logoutMsg').textContent = `Als "${name}" abmelden?`;
-  $('logoutOverlay').classList.add('open');
-}
-function hideLogoutDialog() {
-  $('logoutOverlay').classList.remove('open');
-}
-$('logoutCancel').onclick = () => hideLogoutDialog();
-$('logoutConfirm').onclick = () => { hideLogoutDialog(); doLogout(); };
-$('logoutOverlay').onclick = (e) => { if (e.target === $('logoutOverlay')) hideLogoutDialog(); };
 
 /* ─── Init: Auth prüfen ──────────────────────────────────────────────────── */
 // Fallback: Splash spätestens nach 5s ausblenden
@@ -1423,7 +1370,7 @@ function initMap(){
   map=L.map('map',{zoomControl:true}).setView([53.570,9.730],12);
   apiFetch('/api/settings/tile').then(r=>r.json()).then(d=>setTile(d.value||'dark')).catch(()=>setTile('dark'));
   map.on('click',()=>{selMmsi=null;$('detail').classList.remove('open');$('detailBackdrop').classList.remove('on');clearTrackLayers();redraw();});
-  map.on('zoomend',()=>{currentZoom=map.getZoom();sendBoxUpdate();syncMarkers();});
+  map.on('zoomend',()=>{currentZoom=map.getZoom();$('zoomLbl').textContent=currentZoom;sendBoxUpdate();syncMarkers();});
   map.on('moveend',()=>{sendBoxUpdate();});
 }
 
@@ -1462,31 +1409,15 @@ function movePoint(lat,lon,cogDeg,distNm){const R=3440.065,d=distNm/R,c=cogDeg*M
 
 function drawTrack(mmsi){
   clearTrackLayers();
-  apiFetch(`/api/ship/${mmsi}/track?hours=18`).then(r=>r.json()).then(histPts=>{
-    const cur = (playbackMode && pbShips.has(mmsi)) ? pbShips.get(mmsi) : ships.get(mmsi);
+  apiFetch(`/api/ship/${mmsi}/track?hours=24`).then(r=>r.json()).then(histPts=>{
+    const cur=ships.get(mmsi);
     if(cur&&cur.lat&&cur.lon) histPts.push({lat:cur.lat,lon:cur.lon,sog:cur.sog,cog:cur.cog,ts:cur.seen||Date.now()});
     if(!histPts.length)return;
     const c=col((cur||{}).type);
     trackLayer=L.featureGroup().addTo(map);
-    // Fade track opacity: newer segments are brighter, older ones are dimmer
-    const now = Date.now();
-    const maxAge = 18 * 3600 * 1000; // 18h
-    const segs = buildSegs(histPts);
-    segs.forEach(seg => {
-      if (seg.length < 2) return;
-      // Use midpoint timestamp for opacity
-      const midIdx = Math.floor(seg.length / 2);
-      // Approximate timestamp from closest history point
-      const midPt = seg[midIdx];
-      const ptTs = histPts.find(p => Math.abs(p.lat - midPt[0]) < 0.0001 && Math.abs(p.lon - midPt[1]) < 0.0001)?.ts || 0;
-      const age = now - ptTs;
-      const opacity = ptTs ? Math.max(0.15, 1 - (age / maxAge) * 0.75) : 0.5;
-      L.polyline(seg, { color: c, weight: 2.5, opacity }).addTo(trackLayer);
-    });
+    buildSegs(histPts).forEach(seg=>L.polyline(seg,{color:c,weight:2.5,opacity:.75}).addTo(trackLayer));
     histPts.slice(0,-1).forEach((p,i)=>{
-      const age = now - (p.ts || 0);
-      const fillOp = Math.max(0.15, 0.65 - (age / maxAge) * 0.5);
-      L.circleMarker([p.lat,p.lon],{radius:i===histPts.length-2?4:3,color:c,fillColor:c,fillOpacity:fillOp,weight:1}).addTo(trackLayer);
+      L.circleMarker([p.lat,p.lon],{radius:i===histPts.length-2?4:3,color:c,fillColor:c,fillOpacity:.65,weight:1}).addTo(trackLayer);
     });
     const base=cur||histPts[histPts.length-1];const sogKn=(base.sog||0)/10;
     if(sogKn>0.5&&base.cog!=null){
@@ -1862,9 +1793,7 @@ document.addEventListener('click', e => {
 function selectShip(mmsi, forceDetail = false){
   const wasSelected = (selMmsi === mmsi);
   selMmsi = mmsi;
-  // During playback, use playback ship data; otherwise use live data
-  const s = (playbackMode && pbShips.has(mmsi)) ? pbShips.get(mmsi) : ships.get(mmsi);
-  if(!s) return;
+  const s = ships.get(mmsi); if(!s) return;
   // Mobile: erster Klick = nur Track + Mini-Card, zweiter Klick = volle Details
   const mobile = window.innerWidth <= 700;
   const openDetail = !mobile || forceDetail || wasSelected;
@@ -2013,7 +1942,7 @@ function openSettings(){$('settingsPage').classList.add('open');$('settingsBtn')
 function closeSettings(){$('settingsPage').classList.remove('open');$('settingsBtn').classList.remove('active');}
 $('settingsBtn').onclick=()=>$('settingsPage').classList.contains('open')?closeSettings():openSettings();
 $('settingsClose').onclick=()=>closeSettings();
-$('sLogout').onclick=()=>{showLogoutDialog();};
+$('sLogout').onclick=()=>{if(confirm(`Als "${currentUser?.username}" abmelden?`))doLogout();};
 
 $('sRefMapCenter').onclick=()=>{const c=map.getCenter();$('sRefLat').value=c.lat.toFixed(4);$('sRefLon').value=c.lng.toFixed(4);};
 $('sRefSave').onclick=()=>{
@@ -2117,16 +2046,15 @@ function connectBackend(){
     try{
       const d=JSON.parse(ev.data);
       if(d.type==='ships'){
-        // Merge: neue Daten überschreiben, bestehende bleiben bis Timeout
-        d.data.forEach(s=>ships.set(s.mmsi,s));
-        // Schiffe entfernen die nicht im Update sind UND > 30min alt
-        if(d.data.length > 0) {
-          const inMsg = new Set(d.data.map(s=>s.mmsi));
-          for(const [mmsi,s] of ships){
-            if(!inMsg.has(mmsi) && (Date.now()-(s.seen||0)) > 30*60*1000) ships.delete(mmsi);
-          }
+        // Server sendet immer ALLE aktiven Schiffe – Map komplett ersetzen
+        const newShips = new Map();
+        d.data.forEach(s => newShips.set(s.mmsi, s));
+        // Ausgewähltes Schiff behalten falls es nicht mehr im Update ist (Track)
+        if (selMmsi && ships.has(selMmsi) && !newShips.has(selMmsi)) {
+          newShips.set(selMmsi, ships.get(selMmsi));
         }
-        if(!playbackMode){redraw();dbg(`${ships.size} Schiffe (${d.data.length} Update) · ${new Date(d.ts).toLocaleTimeString('de-DE')}`);}
+        ships = newShips;
+        if(!playbackMode){redraw();dbg(`${ships.size} Schiffe · ${new Date(d.ts).toLocaleTimeString('de-DE')}`);}
       }
     }catch(e){dbg('Fehler: '+e.message);}
   };
@@ -2143,14 +2071,13 @@ function startApp(){
   setTimeout(()=>{if(map)map.invalidateSize();}, 100);
   setTimeout(()=>{if(map)map.invalidateSize();}, 500);
   loadRefPoint();
-  // SOFORT Schiffe aus DB laden, ohne auf WebSocket zu warten
+  // SOFORT Schiffe aus Server-Memory laden (gleiche Daten wie WS-Init)
   fetch('/api/ships').then(r => r.json()).then(data => {
     if (Array.isArray(data)) {
-      data.forEach(s => ships.set(s.mmsi, s));
+      ships = new Map(data.map(s => [s.mmsi, s]));
       redraw(); updateStats(); renderETA();
-      dbg(`${data.length} Schiffe initial geladen (REST)`);
+      dbg(`${data.length} Schiffe initial geladen`);
     }
-    // Splash ausblenden sobald Daten da sind
     const sp = $('splash'); if (sp) setTimeout(() => sp.classList.add("hide"), 1200);
   }).catch(e => {
     dbg('Initialer Schiffsabruf fehlgeschlagen: '+e.message);
@@ -2163,15 +2090,7 @@ function startApp(){
   loadWeather();
   loadWatchlist();
   setInterval(loadWeather, 15 * 60 * 1000);
-  // Schiffe die seit > 30 Min kein Update hatten von der Karte entfernen
-  setInterval(() => {
-    const cutoff = Date.now() - 30 * 60 * 1000;
-    let removed = 0;
-    for (const [mmsi, s] of ships) {
-      if ((s.seen || 0) < cutoff) { ships.delete(mmsi); removed++; }
-    }
-    if (removed > 0) { redraw(); dbg(`${removed} abgelaufene Schiffe entfernt`); }
-  }, 5 * 60 * 1000); // alle 5 Min checken
+  // Schiffs-Map wird bei jedem WS-Update komplett ersetzt → kein Client-Cleanup nötig
   // Anon-Modus: eingeschränkte UI
   if (anonMode) {
     if ($('alertsTabBtn')) {
@@ -2732,97 +2651,67 @@ if ($('sEmailSave')) $('sEmailSave').onclick = async () => {
 async function loadWeather(force=false) {
   try {
     const url = force ? '/api/weather?force=1' : '/api/weather';
-    const resp = await apiFetch(url);
-    const d = await resp.json();
+    const d = await apiFetch(url).then(r => r.json());
     const cur = d.weather?.current;
-    if (!cur) {
-      $('weatherWidget').classList.remove('loading');
-      // Show error state but don't hide widget
-      if (d.error) { $('wwTemp').textContent = '–'; $('wwWind').textContent = 'Keine Daten'; }
-      return;
-    }
+    if (!cur) return;
     const spdMs = +(cur.windspeed_10m || 0).toFixed(1);
     const dirDeg = Math.round(cur.winddirection_10m || 0);
     const temp = cur.temperature_2m != null ? Math.round(cur.temperature_2m) : null;
     const bft = spdMs<0.3?0:spdMs<1.6?1:spdMs<3.4?2:spdMs<5.5?3:spdMs<8?4:spdMs<10.8?5:spdMs<13.9?6:spdMs<17.2?7:spdMs<20.8?8:9;
-    $('wwWind').textContent = `${spdMs} m/s (Bft ${bft})`;
-    $('wwDir').textContent  = windDirName(dirDeg);
+    $('wwWind').textContent = `${spdMs} m/s · Bft ${bft}`;
+    $('wwDir').textContent  = `${windDirName(dirDeg)} (${dirDeg}°)`;
     $('wwTemp').textContent = temp != null ? `${temp}°C` : '–°C';
     $('wwIcon').textContent = WMO_ICONS[cur.weathercode] || '🌤';
-    // Wind arrow: rotate arrow to show wind direction (arrow points where wind comes FROM)
-    $('wwArrow').style.transform = `rotate(${dirDeg}deg)`;
-    $('wwArrow').title = `Wind aus ${windDirName(dirDeg)} (${dirDeg}°)`;
+    // Wind-Pfeil im Kreis rotieren (meteorologisch: "from" → +180 für Pfeilrichtung)
+    const arrow = $('wwArrow');
+    if (arrow) arrow.setAttribute('transform', `rotate(${(dirDeg + 180) % 360} 15 15)`);
     $('weatherWidget').classList.remove('loading');
-    // Pegel mit neuem Chart
+
+    // Pegel / Tide
     const tide = d.tide;
     if (tide && Array.isArray(tide) && tide.length > 0) {
       const latest = tide[tide.length - 1];
-      const prev   = tide.length > 3 ? tide[tide.length - 4] : null; // ~3 Min Vergleich
+      const prev   = tide.length > 10 ? tide[tide.length - 11] : null;
       const val    = Math.round(latest.value);
       const rising = prev ? latest.value > prev.value + 1 : null;
-      const trendArrow = rising === true ? '↑' : rising === false ? '↓' : '→';
-      const stateText  = rising === true ? '🌊 Flut' : rising === false ? '🌊 Ebbe' : '🌊 Pegel';
 
-      $('wwTideState').textContent = stateText + ' · Schulau';
-      // Pegelhöhe + Strömungsschätzung
-      let pegelTxt = `${val} cm ${trendArrow}`;
+      // Phase: Ebbe oder Flut (klar benannt)
+      const phaseText = rising === true ? '⬆ Flut' : rising === false ? '⬇ Ebbe' : '⏸ Stauwasser';
+      const phaseColor = rising === true ? 'var(--blue,#4af)' : rising === false ? '#f0a050' : 'var(--mut)';
+
+      // Strömung falls vorhanden
+      let pegelTxt = `${val} cm`;
       if (d.current && Math.abs(d.current.rate_cm_h) > 1) {
-        pegelTxt += ` <span style="font-size:9px;color:var(--mut);margin-left:4px">~${d.current.knots} kn</span>`;
+        pegelTxt += ` · ~${d.current.knots} kn`;
       }
-      $('wwPegel').innerHTML = pegelTxt;
+      if ($('wwTidePhase')) {
+        $('wwTidePhase').textContent = phaseText;
+        $('wwTidePhase').style.color = phaseColor;
+      }
+      $('wwPegel').textContent = pegelTxt;
 
+      // Sparkline
       const { svg, turning } = buildTideSparkline(tide, d.tideForecast);
       $('wwTideSpark').innerHTML = svg;
 
-      // Nächste HW/NW als kompakter Text in bar
+      // Nächste HW/NW - kompakt und klar
       if (turning.length > 0) {
-        const next = turning[0];
-        const col  = next.isHW ? 'var(--blue,#4af)' : '#f0a050';
-        const lbl  = next.isHW ? '▲HW' : '▽NW';
-        let txt = `<span style="font-weight:700;color:${col}">${lbl} ${next.time}</span>`;
-        if (turning.length > 1) {
-          const t2 = turning[1];
-          const c2 = t2.isHW ? 'var(--blue,#4af)' : '#f0a050';
-          txt += `<span style="margin-left:6px;color:${c2}">${t2.isHW?'▲HW':'▽NW'} ${t2.time}</span>`;
-        }
-        $('wwTideNext').innerHTML = txt;
+        const parts = turning.slice(0, 2).map(tp => {
+          const col = tp.isHW ? 'var(--blue,#4af)' : '#f0a050';
+          const lbl = tp.isHW ? '▲ HW' : '▽ NW';
+          return `<span style="font-weight:700;color:${col}">${lbl} ${tp.time}</span>`;
+        });
+        $('wwTideNext').innerHTML = parts.join(' · ');
       } else {
         $('wwTideNext').innerHTML = '';
       }
-
-      // Dedicated HW/NW section: show next HW and next NW separately
-      if (turning.length > 0) {
-        const nextHW = turning.find(t => t.isHW);
-        const nextNW = turning.find(t => !t.isHW);
-        let hwnwHtml = '';
-        if (nextHW) hwnwHtml += `<span style="color:var(--blue,#4af);font-weight:700">▲ Hochwasser ${nextHW.time}</span>`;
-        if (nextNW) hwnwHtml += `<span style="color:#f0a050;font-weight:700">▽ Niedrigwasser ${nextNW.time}</span>`;
-        $('wwHWNW').innerHTML = hwnwHtml;
-        $('wwHWNW').style.display = hwnwHtml ? '' : 'none';
-      } else {
-        $('wwHWNW').style.display = 'none';
-      }
-
       $('wwTide').style.display = 'block';
     } else {
       $('wwTide').style.display = 'none';
     }
-  } catch(e) {
-    $('weatherWidget').classList.remove('loading');
-    // Retry once after 30s on network error
-    if (!force && !loadWeather._retried) {
-      loadWeather._retried = true;
-      setTimeout(() => { loadWeather._retried = false; loadWeather(); }, 30000);
-    }
-  }
+  } catch(e) { $('weatherWidget').classList.remove('loading'); }
 }
-// Weather widget: click bar to refresh, toggle button to collapse/expand
-$('weatherWidget').querySelector('.ww-bar').onclick = () => { $('weatherWidget').classList.add('loading'); loadWeather(true); };
-$('wwToggle').onclick = () => {
-  const ww = $('weatherWidget');
-  ww.classList.toggle('ww-collapsed');
-  $('wwToggle').classList.toggle('rotated', !ww.classList.contains('ww-collapsed'));
-};
+$('weatherWidget').onclick = () => { $('weatherWidget').classList.add('loading'); loadWeather(true); };
 
 /* ─── Anonymer Modus ────────────────────────────────────────────────────── */
 function enterAnonMode() {
@@ -3013,7 +2902,6 @@ openSettings = function() {
 /* ─── Playback ──────────────────────────────────────────────────────────── */
 let playbackMode = false, pbTimer = null, pbShips = new Map();
 let pbMinTs = 0, pbMaxTs = 0, pbCurrentTs = 0;
-let pbSeeking = false; // prevent concurrent seeks
 
 async function openPlayback() {
   const range = await apiFetch('/api/playback/range').then(r => r.json()).catch(() => null);
@@ -3023,74 +2911,49 @@ async function openPlayback() {
   pbCurrentTs = pbMaxTs;
   const slider = $('pbSlider');
   slider.min = 0; slider.max = 1000; slider.value = 1000;
-  // Date picker init
-  const dp = $('pbDatePicker');
-  dp.min = new Date(pbMinTs - new Date(pbMinTs).getTimezoneOffset()*60000).toISOString().slice(0,16);
-  dp.max = new Date(pbMaxTs - new Date(pbMaxTs).getTimezoneOffset()*60000).toISOString().slice(0,16);
-  dp.value = dp.max;
   playbackMode = true;
-  pbShips = new Map();
-  pbPrevPositions.clear();
   $('playbackBar').classList.add('on');
   $('playbackBtn').classList.add('active');
   $('dot').style.background = '#f0bc55';
   $('connLbl').textContent = 'Playback';
+  pbSpeedMult = 1; if ($('pbSpeed')) $('pbSpeed').textContent = '1×';
+  buildPbTicks();
   await pbSeek(pbCurrentTs);
 }
 
 function closePlayback() {
   playbackMode = false;
-  pbSeeking = false;
   if (pbTimer) { clearInterval(pbTimer); pbTimer = null; }
   if (pbAnimFrame) { cancelAnimationFrame(pbAnimFrame); pbAnimFrame = null; }
   pbPrevPositions.clear();
-  pbShips = new Map();
+  pbSpeedMult = 1;
   $('playbackBar').classList.remove('on');
   $('playbackBtn').classList.remove('active');
-  $('pbPlay').textContent = '▶';
-  $('pbPlay').classList.remove('active');
+  $('pbPlay').textContent = '▶'; $('pbPlay').classList.remove('active');
+  $('pbRewind').classList.remove('active');
+  if ($('pbSpeed')) $('pbSpeed').textContent = '1×';
   $('dot').style.background = '';
   $('connLbl').textContent = 'Live';
-  // Zurück zu Live-Daten
   redraw();
 }
 
 async function pbSeek(ts) {
-  if (pbSeeking) return; // prevent concurrent seeks
-  pbSeeking = true;
-  try {
-    pbCurrentTs = ts;
-    const pct = pbMaxTs > pbMinTs ? (ts - pbMinTs) / (pbMaxTs - pbMinTs) * 1000 : 0;
-    $('pbSlider').value = Math.round(pct);
-    $('pbTime').textContent = new Date(ts).toLocaleString('de-DE',
-      {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-    // Sync datepicker
-    const dp = $('pbDatePicker');
-    if (dp) dp.value = new Date(ts - new Date(ts).getTimezoneOffset()*60000).toISOString().slice(0,16);
-    const data = await apiFetch(`/api/playback?ts=${ts}`).then(r => r.json()).catch(() => null);
-    if (!data || !playbackMode) { pbSeeking = false; return; }
-    // Wider tolerance (12 min) to bridge server restarts and data gaps
-    const MAX_DIFF_MS = 12 * 60 * 1000;
-    const newShips = new Map(
-      data.ships
-        .filter(s => (s.diff ?? Infinity) <= MAX_DIFF_MS)
-        .map(s => [s.mmsi, { ...s, seen: s.ts }])
-    );
-    // Keep ships from previous frame that aren't in new data (fade-hold for 2 steps = ~2min)
-    // This prevents ships from blinking out during small gaps
-    for (const [mmsi, old] of pbShips) {
-      if (!newShips.has(mmsi)) {
-        const age = (old._holdCount || 0) + 1;
-        if (age <= 3) { // keep for up to 3 seek steps
-          newShips.set(mmsi, { ...old, _holdCount: age });
-        }
-      }
-    }
-    pbShips = newShips;
-    renderPlaybackMap(pbShips);
-  } finally {
-    pbSeeking = false;
-  }
+  pbCurrentTs = ts;
+  const pct = pbMaxTs > pbMinTs ? (ts - pbMinTs) / (pbMaxTs - pbMinTs) * 1000 : 0;
+  $('pbSlider').value = Math.round(pct);
+  $('pbTime').textContent = new Date(ts).toLocaleString('de-DE',
+    {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const data = await apiFetch(`/api/playback?ts=${ts}`).then(r => r.json()).catch(() => null);
+  if (!data) return;
+  // Schiffe mit Datenpunkt max. 6 Min vom Zielzeitpunkt anzeigen
+  // (bei 1-min Speicherintervall sollten alle relevanten Schiffe in der Nähe sein)
+  const MAX_DIFF_MS = 6 * 60 * 1000;
+  pbShips = new Map(
+    data.ships
+      .filter(s => (s.diff ?? Infinity) <= MAX_DIFF_MS)
+      .map(s => [s.mmsi, { ...s, seen: s.ts }])
+  );
+  renderPlaybackMap(pbShips);
 }
 
 // Speichert die zuletzt gerenderten Positionen für Interpolation
@@ -3155,7 +3018,32 @@ function renderPlaybackMap(shipMap) {
   pbAnimFrame = requestAnimationFrame(animate);
 }
 
-// Playback controls – bound after DOM is ready (elements added before script)
+// Playback controls
+let pbSpeedMult = 1; // 1×, 2×, 4×, 8×
+const PB_SPEEDS = [1, 2, 4, 8];
+const PB_STEP_MS = 1 * 60 * 1000; // 1 Min pro Schritt (Basis)
+
+function buildPbTicks() {
+  const el = $('pbTicks');
+  if (!el || pbMaxTs <= pbMinTs) return;
+  el.innerHTML = '';
+  const range = pbMaxTs - pbMinTs;
+  // Alle 2 Stunden einen Tick
+  const step = 2 * 3600 * 1000;
+  const startH = Math.ceil(pbMinTs / step) * step;
+  for (let t = startH; t <= pbMaxTs; t += step) {
+    const pct = ((t - pbMinTs) / range) * 100;
+    const lbl = new Date(t).toLocaleTimeString('de-DE', {hour:'2-digit',minute:'2-digit'});
+    const tick = document.createElement('div');
+    tick.className = 'pb-tick';
+    tick.style.position = 'absolute';
+    tick.style.left = pct + '%';
+    tick.style.transform = 'translateX(-50%)';
+    tick.textContent = lbl;
+    el.appendChild(tick);
+  }
+}
+
 $('pbSlider').oninput = () => {
   const pct = +$('pbSlider').value / 1000;
   const ts = Math.round(pbMinTs + pct * (pbMaxTs - pbMinTs));
@@ -3169,21 +3057,32 @@ $('pbPlay').onclick = () => {
   } else {
     $('pbPlay').textContent = '⏸'; $('pbPlay').classList.add('active');
     pbTimer = setInterval(() => {
-      if (pbSeeking) return; // wait for current seek to finish
       if (pbCurrentTs >= pbMaxTs) { clearInterval(pbTimer); pbTimer = null; $('pbPlay').textContent='▶'; $('pbPlay').classList.remove('active'); return; }
-      pbSeek(pbCurrentTs + 60 * 1000); // 1 min per step (matches history interval)
-    }, 900); // slightly longer than animation (700ms) to ensure smooth transitions
+      pbSeek(pbCurrentTs + PB_STEP_MS * pbSpeedMult);
+    }, 600);
   }
+};
+
+// Rewind: zurückspulen
+$('pbRewind').onclick = () => {
+  if (pbTimer) { clearInterval(pbTimer); pbTimer = null; $('pbPlay').textContent='▶'; $('pbPlay').classList.remove('active'); }
+  $('pbRewind').classList.add('active');
+  pbTimer = setInterval(() => {
+    if (pbCurrentTs <= pbMinTs) { clearInterval(pbTimer); pbTimer = null; $('pbRewind').classList.remove('active'); return; }
+    pbSeek(pbCurrentTs - PB_STEP_MS * pbSpeedMult);
+  }, 600);
+};
+
+// Speed toggle: 1× → 2× → 4× → 8× → 1×
+$('pbSpeed').onclick = () => {
+  const idx = PB_SPEEDS.indexOf(pbSpeedMult);
+  pbSpeedMult = PB_SPEEDS[(idx + 1) % PB_SPEEDS.length];
+  $('pbSpeed').textContent = pbSpeedMult + '×';
+  $('pbSpeed').classList.toggle('active', pbSpeedMult > 1);
 };
 
 $('pbClose').onclick = () => closePlayback();
 $('playbackBtn').onclick = () => playbackMode ? closePlayback() : openPlayback();
-$('pbDatePicker').onchange = () => {
-  const val = $('pbDatePicker').value;
-  if (!val || !playbackMode) return;
-  const ts = new Date(val).getTime();
-  if (ts >= pbMinTs && ts <= pbMaxTs) pbSeek(ts);
-};
 
 
 /* ─── Filter-Badge (zeigt aktive Filter an) ─────────────────────────────── */

@@ -86,19 +86,12 @@ class AISConnector {
 
   _connect() {
     if (this.ws) try { this.ws.terminate(); } catch(e) {}
-    if (!this._reconnectDelay) this._reconnectDelay = 5;
     console.log('[AIS] Verbinde …');
     this.ws = new WebSocket('wss://stream.aisstream.io/v0/stream');
-    this.ws.on('open',    () => { console.log('[AIS] Verbunden'); this._reconnectDelay = 5; this._subscribe(); });
+    this.ws.on('open',    () => { console.log('[AIS] Verbunden'); this._subscribe(); });
     this.ws.on('message', data => { try { this._handleMsg(JSON.parse(data.toString('utf8'))); } catch(e) {} });
     this.ws.on('error',   e  => console.error('[AIS] Fehler:', e.message));
-    this.ws.on('close',   code => {
-      // Exponential backoff: 5s → 10s → 20s → 40s → 60s max
-      const delay = this._reconnectDelay;
-      this._reconnectDelay = Math.min(60, delay * 2);
-      console.warn(`[AIS] Getrennt (${code}) – Reconnect in ${delay}s`);
-      setTimeout(() => this._connect(), delay * 1000);
-    });
+    this.ws.on('close',   code => { console.warn(`[AIS] Getrennt (${code}) – Reconnect in 15s`); setTimeout(() => this._connect(), 15000); });
   }
 
   _handleMsg(d) {
