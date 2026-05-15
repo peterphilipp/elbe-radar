@@ -642,7 +642,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.8</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.8.0</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -988,9 +988,32 @@ input[type=range]{flex:1;accent-color:var(--blue);}
       </div>
     </div>
 
+    <div class="ssec" id="sqlDebugSection" style="display:none">
+      <h3>🔬 SQL Debug</h3>
+      <p class="shint">Nur SELECT-Abfragen. Tabellen: <code>history</code>, <code>ships</code>, <code>users</code>, <code>passages</code></p>
+      <div class="sform">
+        <select class="abinput" id="sqlPreset" style="margin-bottom:6px">
+          <option value="">— Schnellabfragen —</option>
+          <option value="SELECT COUNT(*) as total, COUNT(DISTINCT mmsi) as ships, MIN(datetime(ts/1000,'unixepoch','localtime')) as oldest, MAX(datetime(ts/1000,'unixepoch','localtime')) as newest FROM history">History: Übersicht</option>
+          <option value="SELECT mmsi, name, COUNT(*) as punkte, MIN(datetime(ts/1000,'unixepoch','localtime')) as von, MAX(datetime(ts/1000,'unixepoch','localtime')) as bis FROM history WHERE ts > (strftime('%s','now')-86400)*1000 GROUP BY mmsi ORDER BY punkte DESC LIMIT 20">Letzte 24h: Top Schiffe</option>
+          <option value="SELECT mmsi, name, type, len, datetime(seen/1000,'unixepoch','localtime') as zuletzt FROM ships ORDER BY seen DESC LIMIT 20">Aktuelle Schiffe (ships-Tabelle)</option>
+          <option value="SELECT mmsi, name, COUNT(*) as n FROM history GROUP BY mmsi ORDER BY n DESC LIMIT 10">History: Meiste Einträge</option>
+          <option value="SELECT datetime(ts/1000,'unixepoch','localtime') as zeit, mmsi, name, lat, lon, sog FROM history ORDER BY ts DESC LIMIT 30">Neueste History-Einträge</option>
+          <option value="SELECT count(*) as n FROM history WHERE ts > (strftime('%s','now')-3600)*1000">History-Einträge letzte Stunde</option>
+        </select>
+        <textarea class="abinput" id="sqlInput" rows="4" placeholder="SELECT * FROM history WHERE mmsi='259694000' ORDER BY ts DESC LIMIT 10" style="font-family:var(--mono);font-size:11px;resize:vertical"></textarea>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button class="sbtn-sec" id="sqlRun">▶ Ausführen</button>
+          <button class="sbtn-sec" id="sqlClear" style="margin-left:auto">✕ Leeren</button>
+        </div>
+        <div id="sqlStatus" style="font-size:10px;color:var(--mut);margin-top:4px"></div>
+        <div id="sqlResult" style="margin-top:8px;overflow-x:auto;font-family:var(--mono);font-size:10px;max-height:300px;overflow-y:auto"></div>
+      </div>
+    </div>
+
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.7.8</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.8.0</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
       <div class="sform" style="margin-top:8px">
         <button class="sbtn-sec" id="sAppUpdate" style="font-size:11px;width:fit-content">🔄 App-Update prüfen</button>
         <div class="shint" id="sUpdateStatus" style="font-size:10px;margin-top:4px"></div>
@@ -1143,7 +1166,7 @@ function apiFetch(url, opts={}) {
     if (r.status === 401 && !anonMode) {
       // Session abgelaufen → zurück zum Login
       authToken = '';
-      localStorage.removeItem('authToken');
+      localStorage.removeItem('elbr_token');
       const ov = $('loginOverlay');
       if (ov) {
         ov.style.opacity = '';
@@ -2970,12 +2993,64 @@ const _origOpenSettings = openSettings;
 openSettings = function() {
   _origOpenSettings();
   if (currentUser && currentUser.isAdmin) {
-    if ($('adminSection'))  { $('adminSection').style.display='';  loadAdminUsers(); }
-    if ($('dbStatsSection')){ $('dbStatsSection').style.display=''; loadDbStats(); }
+    if ($('adminSection'))   { $('adminSection').style.display='';   loadAdminUsers(); }
+    if ($('dbStatsSection')) { $('dbStatsSection').style.display='';  loadDbStats(); }
+    if ($('sqlDebugSection')){ $('sqlDebugSection').style.display=''; }
   }
-  // Push-Status aktualisieren
   if (typeof refreshPushUI === 'function' && !anonMode) refreshPushUI();
 };
+
+/* ─── SQL Debug Tool ────────────────────────────────────────────────────── */
+async function runSql(sql) {
+  if (!sql || !sql.trim()) return;
+  $('sqlStatus').textContent = 'Läuft…';
+  $('sqlResult').innerHTML = '';
+  try {
+    const d = await apiFetch('/api/debug/sql', {
+      method: 'POST', body: JSON.stringify({ sql, params: [] })
+    }).then(r => r.json());
+    if (d.error) {
+      $('sqlStatus').textContent = '✗ ' + d.error;
+      $('sqlResult').innerHTML = '';
+      return;
+    }
+    $('sqlStatus').textContent = `${d.count} Zeile${d.count !== 1 ? 'n' : ''}`;
+    if (!d.rows || d.rows.length === 0) {
+      $('sqlResult').innerHTML = '<div style="color:var(--mut)">Keine Ergebnisse</div>';
+      return;
+    }
+    // Tabelle rendern
+    const cols = Object.keys(d.rows[0]);
+    let html = '<table style="border-collapse:collapse;width:100%;font-size:10px"><thead><tr>';
+    cols.forEach(c => { html += `<th style="border:1px solid var(--brd);padding:3px 6px;background:var(--surf2);white-space:nowrap">${escHtml(c)}</th>`; });
+    html += '</tr></thead><tbody>';
+    d.rows.forEach(row => {
+      html += '<tr>';
+      cols.forEach(c => {
+        const v = row[c];
+        const txt = v === null ? '<span style="color:var(--mut)">NULL</span>' : escHtml(String(v));
+        html += `<td style="border:1px solid var(--brd);padding:3px 6px;white-space:nowrap">${txt}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    $('sqlResult').innerHTML = html;
+  } catch(e) {
+    $('sqlStatus').textContent = '✗ ' + e.message;
+  }
+}
+
+if ($('sqlRun')) $('sqlRun').onclick = () => runSql($('sqlInput').value);
+if ($('sqlClear')) $('sqlClear').onclick = () => {
+  $('sqlInput').value = ''; $('sqlResult').innerHTML = ''; $('sqlStatus').textContent = '';
+};
+if ($('sqlPreset')) $('sqlPreset').onchange = function() {
+  if (this.value) { $('sqlInput').value = this.value; runSql(this.value); this.value = ''; }
+};
+// Ctrl+Enter im Textarea
+if ($('sqlInput')) $('sqlInput').addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runSql($('sqlInput').value); }
+});
 
 /* ─── Playback (NEU – kein Animation-Hack, direkte Marker-Updates) ──────── */
 let playbackMode = false, pbTimer = null, pbShips = new Map();

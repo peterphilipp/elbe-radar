@@ -60,7 +60,15 @@ class AISConnector {
   }
 
   updateBox(box) {
-    this.currentBox = box;
+    // Mindest-Box: gesamte Elbe von Cuxhaven bis Hamburg immer abgedeckt
+    // Client-Viewport kann die Box erweitern aber nicht verkleinern
+    const MIN_BOX = { n:53.950, s:53.350, w:7.800, e:10.200 };
+    this.currentBox = {
+      n: Math.max(box.n, MIN_BOX.n),
+      s: Math.min(box.s, MIN_BOX.s),
+      w: Math.min(box.w, MIN_BOX.w),
+      e: Math.max(box.e, MIN_BOX.e),
+    };
     if (this.ws && this.ws.readyState === WebSocket.OPEN) this._subscribe();
   }
 

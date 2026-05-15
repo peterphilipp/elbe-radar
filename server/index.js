@@ -781,26 +781,63 @@ app.get('/api/debug/ship/:mmsi', adminMiddleware, (req, res) => {
   const mmsi = req.params.mmsi;
   const hours = +(req.query.hours || 24);
   const since = Date.now() - hours * 3600 * 1000;
+
+  // 1) History für dieses Schiff
   const rows = db.db.prepare(`
     SELECT ts, lat, lon, sog, cog, name, type, len FROM history
     WHERE mmsi = ? AND ts > ? ORDER BY ts ASC
   `).all(mmsi, since);
+
+  // 2) Wie viele History-Einträge gibt es überhaupt?
+  const totalHistory = db.db.prepare(`SELECT COUNT(*) as n, COUNT(DISTINCT mmsi) as ships FROM history`).get();
+
+  // 3) Gibt es das Schiff in der ships-Tabelle?
+  const shipRow = db.db.prepare(`SELECT * FROM ships WHERE mmsi = ?`).get(mmsi);
+
+  // 4) Neueste 5 History-Einträge egal welches Schiff (zeigt ob History überhaupt läuft)
+  const recentHistory = db.db.prepare(`SELECT mmsi, name, ts FROM history ORDER BY ts DESC LIMIT 5`).all();
+
+  // 5) Was hat die AIS-Memory-Map? (über ais-Modul nicht direkt erreichbar, zeige ships-Tabelle top 5)
+  const recentShips = db.db.prepare(`SELECT mmsi, name, seen, lat, lon FROM ships ORDER BY seen DESC LIMIT 5`).all();
+
   // Lücken-Analyse
   const gaps = [];
   for (let i = 1; i < rows.length; i++) {
     const gap = rows[i].ts - rows[i-1].ts;
-    if (gap > 3 * 60 * 1000) { // Lücke > 3 Min
-      gaps.push({ from: rows[i-1].ts, to: rows[i].ts, gap_min: Math.round(gap/60000) });
+    if (gap > 3 * 60 * 1000) {
+      gaps.push({ from: new Date(rows[i-1].ts).toISOString(), to: new Date(rows[i].ts).toISOString(), gap_min: Math.round(gap/60000) });
     }
   }
+
   res.json({
-    mmsi, hours, total_points: rows.length,
-    first: rows[0] || null, last: rows[rows.length-1] || null,
-    gaps, points: rows
+    query: { mmsi, hours },
+    ship_in_ships_table: shipRow || null,
+    history_for_ship: { total_points: rows.length, first: rows[0]||null, last: rows[rows.length-1]||null, gaps },
+    db_totals: totalHistory,
+    recent_history_any_ship: recentHistory.map(r => ({ ...r, ts_human: new Date(r.ts).toISOString() })),
+    recent_ships_table: recentShips.map(r => ({ ...r, seen_human: new Date(r.seen).toISOString() })),
+    points: rows
   });
 });
 
-// ── SHIP PHOTO: IMO via Wikimedia ─────────────────────────────────────────────
+// ── SQL DEBUG (Admin only) ─────────────────────────────────────────────────────
+// POST /api/debug/sql  { sql: "SELECT ...", params: [] }
+app.post('/api/debug/sql', adminMiddleware, (req, res) => {
+  const { sql, params = [] } = req.body;
+  if (!sql) return res.status(400).json({ error: 'sql required' });
+  // Nur SELECT erlaubt – kein DDL/DML
+  const normalized = sql.trim().toUpperCase();
+  if (!/^SELECT\b/.test(normalized)) {
+    return res.status(400).json({ error: 'Nur SELECT-Abfragen erlaubt' });
+  }
+  try {
+    const stmt = db.db.prepare(sql);
+    const rows = stmt.all(...params);
+    res.json({ count: rows.length, rows });
+  } catch(e) {
+    res.status(400).json({ error: e.message });
+  }
+});
 // Cache in DB: ships.photo_url Spalte (Migration)
 try { db.db.exec(`ALTER TABLE ships ADD COLUMN photo_url TEXT DEFAULT NULL`); } catch(e) {}
 try { db.db.exec(`ALTER TABLE ships ADD COLUMN imo TEXT DEFAULT NULL`); } catch(e) {}
@@ -921,11 +958,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.7.8',
+  uptime: Math.floor(process.uptime()), version:'0.8.0',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.7.8' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.8.0' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));
