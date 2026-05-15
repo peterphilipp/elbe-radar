@@ -44,7 +44,7 @@ class AISConnector {
   start() {
     // Beim Start sofort Schiffe aus DB laden – letzte 30 Min (passt zu SHIP_TTL_MS)
     try {
-      const stored = getActiveShips(30 * 60 * 1000);
+      const stored = getActiveShips(60 * 60 * 1000); // 60 Min – passt zu SHIP_TTL_MS
       for (const s of stored) this.ships.set(String(s.mmsi), s);
       if (stored.length > 0) {
         console.log(`[AIS] ${stored.length} Schiffe aus DB (letzte 30 Min) geladen`);
@@ -86,12 +86,32 @@ class AISConnector {
 
   _connect() {
     if (this.ws) try { this.ws.terminate(); } catch(e) {}
-    console.log('[AIS] Verbinde …');
+    console.log('[AIS] Verbinde mit aisstream.io …');
     this.ws = new WebSocket('wss://stream.aisstream.io/v0/stream');
-    this.ws.on('open',    () => { console.log('[AIS] Verbunden'); this._subscribe(); });
+    this.ws.on('open',    () => { this._reconnectDelay = 15000; console.log('[AIS] Verbunden'); this._subscribe(); });
     this.ws.on('message', data => { try { this._handleMsg(JSON.parse(data.toString('utf8'))); } catch(e) {} });
-    this.ws.on('error',   e  => console.error('[AIS] Fehler:', e.message));
-    this.ws.on('close',   code => { console.warn(`[AIS] Getrennt (${code}) – Reconnect in 15s`); setTimeout(() => this._connect(), 15000); });
+    this.ws.on('error',   e  => console.error('[AIS] Verbindungsfehler:', e.message));
+    this.ws.on('close',   (code, reason) => {
+      const codeMap = {
+        1000: 'Normale Trennung',
+        1001: 'Server geht offline',
+        1006: 'Verbindung unerwartet getrennt (Server-Timeout oder Netzwerkfehler)',
+        1011: 'Server-Fehler',
+        1012: 'Server-Neustart',
+      };
+      const explain = codeMap[code] || `Code ${code}`;
+      const reasonStr = reason && reason.length ? ` – "${reason}"` : '';
+      const delay = this._reconnectDelay || 15000;
+      if (code === 1006) {
+        // 1006 ist normal für aisstream.io (Idle-Timeout alle ~30 Min)
+        console.log(`[AIS] Getrennt: ${explain}${reasonStr} – Reconnect in ${delay/1000}s`);
+      } else {
+        console.warn(`[AIS] Getrennt: ${explain}${reasonStr} – Reconnect in ${delay/1000}s`);
+      }
+      // Exponential backoff bis max 2 Min
+      this._reconnectDelay = Math.min((delay || 15000) * 1.5, 120000);
+      setTimeout(() => this._connect(), delay);
+    });
   }
 
   _handleMsg(d) {

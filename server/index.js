@@ -145,7 +145,7 @@ function legacyAuth(req, res, next) {
 }
 
 // ── AIS ──────────────────────────────────────────────────────────────────────
-const SHIP_TTL_MS    = 30 * 60 * 1000; // 30 Minuten – Schiffe bleiben länger sichtbar
+const SHIP_TTL_MS    = 60 * 60 * 1000; // 60 Minuten – Schiffe im Hafen senden seltener
 const BROADCAST_RATE = 3 * 1000;       // max alle 3s broadcasten
 
 let lastBroadcast = 0, broadcastPending = null;
@@ -894,11 +894,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.7.6',
+  uptime: Math.floor(process.uptime()), version:'0.7.7',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.7.6' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.7.7' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));

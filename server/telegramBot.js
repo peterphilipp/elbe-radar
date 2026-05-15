@@ -57,7 +57,10 @@ function checkAlerts(ship) {
     if (!cfg.telegram?.bot_token || !cfg.telegram?.chat_id) continue;
     if (alert.ship_type   && alert.ship_type !== ship.type) continue;
     if (alert.name_filter && !(ship.name||'').toLowerCase().includes(alert.name_filter.toLowerCase())) continue;
-    if ((ship.len||0) < (alert.min_length_alert||150)) continue;
+    // Längencheck nur wenn Schiffslänge bekannt (>0) – bei len=0 nicht herausfiltern
+    const shipLen = ship.len || 0;
+    const minLen  = alert.min_length_alert || 150;
+    if (shipLen > 0 && shipLen < minLen) continue;
     const eta = calcETA(ship, cfg.refPoint);
     if (!eta) continue;
     const etaMs  = new Date(eta.eta).getTime();

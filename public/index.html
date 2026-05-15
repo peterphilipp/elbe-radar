@@ -56,15 +56,19 @@
   --txt:#18253a;--mut:#607a96;--fnt:#9aafc6;
   --blue:#1568c8;--bhi:#dbeafe;--tel:#0a7a6a;--red:#b92c38;--map-bg:#d4e4f0;
   --topbar-h:calc(50px + env(safe-area-inset-top, 0px));
+  --safe-top:env(safe-area-inset-top, 0px);
 }
-/* PWA standalone-Modus: iOS Dynamic Island bekommt extra Platz */
+/* PWA standalone-Modus: +8px Puffer für Dynamic Island */
 @media (display-mode: standalone) {
-  :root { --topbar-h:calc(50px + env(safe-area-inset-top, 0px)); }
+  :root {
+    --topbar-h:calc(58px + env(safe-area-inset-top, 0px));
+    --safe-top:env(safe-area-inset-top, 0px);
+  }
 }
-/* Fallback für ältere iOS: mindestens 50px im standalone */
+/* Fallback für ältere iOS ohne env()-Support */
 @supports not (padding-top: env(safe-area-inset-top)) {
   @media (display-mode: standalone) {
-    :root { --topbar-h:70px; }
+    :root { --topbar-h:78px; }
   }
 }
 [data-theme="dark"]{
@@ -103,7 +107,7 @@ input,select{font-family:var(--font);}
 /* ── TOPBAR ──────────────────────────────────────────────────────────────── */
 #topbar{position:fixed;top:0;left:0;right:0;
   height:var(--topbar-h);
-  padding-top:env(safe-area-inset-top, 0px);
+  padding-top:calc(env(safe-area-inset-top, 0px) + 4px);
   padding-left:max(14px, env(safe-area-inset-left, 14px));
   padding-right:max(14px, env(safe-area-inset-right, 14px));
   /* Mindesthöhe für Dynamic Island iPhones in standalone */
@@ -651,7 +655,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.6</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.7</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -999,7 +1003,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.7.6</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.7.7</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
       <div class="sform" style="margin-top:8px">
         <button class="sbtn-sec" id="sAppUpdate" style="font-size:11px;width:fit-content">🔄 App-Update prüfen</button>
         <div class="shint" id="sUpdateStatus" style="font-size:10px;margin-top:4px"></div>
@@ -2810,7 +2814,10 @@ async function loadServerLogs(full = false) {
     return;
   }
   const frag = document.createDocumentFragment();
+  let maxTs = slogLastTs;
   for (const l of logs) {
+    // slogLastTs IMMER updaten (auch wenn gefiltert) → Auto-Refresh funktioniert
+    if (l.ts > maxTs) maxTs = l.ts;
     if (slogFilter !== 'all' && l.level !== slogFilter) continue;
     const div = document.createElement('div');
     div.className = `log-line ${l.level}`;
@@ -2818,8 +2825,8 @@ async function loadServerLogs(full = false) {
     const levelColor = l.level==='error' ? 'var(--red)' : l.level==='warn' ? '#f0a050' : 'var(--mut)';
     div.innerHTML = '<span class="log-ts">' + t + '</span><span style="color:' + levelColor + ';font-weight:600;margin-right:4px">[' + l.level + ']</span>' + escHtml(l.msg);
     frag.appendChild(div);
-    if (l.ts > slogLastTs) slogLastTs = l.ts;
   }
+  slogLastTs = maxTs; // nach Iteration setzen
   $('slogBody').appendChild(frag);
   $('slogBody').scrollTop = $('slogBody').scrollHeight;
   $('slogStatus').textContent = `${data.total} Einträge gesamt · letztes Update ${new Date().toLocaleTimeString('de-DE')}`;
@@ -3015,62 +3022,83 @@ async function pbSeek(ts) {
 // Speichert die zuletzt gerenderten Positionen für Interpolation
 let pbPrevPositions = new Map(); // mmsi → {lat, lon}
 let pbAnimFrame = null;
-let pbAnimStart = 0, pbAnimDuration = 700; // ms
+let pbAnimStart = 0;
+const PB_ANIM_MS = 500; // schnellere Animation damit es weniger springig wirkt
 
 function renderPlaybackMap(shipMap) {
   if (!playbackMode) return;
 
-  // Positionen der aktuellen Schiffe als Startpositionen speichern
-  const fromPos = new Map();
-  for (const [mmsi, ship] of shipMap) {
-    const prev = pbPrevPositions.get(mmsi);
-    fromPos.set(mmsi, prev
-      ? { lat: prev.lat, lon: prev.lon }
-      : { lat: ship.lat, lon: ship.lon } // neu aufgetauchtes Schiff: kein Tween
-    );
-  }
-
-  // Laufende Animation abbrechen
+  // Laufende Animation sauber beenden
   if (pbAnimFrame) { cancelAnimationFrame(pbAnimFrame); pbAnimFrame = null; }
 
-  pbAnimStart = performance.now();
-
-  function animate(now) {
-    if (!playbackMode) return;
-    const t = Math.min(1, (now - pbAnimStart) / pbAnimDuration);
-    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // easeInOut
-
-    // Interpolierte Positionen in temporäre Map schreiben
-    const interpolated = new Map();
-    for (const [mmsi, ship] of shipMap) {
-      const from = fromPos.get(mmsi);
-      if (!from || (from.lat === ship.lat && from.lon === ship.lon)) {
-        interpolated.set(mmsi, ship);
-      } else {
-        interpolated.set(mmsi, {
-          ...ship,
-          lat: from.lat + (ship.lat - from.lat) * ease,
-          lon: from.lon + (ship.lon - from.lon) * ease,
-        });
+  // Start-Positionen: nur von Schiffen die sich vorwärts bewegen
+  // Schiffe die rückwärts springen oder neu auftauchen → direkt setzen ohne Tween
+  const tweens = new Map(); // mmsi → {fromLat, fromLon, toLat, toLon}
+  for (const [mmsi, ship] of shipMap) {
+    if (!ship.lat || !ship.lon) continue;
+    const prev = pbPrevPositions.get(mmsi);
+    if (prev && prev.lat && prev.lon) {
+      const dist = Math.hypot(ship.lat - prev.lat, ship.lon - prev.lon);
+      // Nur animieren wenn Bewegung klein genug (kein Teleport > ~5km)
+      if (dist < 0.05 && dist > 0.0001) {
+        tweens.set(mmsi, { fromLat: prev.lat, fromLon: prev.lon, toLat: ship.lat, toLon: ship.lon });
       }
     }
+  }
 
-    const live = ships;
-    ships = interpolated;
-    redraw();
-    ships = live;
+  // Schiffe die nicht mehr im aktuellen Frame sind: Marker entfernen
+  for (const [mmsi, mk] of markers) {
+    if (!shipMap.has(mmsi)) { mk.unbindTooltip(); map.removeLayer(mk); markers.delete(mmsi); markerLastPos.delete(mmsi); }
+  }
 
+  // Neue/unveränderte Schiffe sofort setzen
+  for (const [mmsi, ship] of shipMap) {
+    if (!ship.lat || !ship.lon) continue;
+    const icon = makeIcon(ship, selMmsi === mmsi, currentZoom);
+    let mk = markers.get(mmsi);
+    if (!mk) {
+      mk = L.marker([ship.lat, ship.lon], {icon}).addTo(map);
+      if (!isMobile()) mk.bindTooltip(`<b>${ship.name||'?'}</b>`, {direction:'top',offset:[0,-8]});
+      mk.on('click', e => { L.DomEvent.stopPropagation(e); selectShip(mmsi, true); });
+      markers.set(mmsi, mk);
+    } else {
+      mk.setIcon(icon);
+      if (!tweens.has(mmsi)) mk.setLatLng([ship.lat, ship.lon]);
+    }
+  }
+
+  // Animiere nur Schiffe mit sinnvollen Tweens
+  if (tweens.size === 0) {
+    pbPrevPositions = new Map([...shipMap].map(([m,s]) => [m, {lat:s.lat, lon:s.lon}]));
+    updateAllLabels(); updateStats();
+    return;
+  }
+
+  pbAnimStart = performance.now();
+  function animate(now) {
+    if (!playbackMode) return;
+    const t = Math.min(1, (now - pbAnimStart) / PB_ANIM_MS);
+    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+    for (const [mmsi, tw] of tweens) {
+      const mk = markers.get(mmsi);
+      if (mk) mk.setLatLng([
+        tw.fromLat + (tw.toLat - tw.fromLat) * ease,
+        tw.fromLon + (tw.toLon - tw.fromLon) * ease,
+      ]);
+    }
     if (t < 1) {
       pbAnimFrame = requestAnimationFrame(animate);
     } else {
-      // Animation fertig: endgültige Positionen als Basis für nächsten Schritt merken
-      pbPrevPositions = new Map(
-        [...shipMap].map(([mmsi, s]) => [mmsi, { lat: s.lat, lon: s.lon }])
-      );
       pbAnimFrame = null;
+      // Endpositionen setzen
+      for (const [mmsi, tw] of tweens) {
+        const mk = markers.get(mmsi);
+        if (mk) mk.setLatLng([tw.toLat, tw.toLon]);
+      }
+      pbPrevPositions = new Map([...shipMap].map(([m,s]) => [m, {lat:s.lat, lon:s.lon}]));
+      updateAllLabels(); updateStats();
     }
   }
-
   pbAnimFrame = requestAnimationFrame(animate);
 }
 
