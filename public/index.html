@@ -55,21 +55,8 @@
   --bg:#f0f4f9;--surf:#fff;--surf2:#f5f8fc;--off:#e8eef6;--brd:#cdd7e5;--div:#dde5f0;
   --txt:#18253a;--mut:#607a96;--fnt:#9aafc6;
   --blue:#1568c8;--bhi:#dbeafe;--tel:#0a7a6a;--red:#b92c38;--map-bg:#d4e4f0;
-  --topbar-h:calc(50px + env(safe-area-inset-top, 0px));
-  --safe-top:env(safe-area-inset-top, 0px);
-}
-/* PWA standalone-Modus: +8px Puffer für Dynamic Island */
-@media (display-mode: standalone) {
-  :root {
-    --topbar-h:calc(58px + env(safe-area-inset-top, 0px));
-    --safe-top:env(safe-area-inset-top, 0px);
-  }
-}
-/* Fallback für ältere iOS ohne env()-Support */
-@supports not (padding-top: env(safe-area-inset-top)) {
-  @media (display-mode: standalone) {
-    :root { --topbar-h:78px; }
-  }
+  --topbar-h:50px;
+  --safe-top:0px;
 }
 [data-theme="dark"]{
   --bg:#080f1a;--surf:#0c1828;--surf2:#101e30;--off:#152437;--brd:#1e3350;--div:#192c45;
@@ -107,7 +94,7 @@ input,select{font-family:var(--font);}
 /* ── TOPBAR ──────────────────────────────────────────────────────────────── */
 #topbar{position:fixed;top:0;left:0;right:0;
   height:var(--topbar-h);
-  padding-top:calc(env(safe-area-inset-top, 0px) + 4px);
+  padding-top:var(--safe-top);
   padding-left:max(14px, env(safe-area-inset-left, 14px));
   padding-right:max(14px, env(safe-area-inset-right, 14px));
   /* Mindesthöhe für Dynamic Island iPhones in standalone */
@@ -655,7 +642,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.7</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.7.8</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -1003,7 +990,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.7.7</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.7.8</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
       <div class="sform" style="margin-top:8px">
         <button class="sbtn-sec" id="sAppUpdate" style="font-size:11px;width:fit-content">🔄 App-Update prüfen</button>
         <div class="shint" id="sUpdateStatus" style="font-size:10px;margin-top:4px"></div>
@@ -1107,6 +1094,31 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 </div>
 
 <script>
+/* ─── Dynamic Island / Safe Area Detection ──────────────────────────────── */
+// CSS env() ist unzuverlässig auf iOS PWA. Wir messen real:
+(function detectSafeArea() {
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+  // Probe-Element am oberen Rand misst den echten safe-area-inset
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);pointer-events:none;z-index:-1;';
+  document.documentElement.appendChild(probe);
+  requestAnimationFrame(() => {
+    let safeTop = probe.offsetHeight || 0;
+    probe.remove();
+    // Wenn Standalone und safeTop=0: manuelle Erkennung via Screen-Ratio
+    // iPhone 14 Pro/Max, 15, 16 haben Dynamic Island (≥59pt safe area)
+    if (isStandalone && safeTop < 20) {
+      const ratio = window.screen.height / window.screen.width;
+      const isModernIPhone = /iPhone/.test(navigator.userAgent) && ratio > 2.1;
+      if (isModernIPhone) safeTop = 59; // Dynamic Island iPhones
+    }
+    const topbarH = 50 + safeTop;
+    document.documentElement.style.setProperty('--safe-top', safeTop + 'px');
+    document.documentElement.style.setProperty('--topbar-h', topbarH + 'px');
+    if (safeTop > 0) console.log(`[UI] Safe Area Top: ${safeTop}px, Topbar: ${topbarH}px, Standalone: ${isStandalone}`);
+  });
+})();
 const $ = id => document.getElementById(id);
 const isMobile = () => window.innerWidth <= 700;
 /* ─── Auth State ─────────────────────────────────────────────────────────── */
@@ -1332,6 +1344,7 @@ function calcETA(ship, ref) {
 }
 
 let ships=new Map(),markers=new Map(),labelShown=new Set(),trackLayer=null,extrapLayer=null;
+let liveShipsBackup = null; // Backup der Live-Ships während Playback
 let map,tileLayer,ws,refPointLayer=null;
 let selMmsi=null,typeFSet=new Set(['all']),lenF=50,etaF=60,theme='dark',currentZoom=12;
 let logOpen=false,logTypeF='all',logLenF=0,logDirF='all';
@@ -1920,7 +1933,7 @@ function renderFuture(){
 function updateStats(){
   const a=[...ships.values()].filter(passes);
   $('liveCnt').textContent=a.length;
-  $('shipNum').textContent=playbackMode ? pbShips.size : ships.size;
+  $('shipNum').textContent = ships.size;
   // Zähler: gleicher Längenfilter wie Karte, aber ohne Typfilter
   const byLen=[...ships.values()].filter(passesByLen);
   const cnt = {
@@ -2091,15 +2104,18 @@ function connectBackend(){
     try{
       const d=JSON.parse(ev.data);
       if(d.type==='ships'){
-        // Server sendet immer ALLE aktiven Schiffe – Map komplett ersetzen
         const newShips = new Map();
         d.data.forEach(s => newShips.set(s.mmsi, s));
-        // Ausgewähltes Schiff behalten falls es nicht mehr im Update ist (Track)
-        if (selMmsi && ships.has(selMmsi) && !newShips.has(selMmsi)) {
+        if (selMmsi && !playbackMode && ships.has(selMmsi) && !newShips.has(selMmsi)) {
           newShips.set(selMmsi, ships.get(selMmsi));
         }
-        ships = newShips;
-        if(!playbackMode){redraw();dbg(`${ships.size} Schiffe · ${new Date(d.ts).toLocaleTimeString('de-DE')}`);}
+        if (playbackMode) {
+          liveShipsBackup = newShips;
+        } else {
+          ships = newShips;
+          redraw(); updateStats(); renderETA();
+          dbg(`${ships.size} Schiffe · ${new Date(d.ts).toLocaleTimeString('de-DE')}`);
+        }
       }
     }catch(e){dbg('Fehler: '+e.message);}
   };
@@ -2961,24 +2977,29 @@ openSettings = function() {
   if (typeof refreshPushUI === 'function' && !anonMode) refreshPushUI();
 };
 
-/* ─── Playback ──────────────────────────────────────────────────────────── */
+/* ─── Playback (NEU – kein Animation-Hack, direkte Marker-Updates) ──────── */
 let playbackMode = false, pbTimer = null, pbShips = new Map();
 let pbMinTs = 0, pbMaxTs = 0, pbCurrentTs = 0;
+let pbSpeedMult = 1;
+const PB_SPEEDS = [1, 2, 4, 8];
+const PB_STEP_MS = 60 * 1000;
 
 async function openPlayback() {
   const range = await apiFetch('/api/playback/range').then(r => r.json()).catch(() => null);
-  if (!range || !range.min_ts) { alert('Keine History-Daten vorhanden.'); return; }
+  if (!range || !range.min_ts) { alert('Keine History vorhanden'); return; }
   pbMinTs = range.min_ts;
   pbMaxTs = range.max_ts;
-  pbCurrentTs = pbMaxTs;
-  const slider = $('pbSlider');
-  slider.min = 0; slider.max = 1000; slider.value = 1000;
+  pbCurrentTs = pbMaxTs; // Start am Ende (aktuellste Daten)
+  // Live-Schiffe sichern
+  liveShipsBackup = ships;
+  ships = new Map();
   playbackMode = true;
   $('playbackBar').classList.add('on');
   $('playbackBtn').classList.add('active');
   $('dot').style.background = '#f0bc55';
   $('connLbl').textContent = 'Playback';
-  pbSpeedMult = 1; if ($('pbSpeed')) $('pbSpeed').textContent = '1×';
+  pbSpeedMult = 1;
+  if ($('pbSpeed')) $('pbSpeed').textContent = '1×';
   buildPbTicks();
   await pbSeek(pbCurrentTs);
 }
@@ -2986,13 +3007,13 @@ async function openPlayback() {
 function closePlayback() {
   playbackMode = false;
   if (pbTimer) { clearInterval(pbTimer); pbTimer = null; }
-  if (pbAnimFrame) { cancelAnimationFrame(pbAnimFrame); pbAnimFrame = null; }
-  pbPrevPositions.clear();
-  pbSpeedMult = 1;
+  // Live-Schiffe wiederherstellen
+  if (liveShipsBackup) { ships = liveShipsBackup; liveShipsBackup = null; }
+  pbShips.clear();
   $('playbackBar').classList.remove('on');
   $('playbackBtn').classList.remove('active');
-  $('pbPlay').style.display = ''; $('pbPlay').classList.remove('active');
-  $('pbPause').style.display = 'none'; $('pbPause').classList.remove('active');
+  $('pbPlay').style.display = '';
+  $('pbPause').style.display = 'none';
   $('pbRewind').classList.remove('active');
   if ($('pbSpeed')) $('pbSpeed').textContent = '1×';
   $('dot').style.background = '';
@@ -3002,117 +3023,32 @@ function closePlayback() {
 
 async function pbSeek(ts) {
   pbCurrentTs = ts;
+  // Slider aktualisieren
   const pct = pbMaxTs > pbMinTs ? (ts - pbMinTs) / (pbMaxTs - pbMinTs) * 1000 : 0;
   $('pbSlider').value = Math.round(pct);
   $('pbTime').textContent = new Date(ts).toLocaleString('de-DE',
     {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  // Daten vom Server holen
   const data = await apiFetch(`/api/playback?ts=${ts}`).then(r => r.json()).catch(() => null);
-  if (!data) return;
-  // Schiffe mit Datenpunkt max. 6 Min vom Zielzeitpunkt anzeigen
-  // (bei 1-min Speicherintervall sollten alle relevanten Schiffe in der Nähe sein)
-  const MAX_DIFF_MS = 6 * 60 * 1000;
+  if (!data || !data.ships) return;
+  // Ships-Map für Playback setzen (gleiche Struktur wie Live)
   pbShips = new Map(
-    data.ships
-      .filter(s => (s.diff ?? Infinity) <= MAX_DIFF_MS)
-      .map(s => [s.mmsi, { ...s, seen: s.ts }])
+    data.ships.filter(s => s.lat && s.lon).map(s => [s.mmsi, { ...s, seen: s.ts }])
   );
-  renderPlaybackMap(pbShips);
+  // Globale ships-Map ersetzen → redraw nutzt passes() Filter automatisch
+  ships = pbShips;
+  redraw();
+  updateStats();
 }
 
-// Speichert die zuletzt gerenderten Positionen für Interpolation
-let pbPrevPositions = new Map(); // mmsi → {lat, lon}
-let pbAnimFrame = null;
-let pbAnimStart = 0;
-const PB_ANIM_MS = 500; // schnellere Animation damit es weniger springig wirkt
-
-function renderPlaybackMap(shipMap) {
-  if (!playbackMode) return;
-
-  // Laufende Animation sauber beenden
-  if (pbAnimFrame) { cancelAnimationFrame(pbAnimFrame); pbAnimFrame = null; }
-
-  // Start-Positionen: nur von Schiffen die sich vorwärts bewegen
-  // Schiffe die rückwärts springen oder neu auftauchen → direkt setzen ohne Tween
-  const tweens = new Map(); // mmsi → {fromLat, fromLon, toLat, toLon}
-  for (const [mmsi, ship] of shipMap) {
-    if (!ship.lat || !ship.lon) continue;
-    const prev = pbPrevPositions.get(mmsi);
-    if (prev && prev.lat && prev.lon) {
-      const dist = Math.hypot(ship.lat - prev.lat, ship.lon - prev.lon);
-      // Nur animieren wenn Bewegung klein genug (kein Teleport > ~5km)
-      if (dist < 0.05 && dist > 0.0001) {
-        tweens.set(mmsi, { fromLat: prev.lat, fromLon: prev.lon, toLat: ship.lat, toLon: ship.lon });
-      }
-    }
-  }
-
-  // Schiffe die nicht mehr im aktuellen Frame sind: Marker entfernen
-  for (const [mmsi, mk] of markers) {
-    if (!shipMap.has(mmsi)) { mk.unbindTooltip(); map.removeLayer(mk); markers.delete(mmsi); markerLastPos.delete(mmsi); }
-  }
-
-  // Neue/unveränderte Schiffe sofort setzen
-  for (const [mmsi, ship] of shipMap) {
-    if (!ship.lat || !ship.lon) continue;
-    const icon = makeIcon(ship, selMmsi === mmsi, currentZoom);
-    let mk = markers.get(mmsi);
-    if (!mk) {
-      mk = L.marker([ship.lat, ship.lon], {icon}).addTo(map);
-      if (!isMobile()) mk.bindTooltip(`<b>${ship.name||'?'}</b>`, {direction:'top',offset:[0,-8]});
-      mk.on('click', e => { L.DomEvent.stopPropagation(e); selectShip(mmsi, true); });
-      markers.set(mmsi, mk);
-    } else {
-      mk.setIcon(icon);
-      if (!tweens.has(mmsi)) mk.setLatLng([ship.lat, ship.lon]);
-    }
-  }
-
-  // Animiere nur Schiffe mit sinnvollen Tweens
-  if (tweens.size === 0) {
-    pbPrevPositions = new Map([...shipMap].map(([m,s]) => [m, {lat:s.lat, lon:s.lon}]));
-    updateAllLabels(); updateStats();
-    return;
-  }
-
-  pbAnimStart = performance.now();
-  function animate(now) {
-    if (!playbackMode) return;
-    const t = Math.min(1, (now - pbAnimStart) / PB_ANIM_MS);
-    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
-    for (const [mmsi, tw] of tweens) {
-      const mk = markers.get(mmsi);
-      if (mk) mk.setLatLng([
-        tw.fromLat + (tw.toLat - tw.fromLat) * ease,
-        tw.fromLon + (tw.toLon - tw.fromLon) * ease,
-      ]);
-    }
-    if (t < 1) {
-      pbAnimFrame = requestAnimationFrame(animate);
-    } else {
-      pbAnimFrame = null;
-      // Endpositionen setzen
-      for (const [mmsi, tw] of tweens) {
-        const mk = markers.get(mmsi);
-        if (mk) mk.setLatLng([tw.toLat, tw.toLon]);
-      }
-      pbPrevPositions = new Map([...shipMap].map(([m,s]) => [m, {lat:s.lat, lon:s.lon}]));
-      updateAllLabels(); updateStats();
-    }
-  }
-  pbAnimFrame = requestAnimationFrame(animate);
-}
-
-// Playback controls
-let pbSpeedMult = 1; // 1×, 2×, 4×, 8×
-const PB_SPEEDS = [1, 2, 4, 8];
-const PB_STEP_MS = 1 * 60 * 1000; // 1 Min pro Schritt (Basis)
-
+// Slider Tick-Marks (alle 2h)
 function buildPbTicks() {
   const el = $('pbTicks');
   if (!el || pbMaxTs <= pbMinTs) return;
   el.innerHTML = '';
+  el.style.position = 'relative';
+  el.style.height = '12px';
   const range = pbMaxTs - pbMinTs;
-  // Alle 2 Stunden einen Tick
   const step = 2 * 3600 * 1000;
   const startH = Math.ceil(pbMinTs / step) * step;
   for (let t = startH; t <= pbMaxTs; t += step) {
@@ -3120,20 +3056,13 @@ function buildPbTicks() {
     const lbl = new Date(t).toLocaleTimeString('de-DE', {hour:'2-digit',minute:'2-digit'});
     const tick = document.createElement('div');
     tick.className = 'pb-tick';
-    tick.style.position = 'absolute';
-    tick.style.left = pct + '%';
-    tick.style.transform = 'translateX(-50%)';
+    tick.style.cssText = `position:absolute;left:${pct}%;transform:translateX(-50%);font-size:7px;color:var(--mut)`;
     tick.textContent = lbl;
     el.appendChild(tick);
   }
 }
 
-$('pbSlider').oninput = () => {
-  const pct = +$('pbSlider').value / 1000;
-  const ts = Math.round(pbMinTs + pct * (pbMaxTs - pbMinTs));
-  pbSeek(ts);
-};
-
+// === Playback Controls ===
 function pbStopAll() {
   if (pbTimer) { clearInterval(pbTimer); pbTimer = null; }
   $('pbPlay').style.display = '';
@@ -3142,22 +3071,24 @@ function pbStopAll() {
   $('pbRewind').classList.remove('active');
 }
 
-// ▶ Play
+$('pbSlider').oninput = () => {
+  pbStopAll();
+  const pct = +$('pbSlider').value / 1000;
+  pbSeek(Math.round(pbMinTs + pct * (pbMaxTs - pbMinTs)));
+};
+
 $('pbPlay').onclick = () => {
   pbStopAll();
   $('pbPlay').style.display = 'none';
   $('pbPause').style.display = '';
-  $('pbPause').classList.add('active');
   pbTimer = setInterval(() => {
     if (pbCurrentTs >= pbMaxTs) { pbStopAll(); return; }
     pbSeek(pbCurrentTs + PB_STEP_MS * pbSpeedMult);
-  }, 600);
+  }, 500);
 };
 
-// ⏸ Pause
 $('pbPause').onclick = () => { pbStopAll(); };
 
-// ⏪ Rewind
 $('pbRewind').onclick = () => {
   pbStopAll();
   $('pbRewind').classList.add('active');
@@ -3166,10 +3097,9 @@ $('pbRewind').onclick = () => {
   pbTimer = setInterval(() => {
     if (pbCurrentTs <= pbMinTs) { pbStopAll(); return; }
     pbSeek(pbCurrentTs - PB_STEP_MS * pbSpeedMult);
-  }, 600);
+  }, 500);
 };
 
-// Speed toggle: 1× → 2× → 4× → 8× → 1×
 $('pbSpeed').onclick = () => {
   const idx = PB_SPEEDS.indexOf(pbSpeedMult);
   pbSpeedMult = PB_SPEEDS[(idx + 1) % PB_SPEEDS.length];
@@ -3179,7 +3109,6 @@ $('pbSpeed').onclick = () => {
 
 $('pbClose').onclick = () => closePlayback();
 $('playbackBtn').onclick = () => playbackMode ? closePlayback() : openPlayback();
-
 
 /* ─── Filter-Badge (zeigt aktive Filter an) ─────────────────────────────── */
 function updateFilterBadge() {

@@ -746,31 +746,58 @@ app.get('/api/admin/db-stats', adminMiddleware, (req, res) => {
 });
 
 // ── PLAYBACK API ──────────────────────────────────────────────────────────────
-// GET /api/playback?ts=<unix_ms> – Alle Schiffe zum Zeitpunkt ts (±5 Min Fenster)
+// ── PLAYBACK (NEU) ────────────────────────────────────────────────────────────
+
+// GET /api/playback?ts=<unix_ms> – Snapshot aller Schiffe zum Zeitpunkt ts
+// Für jede MMSI: der nächstgelegene History-Eintrag innerhalb ±3 Minuten
 app.get('/api/playback', authMiddleware, (req, res) => {
   const ts = +(req.query.ts);
   if (!ts || isNaN(ts)) return res.status(400).json({ error: 'ts required' });
-  const window_ms = 5 * 60 * 1000;
-  // Für jede MMSI den Eintrag mit dem kleinsten Abstand zu ts nehmen
+  const W = 3 * 60 * 1000; // ±3 Min Fenster
+  // Einfache, zuverlässige Query: für jede MMSI den Eintrag mit der kleinsten Zeitdifferenz
   const rows = db.db.prepare(`
-    SELECT h.*, ABS(h.ts - ?) as diff
-    FROM history h
-    INNER JOIN (
-      SELECT mmsi, MIN(ABS(ts - ?)) as min_diff
-      FROM history
-      WHERE ts BETWEEN ? AND ?
-      GROUP BY mmsi
-    ) best ON h.mmsi = best.mmsi AND ABS(h.ts - ?) = best.min_diff
-    WHERE h.ts BETWEEN ? AND ?
-    ORDER BY h.mmsi
-  `).all(ts, ts, ts - window_ms, ts + window_ms, ts, ts - window_ms, ts + window_ms);
-  res.json({ ts, count: rows.length, ships: rows });
+    SELECT *, ABS(ts - ?) as _diff FROM history
+    WHERE ts BETWEEN ? AND ?
+    ORDER BY mmsi, _diff ASC
+  `).all(ts, ts - W, ts + W);
+  // Deduplizierung: nur der erste (nächste) pro MMSI
+  const seen = new Set();
+  const unique = [];
+  for (const r of rows) {
+    if (!seen.has(r.mmsi)) { seen.add(r.mmsi); unique.push(r); }
+  }
+  res.json({ ts, count: unique.length, ships: unique });
 });
 
-// GET /api/playback/range – Zeitbereich der verfügbaren History
+// GET /api/playback/range – Zeitbereich der History
 app.get('/api/playback/range', authMiddleware, (req, res) => {
   const range = db.db.prepare(`SELECT MIN(ts) as min_ts, MAX(ts) as max_ts, COUNT(DISTINCT mmsi) as ships FROM history`).get();
   res.json(range);
+});
+
+// GET /api/debug/ship/:mmsi – Alle History-Einträge für ein Schiff (letzte 24h)
+// Für Debugging von Positions-Lücken
+app.get('/api/debug/ship/:mmsi', adminMiddleware, (req, res) => {
+  const mmsi = req.params.mmsi;
+  const hours = +(req.query.hours || 24);
+  const since = Date.now() - hours * 3600 * 1000;
+  const rows = db.db.prepare(`
+    SELECT ts, lat, lon, sog, cog, name, type, len FROM history
+    WHERE mmsi = ? AND ts > ? ORDER BY ts ASC
+  `).all(mmsi, since);
+  // Lücken-Analyse
+  const gaps = [];
+  for (let i = 1; i < rows.length; i++) {
+    const gap = rows[i].ts - rows[i-1].ts;
+    if (gap > 3 * 60 * 1000) { // Lücke > 3 Min
+      gaps.push({ from: rows[i-1].ts, to: rows[i].ts, gap_min: Math.round(gap/60000) });
+    }
+  }
+  res.json({
+    mmsi, hours, total_points: rows.length,
+    first: rows[0] || null, last: rows[rows.length-1] || null,
+    gaps, points: rows
+  });
 });
 
 // ── SHIP PHOTO: IMO via Wikimedia ─────────────────────────────────────────────
@@ -894,11 +921,11 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.7.7',
+  uptime: Math.floor(process.uptime()), version:'0.7.8',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.7.7' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.7.8' }));
 
 // Globale Settings (tile, refpoint) – per User via /api/user/settings
 app.get('/api/settings/:key',  authMiddleware, (req,res) => res.json({ value: db.getUserSetting(req.userId, req.params.key) }));

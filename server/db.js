@@ -28,6 +28,7 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_history_ts   ON history(ts);
   CREATE INDEX IF NOT EXISTS idx_history_mmsi ON history(mmsi);
+  CREATE INDEX IF NOT EXISTS idx_history_ts_mmsi ON history(ts, mmsi);
   CREATE TABLE IF NOT EXISTS alerts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
@@ -188,6 +189,9 @@ function verifyPassword(password, stored) {
 }
 function generateToken() { return crypto.randomBytes(32).toString('hex'); }
 
+// In-Memory Cache statt DB-Query pro saveShip-Aufruf
+const historyTsCache = new Map(); // mmsi → letzter History-Timestamp
+
 function saveShip(ship) {
   const eta = ship.eta || {};
   upsertShip.run({
@@ -200,9 +204,16 @@ function saveShip(ship) {
     eta_ts:  eta.eta ? new Date(eta.eta).getTime() : null,
     eta_dir: eta.direction||null, eta_dist: eta.distNm||null,
   });
-  const lastTs = (lastHistoryTs.get(ship.mmsi)||{}).ts || 0;
-  if ((ship.seen||Date.now()) - lastTs >= HISTORY_INTERVAL && ship.lat && ship.lon) {
-    insertHistory.run({ mmsi:ship.mmsi, name:ship.name||'', type:ship.type||'', len:ship.len||0, lat:ship.lat, lon:ship.lon, sog:ship.sog||0, cog:ship.cog||0, ts:ship.seen||Date.now() });
+  // History: max 1 Eintrag pro Minute pro Schiff
+  const now = ship.seen || Date.now();
+  const lastTs = historyTsCache.get(ship.mmsi) || 0;
+  if (now - lastTs >= HISTORY_INTERVAL && ship.lat && ship.lon) {
+    try {
+      insertHistory.run({ mmsi:ship.mmsi, name:ship.name||'', type:ship.type||'', len:ship.len||0, lat:ship.lat, lon:ship.lon, sog:ship.sog||0, cog:ship.cog||0, ts:now });
+      historyTsCache.set(ship.mmsi, now);
+    } catch(e) {
+      console.error(`[DB] History-Insert fehlgeschlagen für ${ship.mmsi}: ${e.message}`);
+    }
   }
 }
 
@@ -212,7 +223,8 @@ function cleanup() {
   const r2 = db.prepare(`DELETE FROM ships WHERE seen < ?`).run(Date.now() - 60*60*1000);
   db.prepare(`DELETE FROM alerted WHERE ts < ?`).run(Date.now() - 7*24*3600*1000);
   db.prepare(`DELETE FROM sessions WHERE expires_at < ?`).run(Date.now());
-  console.log(`[DB] Cleanup: ${r1.changes} History, ${r2.changes} Schiffe`);
+  const stats = db.prepare(`SELECT COUNT(*) as cnt, COUNT(DISTINCT mmsi) as ships FROM history`).get();
+  console.log(`[DB] Cleanup: ${r1.changes} History, ${r2.changes} Schiffe gelöscht · History: ${stats.cnt} Einträge, ${stats.ships} Schiffe`);
 }
 setInterval(cleanup, 3600 * 1000);
 
