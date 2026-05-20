@@ -33,6 +33,18 @@ class AISConnector {
   constructor(onUpdate) {
     this.onUpdate    = onUpdate;
     this.ships       = new Map();
+    // Status-Tracking für /api/health und UI
+    this.status = {
+      connected:        false,
+      lastMessageAt:    null,   // Unix-ms der letzten AIS-Nachricht
+      lastConnectAt:    null,   // Wann zuletzt verbunden
+      lastErrorAt:      null,
+      lastErrorMessage: null,
+      lastErrorCode:    null,
+      certError:        false,  // wahr wenn letzter Fehler ein TLS-Cert-Problem war
+      reconnectAttempts: 0,
+      totalMessages:    0,
+    };
     this.ws          = null;
     this.apiKey      = process.env.AIS_API_KEY || '';
     this.currentBox  = { n:53.900, s:53.400, w:7.800, e:10.200 };
@@ -96,10 +108,37 @@ class AISConnector {
     if (this.ws) try { this.ws.terminate(); } catch(e) {}
     console.log('[AIS] Verbinde mit aisstream.io …');
     this.ws = new WebSocket('wss://stream.aisstream.io/v0/stream');
-    this.ws.on('open',    () => { this._reconnectDelay = 15000; console.log('[AIS] Verbunden'); this._subscribe(); });
-    this.ws.on('message', data => { try { this._handleMsg(JSON.parse(data.toString('utf8'))); } catch(e) {} });
-    this.ws.on('error',   e  => console.error('[AIS] Verbindungsfehler:', e.message));
-    this.ws.on('close',   (code, reason) => {
+    this.ws.on('open', () => {
+      this._reconnectDelay = 15000;
+      this.status.connected = true;
+      this.status.lastConnectAt = Date.now();
+      this.status.certError = false;
+      this.status.reconnectAttempts = 0;
+      console.log('[AIS] Verbunden');
+      this._subscribe();
+    });
+    this.ws.on('message', data => {
+      this.status.lastMessageAt = Date.now();
+      this.status.totalMessages++;
+      try { this._handleMsg(JSON.parse(data.toString('utf8'))); } catch(e) {}
+    });
+    this.ws.on('error', e => {
+      this.status.lastErrorAt      = Date.now();
+      this.status.lastErrorMessage = e.message;
+      this.status.lastErrorCode    = e.code || null;
+      // Cert-spezifische Fehler klar erkennen und loggen
+      const certCodes = ['CERT_HAS_EXPIRED','UNABLE_TO_VERIFY_LEAF_SIGNATURE','SELF_SIGNED_CERT_IN_CHAIN','DEPTH_ZERO_SELF_SIGNED_CERT','ERR_TLS_CERT_ALTNAME_INVALID'];
+      const isCertErr = certCodes.includes(e.code) || /certificate|cert\s|TLS|SSL/i.test(e.message);
+      if (isCertErr) {
+        this.status.certError = true;
+        console.error(`[AIS] TLS-Zertifikatfehler: ${e.message} (${e.code||'-'}). Container hat evtl. veraltetes CA-Bundle. Setze NODE_OPTIONS="--use-openssl-ca" oder erneuere ca-certificates im Image.`);
+      } else {
+        console.error('[AIS] Verbindungsfehler:', e.message);
+      }
+    });
+    this.ws.on('close', (code, reason) => {
+      this.status.connected = false;
+      this.status.reconnectAttempts++;
       const codeMap = {
         1000: 'Normale Trennung',
         1001: 'Server geht offline',
@@ -111,15 +150,25 @@ class AISConnector {
       const reasonStr = reason && reason.length ? ` – "${reason}"` : '';
       const delay = this._reconnectDelay || 15000;
       if (code === 1006) {
-        // 1006 ist normal für aisstream.io (Idle-Timeout alle ~30 Min)
         console.log(`[AIS] Getrennt: ${explain}${reasonStr} – Reconnect in ${delay/1000}s`);
       } else {
         console.warn(`[AIS] Getrennt: ${explain}${reasonStr} – Reconnect in ${delay/1000}s`);
       }
-      // Exponential backoff bis max 2 Min
       this._reconnectDelay = Math.min((delay || 15000) * 1.5, 120000);
       setTimeout(() => this._connect(), delay);
     });
+  }
+
+  /** Aktueller AIS-Verbindungs-Status für /api/health & UI */
+  getStatus() {
+    const now = Date.now();
+    const secSinceMsg = this.status.lastMessageAt ? Math.floor((now - this.status.lastMessageAt)/1000) : null;
+    return {
+      ...this.status,
+      secondsSinceLastMessage: secSinceMsg,
+      // healthy = verbunden UND in den letzten 5 Min Nachricht erhalten
+      healthy: this.status.connected && secSinceMsg !== null && secSinceMsg < 300,
+    };
   }
 
   _handleMsg(d) {
