@@ -958,12 +958,12 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.8.1',
+  uptime: Math.floor(process.uptime()), version:'0.8.2',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
   ais: ais.getStatus(),
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.8.1' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.8.2' }));
 
 // Öffentlicher Healthcheck (für Docker/Podman HEALTHCHECK und externes Monitoring)
 // Antwortet 200 wenn AIS verbunden UND in den letzten 5 Min Nachricht erhalten,
@@ -981,7 +981,7 @@ app.get('/api/health', (req, res) => {
       lastError: aisStatus.lastErrorMessage,
     },
     uptime: Math.floor(process.uptime()),
-    version: '0.8.1',
+    version: '0.8.2',
   };
   res.status(aisStatus.healthy ? 200 : 503).json(body);
 });

@@ -106,16 +106,32 @@ class AISConnector {
 
   _connect() {
     if (this.ws) try { this.ws.terminate(); } catch(e) {}
+    if (this._pingInterval) { clearInterval(this._pingInterval); this._pingInterval = null; }
     console.log('[AIS] Verbinde mit aisstream.io …');
     this.ws = new WebSocket('wss://stream.aisstream.io/v0/stream');
     this.ws.on('open', () => {
-      this._reconnectDelay = 15000;
       this.status.connected = true;
       this.status.lastConnectAt = Date.now();
       this.status.certError = false;
-      this.status.reconnectAttempts = 0;
       console.log('[AIS] Verbunden');
       this._subscribe();
+
+      // Ping/Pong Keepalive – hält die Verbindung aktiv
+      this._pingInterval = setInterval(() => {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          try { this.ws.ping(); } catch(e) {}
+        }
+      }, 25000); // alle 25s
+
+      // Backoff erst zurücksetzen wenn Verbindung >60s stabil war
+      this._stableTimer = setTimeout(() => {
+        this._reconnectDelay = 15000;
+        this.status.reconnectAttempts = 0;
+      }, 60000);
+    });
+    this.ws.on('pong', () => {
+      // Server antwortet auf Ping – Verbindung ist lebendig
+      this.status.lastPongAt = Date.now();
     });
     this.ws.on('message', data => {
       this.status.lastMessageAt = Date.now();
@@ -126,12 +142,11 @@ class AISConnector {
       this.status.lastErrorAt      = Date.now();
       this.status.lastErrorMessage = e.message;
       this.status.lastErrorCode    = e.code || null;
-      // Cert-spezifische Fehler klar erkennen und loggen
       const certCodes = ['CERT_HAS_EXPIRED','UNABLE_TO_VERIFY_LEAF_SIGNATURE','SELF_SIGNED_CERT_IN_CHAIN','DEPTH_ZERO_SELF_SIGNED_CERT','ERR_TLS_CERT_ALTNAME_INVALID'];
       const isCertErr = certCodes.includes(e.code) || /certificate|cert\s|TLS|SSL/i.test(e.message);
       if (isCertErr) {
         this.status.certError = true;
-        console.error(`[AIS] TLS-Zertifikatfehler: ${e.message} (${e.code||'-'}). Container hat evtl. veraltetes CA-Bundle. Setze NODE_OPTIONS="--use-openssl-ca" oder erneuere ca-certificates im Image.`);
+        console.error(`[AIS] TLS-Zertifikatfehler: ${e.message} (${e.code||'-'}). Setze NODE_OPTIONS="--use-openssl-ca" oder NODE_TLS_REJECT_UNAUTHORIZED=0.`);
       } else {
         console.error('[AIS] Verbindungsfehler:', e.message);
       }
@@ -139,23 +154,30 @@ class AISConnector {
     this.ws.on('close', (code, reason) => {
       this.status.connected = false;
       this.status.reconnectAttempts++;
+      if (this._pingInterval) { clearInterval(this._pingInterval); this._pingInterval = null; }
+      if (this._stableTimer)  { clearTimeout(this._stableTimer);   this._stableTimer  = null; }
+
+      const uptime = this.status.lastConnectAt ? Math.floor((Date.now() - this.status.lastConnectAt) / 1000) : 0;
       const codeMap = {
         1000: 'Normale Trennung',
         1001: 'Server geht offline',
-        1006: 'Verbindung unerwartet getrennt (Server-Timeout oder Netzwerkfehler)',
+        1006: 'Server-Timeout oder Netzwerkfehler',
         1011: 'Server-Fehler',
         1012: 'Server-Neustart',
       };
       const explain = codeMap[code] || `Code ${code}`;
-      const reasonStr = reason && reason.length ? ` – "${reason}"` : '';
       const delay = this._reconnectDelay || 15000;
-      if (code === 1006) {
-        console.log(`[AIS] Getrennt: ${explain}${reasonStr} – Reconnect in ${delay/1000}s`);
+
+      // Wenn Verbindung <30s hielt → Backoff erhöhen (Rapid-Disconnect-Schutz)
+      if (uptime < 30) {
+        this._reconnectDelay = Math.min((delay || 15000) * 1.5, 120000);
+        console.warn(`[AIS] Getrennt nach ${uptime}s: ${explain} – Backoff → ${this._reconnectDelay/1000}s`);
       } else {
-        console.warn(`[AIS] Getrennt: ${explain}${reasonStr} – Reconnect in ${delay/1000}s`);
+        // Stabile Verbindung → normaler 15s Reconnect
+        this._reconnectDelay = 15000;
+        console.log(`[AIS] Getrennt nach ${uptime}s: ${explain} – Reconnect in 15s`);
       }
-      this._reconnectDelay = Math.min((delay || 15000) * 1.5, 120000);
-      setTimeout(() => this._connect(), delay);
+      setTimeout(() => this._connect(), this._reconnectDelay);
     });
   }
 
