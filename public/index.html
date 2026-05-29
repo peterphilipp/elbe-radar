@@ -430,10 +430,10 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   .abbtn{padding:5px 10px;}
   .abinput{padding:5px 8px;font-size:12px;}
   /* Topbar kompakter */
-  #topbar{padding:0 4px;gap:4px;}
+  #topbar{padding-left:4px;padding-right:4px;gap:4px;}  /* safe-area padding-top bleibt erhalten! */
   .topbar-r{overflow-x:auto;-webkit-overflow-scrolling:touch;gap:4px;scrollbar-width:none;padding-right:4px;}
   .topbar-r::-webkit-scrollbar{display:none;}
-  .topbar-r .pill{display:none;}  /* Pills auf Mobile ausblenden */
+  .topbar-r .pill{display:none;}
   #buildPill{display:none!important;}
   .topbar-r .ibtn{min-width:36px;height:36px;font-size:14px;}
   .brand-sub{display:none;}
@@ -506,12 +506,19 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 .db-stat-val{font-size:18px;font-weight:700;color:var(--blue);}
 .db-stat-lbl{font-size:10px;color:var(--mut);margin-top:2px;}
 @media(max-width:700px){
-  #weatherWidget{top:6px;bottom:auto;right:8px;font-size:10px;min-width:auto;max-width:calc(100vw - 16px);
-    overflow:hidden;transition:max-height .3s ease;}
-  #weatherWidget:not(.ww-open){max-height:32px;cursor:pointer;}
+  #weatherWidget{top:2px;bottom:auto;right:4px;left:4px;font-size:10px;min-width:auto;max-width:none;
+    border-radius:8px;padding:5px 10px;
+    overflow:hidden;transition:max-height .3s ease;
+    backdrop-filter:blur(16px) saturate(180%);-webkit-backdrop-filter:blur(16px) saturate(180%);
+    background:color-mix(in srgb, var(--surf) 70%, transparent) !important;
+    border:1px solid color-mix(in srgb, var(--brd) 60%, transparent);}
+  #weatherWidget:not(.ww-open){max-height:28px;cursor:pointer;}
   #weatherWidget:not(.ww-open) .ww-tide,
   #weatherWidget:not(.ww-open) .ww-sub{display:none !important;}
-  #weatherWidget.ww-open{max-height:300px;}
+  #weatherWidget:not(.ww-open) .ww-main{font-size:12px;}
+  #weatherWidget:not(.ww-open) .ww-icon{font-size:14px;}
+  #weatherWidget:not(.ww-open) .ww-dir-label{display:none;}
+  #weatherWidget.ww-open{max-height:400px;}
   .ww-expand-hint{display:none;font-size:8px;color:var(--mut);margin-left:auto;}
   #weatherWidget:not(.ww-open) .ww-expand-hint{display:inline;}
 }
@@ -642,7 +649,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.8.2</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.8.3</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -1013,7 +1020,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.8.2</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.8.3</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
       <div class="sform" style="margin-top:8px">
         <button class="sbtn-sec" id="sAppUpdate" style="font-size:11px;width:fit-content">🔄 App-Update prüfen</button>
         <div class="shint" id="sUpdateStatus" style="font-size:10px;margin-top:4px"></div>

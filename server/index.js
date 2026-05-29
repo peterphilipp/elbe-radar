@@ -106,6 +106,7 @@ function logPush(level, ...args) {
 console.log   = (...a) => logPush('info',  ...a);
 console.error = (...a) => logPush('error', ...a);
 console.warn  = (...a) => logPush('warn',  ...a);
+console.debug = (...a) => { if (process.env.DEBUG) logPush('debug', ...a); };
 
 // ── Auth Middleware ───────────────────────────────────────────────────────────
 function getTokenFromReq(req) {
@@ -177,7 +178,8 @@ setInterval(() => {
     if ((s.seen || 0) < cutoff) { ais.ships.delete(mmsi); removed++; }
   }
   if (removed > 0) {
-    console.log(`[AIS] ${removed} abgelaufene Schiffe (>30 Min) entfernt`);
+    if (removed > 10) console.warn(`[AIS] ${removed} abgelaufene Schiffe (>30 Min) entfernt – möglicher Verbindungsverlust`);
+      else if (removed > 0) console.log(`[AIS] ${removed} abgelaufene Schiffe entfernt`);
     broadcast(ais.ships);
   }
 }, 5 * 60 * 1000);
@@ -243,8 +245,8 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   const sent = await sendMail(user.email, 'Elbe Radar – Passwort zurücksetzen', html);
   if (!sent && !process.env.SMTP_HOST) {
     // Dev-Modus: Token im Log, Link in Response
-    console.log(`[PwReset] Token für ${user.username}: ${token}`);
-    console.log(`[PwReset] Link: ${resetUrl}`);
+    console.warn(`[PwReset] Token für ${user.username} erstellt`);
+    console.warn(`[PwReset] Reset-Link generiert für ${user.username}`);
     return res.json({ ok: true, devResetUrl: resetUrl }); // nur ohne SMTP konfiguration
   }
   res.json({ ok: true });
@@ -526,19 +528,19 @@ app.get('/api/weather', async (req, res) => {
           resp.on('end', () => {
             console.log(`[Pegel] HTTP ${resp.statusCode}, Body-Anfang: ${d.slice(0,120)}`);
             try { resolve(JSON.parse(d)); } catch(e) {
-              console.log(`[Pegel] JSON-Parse-Fehler: ${e.message}`);
+              console.error(`[Pegel] JSON-Parse-Fehler: ${e.message}`);
               resolve(null);
             }
           });
         });
-        tr.on('error', (e) => { console.log(`[Pegel] Netzwerkfehler: ${e.message}`); resolve(null); });
-        tr.setTimeout(6000, () => { tr.destroy(); console.log('[Pegel] Timeout'); resolve(null); });
+        tr.on('error', (e) => { console.warn(`[Pegel] Netzwerkfehler: ${e.message}`); resolve(null); });
+        tr.setTimeout(6000, () => { tr.destroy(); console.warn('[Pegel] Timeout'); resolve(null); });
       });
       if (Array.isArray(tideRaw) && tideRaw.length > 0) {
         tide = tideRaw;
         console.log(`[Pegel] OK – ${tideRaw.length} Messpunkte, letzter Wert: ${tideRaw[tideRaw.length-1]?.value} cm`);
       } else {
-        console.log(`[Pegel] Keine Daten – tideRaw: ${JSON.stringify(tideRaw)?.slice(0,120)}`);
+        console.warn(`[Pegel] Keine Daten – tideRaw: ${JSON.stringify(tideRaw)?.slice(0,120)}`);
       }
 
       // Gezeitenvorhersage (TRM) – nächste 6h, falls verfügbar
@@ -565,10 +567,10 @@ app.get('/api/weather', async (req, res) => {
           tideForecast = extrapolateTide(tide, 9 * 3600); // 9h voraus
           if (tideForecast.length > 0)
             console.log(`[Pegel] Synthetischer Forecast: ${tideForecast.length} Punkte`);
-        } catch(e) { console.log(`[Pegel] Extrapolation fehlgeschlagen: ${e.message}`); }
+        } catch(e) { console.error(`[Pegel] Extrapolation fehlgeschlagen: ${e.message}`); }
       }
     } catch(e) {
-      console.log(`[Pegel] Fehler: ${e.message}`);
+      console.error(`[Pegel] Fehler: ${e.message}`);
     }
     // Strömungsabschätzung aus Pegeländerung (steigend = Flut = landeinwärts)
     let current = null;
@@ -847,43 +849,93 @@ try { db.db.exec(`UPDATE ships SET photo_checked=0, photo_url=NULL WHERE photo_c
 
 // ── SHIP PHOTO PROXY ─────────────────────────────────────────────────────────
 // Gibt sofort ein Bild zurück oder 404. Kein Blockieren, kein race condition.
+// ── Lokaler Foto-Cache ──────────────────────────────────────────────────────
+const PHOTO_CACHE_DIR = path.join(DATA_DIR, 'photo_cache');
+try { fs.mkdirSync(PHOTO_CACHE_DIR, { recursive: true }); } catch(e) {}
+const PHOTO_MAX_AGE_MS = +(process.env.PHOTO_CACHE_DAYS||14) * 24 * 3600 * 1000;
+
+// Cleanup: Fotos älter als PHOTO_CACHE_DAYS löschen (im regulären DB-Cleanup-Intervall)
+function cleanupPhotoCache() {
+  try {
+    const files = fs.readdirSync(PHOTO_CACHE_DIR);
+    const cutoff = Date.now() - PHOTO_MAX_AGE_MS;
+    let removed = 0;
+    for (const f of files) {
+      const fp = path.join(PHOTO_CACHE_DIR, f);
+      try {
+        const stat = fs.statSync(fp);
+        if (stat.mtimeMs < cutoff) { fs.unlinkSync(fp); removed++; }
+      } catch(e) {}
+    }
+    if (removed > 0) console.log(`[PhotoCache] ${removed} abgelaufene Fotos entfernt`);
+  } catch(e) {}
+}
+
+function downloadImageToFile(url_or_opts, filepath) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url_or_opts, resp => {
+      if (resp.statusCode === 301 || resp.statusCode === 302) {
+        resp.resume();
+        const loc = resp.headers.location;
+        return loc ? resolve(downloadImageToFile(loc, filepath)) : reject(new Error('no redirect'));
+      }
+      const ct = resp.headers['content-type'] || '';
+      if (resp.statusCode !== 200 || !ct.startsWith('image/')) {
+        resp.resume(); return reject(new Error('not an image'));
+      }
+      const ws = fs.createWriteStream(filepath);
+      resp.pipe(ws);
+      ws.on('finish', () => resolve(true));
+      ws.on('error', e => { try { fs.unlinkSync(filepath); } catch(x) {} reject(e); });
+    });
+    req.on('error', reject);
+    req.setTimeout(8000, () => { req.destroy(); reject(new Error('timeout')); });
+  });
+}
+
 app.get('/api/ship/:mmsi/photo', (req, res) => {
   const mmsi = req.params.mmsi.replace(/\D/g, '');
   if (!mmsi) return res.status(400).end();
+  const cachePath = path.join(PHOTO_CACHE_DIR, `${mmsi}.jpg`);
 
-  // 1. Gecachten Eintrag prüfen
+  // 1. Lokaler Disk-Cache?
+  if (fs.existsSync(cachePath)) {
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return fs.createReadStream(cachePath).pipe(res);
+  }
+
+  // 2. DB sagt: bereits geprüft, nichts gefunden?
   try {
-    const row = db.db.prepare('SELECT photo_url, photo_checked FROM ships WHERE mmsi=?').get(mmsi);
-    if (row && row.photo_checked && row.photo_url)  return res.redirect(302, row.photo_url);
-    if (row && row.photo_checked && !row.photo_url) return res.status(404).end();
-  } catch(e) { /* DB nicht bereit */ }
+    const row = db.db.prepare('SELECT photo_checked FROM ships WHERE mmsi=?').get(mmsi);
+    if (row && row.photo_checked) return res.status(404).end();
+  } catch(e) {}
 
-  // 2. MarineTraffic → VesselTracker → Wikipedia (async, in Hintergrund)
-  //    Sofort mit 404 antworten wenn nichts gecacht → nächster Klick liefert Bild
-  const ua = 'Mozilla/5.0 (compatible; ElbeRadar/0.4)';
-  res.status(404).end(); // sofort antworten
+  // 3. Sofort 404 antworten, im Hintergrund suchen & auf Disk cachen
+  res.status(404).end();
+  const ua = 'Mozilla/5.0 (compatible; ElbeRadar/0.8)';
 
-  // Bild im Hintergrund suchen und cachen (für nächsten Klick)
   (async () => {
     const sources = [
       { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=${mmsi}&size=thumb800`, headers:{'Referer':'https://www.marinetraffic.com/','User-Agent':ua} },
       { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=${mmsi}`,               headers:{'Referer':'https://www.marinetraffic.com/','User-Agent':ua} },
       { hostname:'photos.vesseltracker.com', path:`/photos/vessels/thumb_${mmsi}.jpg`,              headers:{'Referer':'https://www.vesseltracker.com/','User-Agent':ua} },
     ];
-
     for (const src of sources) {
-      const url = await probeAndGetImageUrl(src);
-      if (url) {
-        try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=? WHERE mmsi=?').run(url, mmsi); } catch(e){}
-        return;
-      }
+      try { await downloadImageToFile(src, cachePath); console.log(`[PhotoCache] ${mmsi}: MarineTraffic/VesselTracker OK`);
+        db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=? WHERE mmsi=?').run('local', mmsi); return;
+      } catch(e) {}
     }
-
-    // Wikipedia REST API
+    // Wikipedia fallback
     const url = await fetchWikipediaPhotoUrl(mmsi);
-    try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=? WHERE mmsi=?').run(url||null, mmsi); } catch(e){}
+    if (url) {
+      try { await downloadImageToFile(url, cachePath); console.log(`[PhotoCache] ${mmsi}: Wikipedia OK`);
+        db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=? WHERE mmsi=?').run('local', mmsi); return;
+      } catch(e) {}
+    }
+    db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=NULL WHERE mmsi=?').run(mmsi);
   })().catch(() => {
-    try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=NULL WHERE mmsi=?').run(mmsi); } catch(e){}
+    try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=NULL WHERE mmsi=?').run(mmsi); } catch(e) {}
   });
 });
 
@@ -910,6 +962,9 @@ function probeAndGetImageUrl(opts) {
     req.setTimeout(4000, () => { req.destroy(); resolve(null); });
   });
 }
+
+// Photo-Cache in DB-Cleanup-Hook registrieren
+db.cleanupCallbacks.push(cleanupPhotoCache);
 
 async function fetchWikipediaPhotoUrl(mmsi) {
   try {
@@ -958,12 +1013,12 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.8.2',
+  uptime: Math.floor(process.uptime()), version:'0.8.3',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
   ais: ais.getStatus(),
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.8.2' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.8.3' }));
 
 // Öffentlicher Healthcheck (für Docker/Podman HEALTHCHECK und externes Monitoring)
 // Antwortet 200 wenn AIS verbunden UND in den letzten 5 Min Nachricht erhalten,
@@ -981,7 +1036,7 @@ app.get('/api/health', (req, res) => {
       lastError: aisStatus.lastErrorMessage,
     },
     uptime: Math.floor(process.uptime()),
-    version: '0.8.2',
+    version: '0.8.3',
   };
   res.status(aisStatus.healthy ? 200 : 503).json(body);
 });

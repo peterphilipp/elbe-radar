@@ -217,6 +217,7 @@ function saveShip(ship) {
   }
 }
 
+const cleanupCallbacks = [];
 function cleanup() {
   const cutoff = Date.now() - RETAIN_DAYS * 24 * 3600 * 1000;
   const r1 = db.prepare(`DELETE FROM history WHERE ts < ?`).run(cutoff);
@@ -225,10 +226,13 @@ function cleanup() {
   db.prepare(`DELETE FROM sessions WHERE expires_at < ?`).run(Date.now());
   const stats = db.prepare(`SELECT COUNT(*) as cnt, COUNT(DISTINCT mmsi) as ships FROM history`).get();
   console.log(`[DB] Cleanup: ${r1.changes} History, ${r2.changes} Schiffe gelöscht · History: ${stats.cnt} Einträge, ${stats.ships} Schiffe`);
+  // Zusätzliche Cleanup-Hooks (z.B. Photo-Cache)
+  for (const cb of cleanupCallbacks) { try { cb(); } catch(e) {} }
 }
 setInterval(cleanup, 3600 * 1000);
 
 module.exports = {
+  db, cleanupCallbacks,
   saveShip,
   getActiveShips: (maxAgeMs=15*60*1000) =>
     db.prepare(`SELECT * FROM ships WHERE seen > ? ORDER BY seen DESC`).all(Date.now()-maxAgeMs),
