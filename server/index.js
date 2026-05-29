@@ -850,7 +850,7 @@ try { db.db.exec(`UPDATE ships SET photo_checked=0, photo_url=NULL WHERE photo_c
 // ── SHIP PHOTO PROXY ─────────────────────────────────────────────────────────
 // Gibt sofort ein Bild zurück oder 404. Kein Blockieren, kein race condition.
 // ── Lokaler Foto-Cache ──────────────────────────────────────────────────────
-const PHOTO_CACHE_DIR = path.join(DATA_DIR, 'photo_cache');
+const PHOTO_CACHE_DIR = path.join(process.env.DATA_DIR || '/app/data', 'photo_cache');
 try { fs.mkdirSync(PHOTO_CACHE_DIR, { recursive: true }); } catch(e) {}
 const PHOTO_MAX_AGE_MS = +(process.env.PHOTO_CACHE_DAYS||14) * 24 * 3600 * 1000;
 
