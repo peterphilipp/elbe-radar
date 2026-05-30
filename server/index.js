@@ -168,6 +168,55 @@ function broadcast(ships) {
 }
 
 const ais = new AISConnector(ships => broadcast(ships));
+
+// Foto-Prefetch: bei neuem Schiff sofort im Hintergrund laden
+const PREFETCH_QUEUE = new Set();
+const PREFETCH_MAX_CONCURRENT = 3;
+let prefetchActive = 0;
+
+function prefetchPhoto(mmsi) {
+  if (PREFETCH_QUEUE.has(mmsi)) return;
+  // Bereits gecacht (Disk oder DB-checked)?
+  const cachePath = path.join(PHOTO_CACHE_DIR, `${mmsi}.jpg`);
+  if (fs.existsSync(cachePath)) return;
+  try {
+    const row = db.db.prepare('SELECT photo_checked FROM ships WHERE mmsi=?').get(mmsi);
+    if (row && row.photo_checked) return;
+  } catch(e) {}
+
+  PREFETCH_QUEUE.add(mmsi);
+  drainPrefetchQueue();
+}
+
+async function drainPrefetchQueue() {
+  if (prefetchActive >= PREFETCH_MAX_CONCURRENT) return;
+  const mmsi = PREFETCH_QUEUE.values().next().value;
+  if (!mmsi) return;
+  PREFETCH_QUEUE.delete(mmsi);
+  prefetchActive++;
+  const ua = 'Mozilla/5.0 (compatible; ElbeRadar/0.8)';
+  const cachePath = path.join(PHOTO_CACHE_DIR, `${mmsi}.jpg`);
+  try {
+    const sources = [
+      { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=${mmsi}&size=thumb800`, headers:{'Referer':'https://www.marinetraffic.com/','User-Agent':ua} },
+      { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=${mmsi}`,               headers:{'Referer':'https://www.marinetraffic.com/','User-Agent':ua} },
+      { hostname:'photos.vesseltracker.com', path:`/photos/vessels/thumb_${mmsi}.jpg`,              headers:{'Referer':'https://www.vesseltracker.com/','User-Agent':ua} },
+    ];
+    let found = false;
+    for (const src of sources) {
+      try { await downloadImageToFile(src, cachePath); found = true; break; } catch(e) {}
+    }
+    if (!found) {
+      const url = await fetchWikipediaPhotoUrl(mmsi);
+      if (url) { try { await downloadImageToFile(url, cachePath); found = true; } catch(e) {} }
+    }
+    try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=? WHERE mmsi=?').run(found?'local':null, mmsi); } catch(e) {}
+  } catch(e) {}
+  prefetchActive--;
+  if (PREFETCH_QUEUE.size > 0) drainPrefetchQueue();
+}
+
+ais._prefetchPhoto = prefetchPhoto;
 ais.start();
 
 // Alte Schiffe aus In-Memory-Map entfernen und Clients informieren
@@ -1013,12 +1062,12 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.8.3',
+  uptime: Math.floor(process.uptime()), version:'0.8.4',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
   ais: ais.getStatus(),
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.8.3' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.8.4' }));
 
 // Öffentlicher Healthcheck (für Docker/Podman HEALTHCHECK und externes Monitoring)
 // Antwortet 200 wenn AIS verbunden UND in den letzten 5 Min Nachricht erhalten,
@@ -1036,7 +1085,7 @@ app.get('/api/health', (req, res) => {
       lastError: aisStatus.lastErrorMessage,
     },
     uptime: Math.floor(process.uptime()),
-    version: '0.8.3',
+    version: '0.8.4',
   };
   res.status(aisStatus.healthy ? 200 : 503).json(body);
 });

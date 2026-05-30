@@ -649,7 +649,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.8.3</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.8.4</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -1020,7 +1020,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.8.3</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.8.4</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
       <div class="sform" style="margin-top:8px">
         <button class="sbtn-sec" id="sAppUpdate" style="font-size:11px;width:fit-content">🔄 App-Update prüfen</button>
         <div class="shint" id="sUpdateStatus" style="font-size:10px;margin-top:4px"></div>
@@ -2879,10 +2879,19 @@ async function loadServerLogs(full = false) {
 }
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-// Robustere Handler via Event-Delegation (funktionieren auch wenn DOM später da ist)
+// Log-Filter: Event-Delegation (serverLogPage HTML ist nach dem Script-Block)
 document.addEventListener('click', (e) => {
   if (e.target && (e.target.id === 'slogClose' || e.target.closest('#slogClose'))) {
     closeServerLog();
+  }
+  // Log-Level Filter-Buttons
+  const lvlBtn = e.target.closest('[data-level]');
+  if (lvlBtn && lvlBtn.closest('#serverLogPage')) {
+    slogFilter = lvlBtn.dataset.level;
+    // Alle Buttons im serverLogPage updaten (nicht querySelectorAll beim Parsen)
+    const page = lvlBtn.closest('#serverLogPage');
+    page.querySelectorAll('[data-level]').forEach(b => b.classList.toggle('on', b === lvlBtn));
+    loadServerLogs(true);
   }
 });
 if ($('slogRefresh'))   $('slogRefresh').onclick   = () => loadServerLogs(true);
@@ -2896,15 +2905,6 @@ if ($('slogAutoRefresh')) {
     }
   };
 }
-document.querySelectorAll('[data-level]').forEach(btn => {
-  if (!btn.closest('#serverLogPage')) return;
-  btn.onclick = () => {
-    slogFilter = btn.dataset.level;
-    document.querySelectorAll('[data-level]').forEach(b => { if(b.closest('#serverLogPage')) b.classList.toggle('on', b===btn); });
-    loadServerLogs(true);
-  };
-});
-
 /* ─── Admin – Benutzerverwaltung ────────────────────────────────────────── */
 async function loadAdminUsers() {
   const users = await apiFetch('/api/admin/users').then(r=>r.json()).catch(()=>null);

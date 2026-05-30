@@ -232,12 +232,15 @@ class AISConnector {
   }
 
   _upsert(p) {
+    const isNew = !this.ships.has(p.mmsi);
     const merged = { ...(this.ships.get(p.mmsi)||{}), ...p, seen: Date.now() };
     const eta = calcETA(merged, this._getRefPoint());
     if (eta) { merged.eta = eta; checkAlerts(merged, eta); recordPassage(merged, eta.direction); }
     this.ships.set(p.mmsi, merged);
     saveShip(merged);
     this.onUpdate(this.ships);
+    // Foto im Hintergrund prefetchen wenn neues Schiff (nicht bei jedem Positionsupdate)
+    if (isNew && this._prefetchPhoto) this._prefetchPhoto(p.mmsi);
   }
 
   _startDemo() {
