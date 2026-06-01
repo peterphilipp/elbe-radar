@@ -219,6 +219,65 @@ async function drainPrefetchQueue() {
 ais._prefetchPhoto = prefetchPhoto;
 ais.start();
 
+// ── Hintergrund-Foto-Crawler ─────────────────────────────────────────────────
+// Geht langsam alle Schiffe durch die noch kein Foto haben (auch Hafen-Lieger)
+// Rate: 1 Schiff alle 15 Sekunden → max 240/Stunde, kein DoS
+const CRAWLER_INTERVAL_MS = 15000;
+let crawlerTimer = null;
+
+function startPhotoCrawler() {
+  if (crawlerTimer) return;
+  crawlerTimer = setInterval(async () => {
+    try {
+      // Finde ein Schiff das noch nicht geprüft wurde UND noch kein Disk-Cache hat
+      const row = db.db.prepare(`
+        SELECT mmsi FROM ships 
+        WHERE (photo_checked IS NULL OR photo_checked = 0)
+        ORDER BY seen DESC 
+        LIMIT 1
+      `).get();
+      if (!row) return; // Alle geprüft
+
+      const mmsi = String(row.mmsi);
+      const cachePath = path.join(PHOTO_CACHE_DIR, `${mmsi}.jpg`);
+      if (fs.existsSync(cachePath)) {
+        // Disk-Cache existiert schon, nur DB-Flag setzen
+        db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=? WHERE mmsi=?').run('local', mmsi);
+        return;
+      }
+
+      // Foto suchen
+      const ua = 'Mozilla/5.0 (compatible; ElbeRadar/0.8)';
+      const sources = [
+        { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=${mmsi}&size=thumb800`, headers:{'Referer':'https://www.marinetraffic.com/','User-Agent':ua} },
+        { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=${mmsi}`,               headers:{'Referer':'https://www.marinetraffic.com/','User-Agent':ua} },
+        { hostname:'photos.vesseltracker.com', path:`/photos/vessels/thumb_${mmsi}.jpg`,              headers:{'Referer':'https://www.vesseltracker.com/','User-Agent':ua} },
+      ];
+      let found = false;
+      for (const src of sources) {
+        try { await downloadImageToFile(src, cachePath); found = true; break; } catch(e) {}
+      }
+      if (!found) {
+        const url = await fetchWikipediaPhotoUrl(mmsi);
+        if (url) { try { await downloadImageToFile(url, cachePath); found = true; } catch(e) {} }
+      }
+      db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=? WHERE mmsi=?').run(found?'local':null, mmsi);
+      if (found) console.log(`[PhotoCrawler] ${mmsi}: Foto gecacht`);
+    } catch(e) {}
+  }, CRAWLER_INTERVAL_MS);
+  
+  // Status loggen
+  setTimeout(() => {
+    try {
+      const unchecked = db.db.prepare('SELECT COUNT(*) as cnt FROM ships WHERE photo_checked IS NULL OR photo_checked = 0').get();
+      const cached = fs.readdirSync(PHOTO_CACHE_DIR).length;
+      console.log(`[PhotoCrawler] Gestartet – ${unchecked.cnt} Schiffe ohne Foto, ${cached} im Cache. Rate: 1/${CRAWLER_INTERVAL_MS/1000}s`);
+    } catch(e) {}
+  }, 3000);
+}
+
+startPhotoCrawler();
+
 // Alte Schiffe aus In-Memory-Map entfernen und Clients informieren
 setInterval(() => {
   const cutoff = Date.now() - SHIP_TTL_MS;
@@ -1062,12 +1121,12 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.8.4',
+  uptime: Math.floor(process.uptime()), version:'0.8.5',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
   ais: ais.getStatus(),
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.8.4' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.8.5' }));
 
 // Öffentlicher Healthcheck (für Docker/Podman HEALTHCHECK und externes Monitoring)
 // Antwortet 200 wenn AIS verbunden UND in den letzten 5 Min Nachricht erhalten,
@@ -1085,7 +1144,7 @@ app.get('/api/health', (req, res) => {
       lastError: aisStatus.lastErrorMessage,
     },
     uptime: Math.floor(process.uptime()),
-    version: '0.8.4',
+    version: '0.8.5',
   };
   res.status(aisStatus.healthy ? 200 : 503).json(body);
 });

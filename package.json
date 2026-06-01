@@ -1,6 +1,6 @@
 {
   "name": "elbe-radar",
-  "version": "0.8.4",
+  "version": "0.8.5",
   "description": "AIS Schiffsradar Wedel/Elbe",
   "main": "server/index.js",
   "scripts": {

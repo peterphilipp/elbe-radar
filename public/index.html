@@ -649,7 +649,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
   <div class="topbar-r">
     <div class="pill"><div class="dot" id="dot"></div><span id="connLbl">Verbinde…</span></div>
     <div class="pill">📡 <span id="shipNum">0</span></div>
-    <div class="pill" id="buildPill" style="cursor:pointer">v0.8.4</div>
+    <div class="pill" id="buildPill" style="cursor:pointer">v0.8.5</div>
     <button class="ibtn" id="logBtn" title="Schiffsliste">📋 Log</button>
     <button class="ibtn" id="statsBtn" title="Statistik">📊</button>
     <button class="ibtn" id="playbackBtn" title="Playback">⏮</button>
@@ -1020,7 +1020,7 @@ input[type=range]{flex:1;accent-color:var(--blue);}
 
     <div class="ssec">
       <h3>ℹ️ Info</h3>
-      <p class="shint">Version: <b id="sVersion">0.8.4</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
+      <p class="shint">Version: <b id="sVersion">0.8.5</b><br>History-Intervall: 1 Minute<br>AIS-Quelle: aisstream.io</p>
       <div class="sform" style="margin-top:8px">
         <button class="sbtn-sec" id="sAppUpdate" style="font-size:11px;width:fit-content">🔄 App-Update prüfen</button>
         <div class="shint" id="sUpdateStatus" style="font-size:10px;margin-top:4px"></div>
@@ -1428,7 +1428,7 @@ function makeIcon(s,sel=false,zoom=12){
 }
 
 function initMap(){
-  map=L.map('map',{zoomControl:true}).setView([53.570,9.730],12);
+  map=L.map('map',{zoomControl:true}).setView([53.5688,9.6981],12);
   apiFetch('/api/settings/tile').then(r=>r.json()).then(d=>setTile(d.value||'dark')).catch(()=>setTile('dark'));
   map.on('click',()=>{selMmsi=null;$('detail').classList.remove('open');$('detailBackdrop').classList.remove('on');clearTrackLayers();redraw();});
   map.on('zoomend',()=>{currentZoom=map.getZoom();$('zoomLbl').textContent=currentZoom;sendBoxUpdate();syncMarkers();});
@@ -2439,7 +2439,7 @@ function renderStats(summaryObj, passages, days) {
 
 
 /* ─── Helpers ───────────────────────────────────────────────────────────── */
-const HOME_VIEW = { lat: 53.570, lon: 9.730, zoom: 12 };
+const HOME_VIEW = { lat: 53.5688, lon: 9.6981, zoom: 12 };
 
 /* FABs entfernt auf Wunsch des Nutzers */
 
