@@ -952,8 +952,8 @@ app.post('/api/debug/sql', adminMiddleware, (req, res) => {
 try { db.db.exec(`ALTER TABLE ships ADD COLUMN photo_url TEXT DEFAULT NULL`); } catch(e) {}
 try { db.db.exec(`ALTER TABLE ships ADD COLUMN imo TEXT DEFAULT NULL`); } catch(e) {}
 try { db.db.exec(`ALTER TABLE ships ADD COLUMN photo_checked INTEGER DEFAULT 0`); } catch(e) {}
-// Schlechte Einträge zurücksetzen damit beim nächsten Klick Wikipedia versucht wird
-try { db.db.exec(`UPDATE ships SET photo_checked=0, photo_url=NULL WHERE photo_checked=1 AND photo_url IS NULL`); } catch(e) {}
+// Fehlgeschlagene Foto-Checks nach 7 Tagen zurücksetzen (neue Quellen könnten Bilder haben)
+try { db.db.exec(`UPDATE ships SET photo_checked=0 WHERE photo_checked=1 AND photo_url IS NULL AND seen < ${Date.now() - 7*24*3600*1000}`); } catch(e) {}
 
 // ── SHIP PHOTO PROXY ─────────────────────────────────────────────────────────
 // Gibt sofort ein Bild zurück oder 404. Kein Blockieren, kein race condition.
@@ -1006,73 +1006,78 @@ app.get('/api/ship/:mmsi/photo', (req, res) => {
   if (!mmsi) return res.status(400).end();
   const cachePath = path.join(PHOTO_CACHE_DIR, `${mmsi}.jpg`);
 
-  // 1. Lokaler Disk-Cache?
+  // 1. Disk-Cache → sofort ausliefern
   if (fs.existsSync(cachePath)) {
     res.setHeader('Content-Type', 'image/jpeg');
     res.setHeader('Cache-Control', 'public, max-age=86400');
     return fs.createReadStream(cachePath).pipe(res);
   }
 
-  // 2. DB sagt: bereits geprüft, nichts gefunden?
-  try {
-    const row = db.db.prepare('SELECT photo_checked FROM ships WHERE mmsi=?').get(mmsi);
-    if (row && row.photo_checked) return res.status(404).end();
-  } catch(e) {}
-
-  // 3. Sofort 404 antworten, im Hintergrund suchen & auf Disk cachen
-  res.status(404).end();
+  // 2. Live-Download: versuche Quellen der Reihe nach, streame zum Browser UND auf Disk
   const ua = 'Mozilla/5.0 (compatible; ElbeRadar/0.8)';
+  const sources = [
+    { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=${mmsi}&size=thumb800`, headers:{'Referer':'https://www.marinetraffic.com/','User-Agent':ua} },
+    { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=${mmsi}`,               headers:{'Referer':'https://www.marinetraffic.com/','User-Agent':ua} },
+    { hostname:'photos.vesseltracker.com', path:`/photos/vessels/thumb_${mmsi}.jpg`,              headers:{'Referer':'https://www.vesseltracker.com/','User-Agent':ua} },
+  ];
 
-  (async () => {
-    const sources = [
-      { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=${mmsi}&size=thumb800`, headers:{'Referer':'https://www.marinetraffic.com/','User-Agent':ua} },
-      { hostname:'photos.marinetraffic.com', path:`/ais/showphoto.aspx?mmsi=${mmsi}`,               headers:{'Referer':'https://www.marinetraffic.com/','User-Agent':ua} },
-      { hostname:'photos.vesseltracker.com', path:`/photos/vessels/thumb_${mmsi}.jpg`,              headers:{'Referer':'https://www.vesseltracker.com/','User-Agent':ua} },
-    ];
-    for (const src of sources) {
-      try { await downloadImageToFile(src, cachePath); console.log(`[PhotoCache] ${mmsi}: MarineTraffic/VesselTracker OK`);
-        db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=? WHERE mmsi=?').run('local', mmsi); return;
-      } catch(e) {}
-    }
-    // Wikipedia fallback
-    const url = await fetchWikipediaPhotoUrl(mmsi);
-    if (url) {
-      try { await downloadImageToFile(url, cachePath); console.log(`[PhotoCache] ${mmsi}: Wikipedia OK`);
-        db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=? WHERE mmsi=?').run('local', mmsi); return;
-      } catch(e) {}
-    }
-    db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=NULL WHERE mmsi=?').run(mmsi);
-  })().catch(() => {
-    try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=NULL WHERE mmsi=?').run(mmsi); } catch(e) {}
-  });
-});
+  // Harter 8s Gesamttimeout – danach 404, egal was passiert
+  let answered = false;
+  const timeout = setTimeout(() => {
+    if (!answered) { answered = true; res.status(404).end(); }
+    // Wikipedia im Hintergrund weiter versuchen für nächstes Mal
+    fetchWikipediaPhotoUrl(mmsi).then(url => {
+      if (url) downloadImageToFile(url, cachePath)
+        .then(() => { try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=? WHERE mmsi=?').run('local', mmsi); } catch(e) {} })
+        .catch(() => { try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=NULL WHERE mmsi=?').run(mmsi); } catch(e) {} });
+      else { try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=NULL WHERE mmsi=?').run(mmsi); } catch(e) {} }
+    }).catch(() => {});
+  }, 8000);
 
-// Gibt die endgültige Bild-URL zurück (folgt Redirects, prüft Content-Type)
-function probeAndGetImageUrl(opts) {
-  return new Promise(resolve => {
-    const req = https.get(opts, resp => {
-      if (resp.statusCode === 301 || resp.statusCode === 302) {
-        resp.resume();
-        const loc = resp.headers.location;
-        return resolve(loc ? probeAndGetImageUrl(loc) : null);
+  tryLiveSources(sources, 0);
+
+  function tryLiveSources(srcs, idx) {
+    if (idx >= srcs.length || answered) {
+      // Alle Quellen erschöpft → Timeout-Handler kümmert sich um Wikipedia
+      return;
+    }
+    const r2 = https.get(srcs[idx], imgRes => {
+      // Redirects folgen
+      if (imgRes.statusCode === 301 || imgRes.statusCode === 302) {
+        imgRes.resume();
+        const loc = imgRes.headers.location;
+        if (loc) {
+          tryLiveSources([loc], 0);
+        } else {
+          tryLiveSources(srcs, idx + 1);
+        }
+        return;
       }
-      const ct = resp.headers['content-type'] || '';
-      resp.resume();
-      if (resp.statusCode === 200 && ct.startsWith('image/')) {
-        // Bild-URL aus den Request-Optionen rekonstruieren
-        const url = typeof opts === 'string' ? opts : `https://${opts.hostname}${opts.path}`;
-        resolve(url);
+      const ct = imgRes.headers['content-type'] || '';
+      if (imgRes.statusCode === 200 && ct.startsWith('image/')) {
+        // Treffer! Stream zum Browser + auf Disk speichern
+        answered = true;
+        clearTimeout(timeout);
+        res.setHeader('Content-Type', ct);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        // Tee: gleichzeitig an Browser und Datei streamen
+        const ws = fs.createWriteStream(cachePath);
+        imgRes.pipe(res);
+        imgRes.pipe(ws);
+        ws.on('finish', () => {
+          try { db.db.prepare('UPDATE ships SET photo_checked=1, photo_url=? WHERE mmsi=?').run('local', mmsi); } catch(e) {}
+        });
+        ws.on('error', () => { try { fs.unlinkSync(cachePath); } catch(e) {} });
       } else {
-        resolve(null);
+        imgRes.resume();
+        tryLiveSources(srcs, idx + 1);
       }
     });
-    req.on('error', () => resolve(null));
-    req.setTimeout(4000, () => { req.destroy(); resolve(null); });
-  });
-}
+    r2.on('error', () => tryLiveSources(srcs, idx + 1));
+    r2.setTimeout(3000, () => { r2.destroy(); tryLiveSources(srcs, idx + 1); });
+  }
+});
 
-// Photo-Cache in DB-Cleanup-Hook registrieren
-db.cleanupCallbacks.push(cleanupPhotoCache);
 
 async function fetchWikipediaPhotoUrl(mmsi) {
   try {
@@ -1121,12 +1126,12 @@ app.get('/api/history',          authMiddleware, (req,res) => res.json(db.getHis
 app.get('/api/ship/:mmsi/track', authMiddleware, (req,res) => res.json(db.getTrack(req.params.mmsi, +(req.query.hours||24))));
 app.get('/api/status', authMiddleware, (req,res) => res.json({
   ships: db.getActiveShips().length, demo: !process.env.AIS_API_KEY,
-  uptime: Math.floor(process.uptime()), version:'0.8.5',
+  uptime: Math.floor(process.uptime()), version:'0.8.6',
   retainDays: +(process.env.RETAIN_DAYS||7),
   buildSha: BUILD_SHA, buildTime: BUILD_TIME,
   ais: ais.getStatus(),
 }));
-app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.8.5' }));
+app.get('/api/version', (req,res) => res.json({ sha: BUILD_SHA, time: BUILD_TIME, version:'0.8.6' }));
 
 // Öffentlicher Healthcheck (für Docker/Podman HEALTHCHECK und externes Monitoring)
 // Antwortet 200 wenn AIS verbunden UND in den letzten 5 Min Nachricht erhalten,
@@ -1144,7 +1149,7 @@ app.get('/api/health', (req, res) => {
       lastError: aisStatus.lastErrorMessage,
     },
     uptime: Math.floor(process.uptime()),
-    version: '0.8.5',
+    version: '0.8.6',
   };
   res.status(aisStatus.healthy ? 200 : 503).json(body);
 });
